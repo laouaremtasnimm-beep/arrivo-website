@@ -1,6 +1,4 @@
-/* ─────────────────────────────────────────────
-   Voyago – Global Styles & Design Tokens
-───────────────────────────────────────────── */
+
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -10,10 +8,10 @@
   --coral-dk:   #e04045;
   --coral-lt:   rgba(255,90,95,.10);
   --indigo:     #2D3142;
-  --teal:       #2EC4B6;
+  --teal:       #35ad23;
   --teal-lt:    rgba(46,196,182,.10);
-  --teal-dk:    #26b0a4;
-  --sand:       #F4EBD0;
+  --teal-dk:    #23c14f;
+  --sand:       #fef7e3;
   --sand-dk:    #EDD9A3;
   --white:      #FFFFFF;
   --gray-50:    #F9F9F9;
