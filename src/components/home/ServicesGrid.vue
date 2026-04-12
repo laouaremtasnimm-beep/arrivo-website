@@ -6,7 +6,9 @@
         <h2 class="section-title">Top <em>services</em></h2>
         <p class="section-sub">Transportation, guides, accommodation and more.</p>
       </div>
-      <a href="#" class="see-all">All services →</a>
+     <RouterLink to="/services" class="see-all">
+  See all services →
+</RouterLink>
     </div>
 
     <div class="svc-grid">
@@ -36,7 +38,8 @@
 defineProps({
   services: { type: Array, default: () => [] },
 })
-defineEmits(['select'])
+defineEmits(['select']);
+
 </script>
 
 <style scoped>

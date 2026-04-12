@@ -19,7 +19,7 @@
 
       <div class="hero__cta">
         <a href="#packages" class="btn btn-coral hero__cta-main">Explore packages</a>
-        <button class="btn btn-outline" @click="$emit('open-auth', 'register')">
+        <button class="btn btn-outline" @click="router.push('/auth?mode=register')">
           Become a provider
         </button>
       </div>
@@ -60,7 +60,9 @@
 </template>
 
 <script setup>
-defineEmits(['open-auth'])
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const stats = [
   { num: '1,200+', label: 'Destinations' },
@@ -84,7 +86,6 @@ const stats = [
     radial-gradient(ellipse 40% 40% at 10% 80%, rgba(46,196,182,.08) 0%, transparent 60%);
 }
 
-/* Content */
 .hero__content { position: relative; z-index: 1; max-width: 580px; }
 
 .hero__tag {
@@ -96,8 +97,7 @@ const stats = [
 }
 .hero__tag-dot {
   width: 7px; height: 7px;
-  background: var(--coral); border-radius: 50%;
-  flex-shrink: 0;
+  background: var(--coral); border-radius: 50%; flex-shrink: 0;
 }
 
 .hero__heading {
@@ -114,7 +114,6 @@ const stats = [
 .hero__cta { display: flex; gap: 14px; flex-wrap: wrap; }
 .hero__cta-main { padding: 14px 32px; font-size: 1rem; }
 
-/* Stats */
 .hero__stats {
   display: flex; gap: 40px; margin-top: 56px;
   padding-top: 40px; border-top: 1px solid var(--gray-200);
@@ -125,7 +124,6 @@ const stats = [
 }
 .hero__stat-label { font-size: .82rem; color: var(--gray-400); font-weight: 500; margin-top: 2px; }
 
-/* Visual */
 .hero__visual {
   position: absolute; right: 5%; top: 50%; transform: translateY(-50%);
   width: min(480px, 42vw); z-index: 1;
@@ -137,7 +135,7 @@ const stats = [
   padding: 14px 18px; box-shadow: var(--shadow-md);
   display: flex; align-items: center; gap: 10px; font-size: .85rem;
 }
-.hero__float-icon { font-size: 1.4rem; }
+.hero__float-icon  { font-size: 1.4rem; }
 .hero__float-label { font-weight: 600; font-size: .8rem; color: var(--gray-600); }
 .hero__float-val   { font-family: 'Fraunces', serif; font-weight: 700; font-size: 1rem; color: var(--teal); }
 

@@ -5,7 +5,9 @@
         <div class="section-overline">Curated Experiences</div>
         <h2 class="section-title">Travel <em>packages</em></h2>
       </div>
-      <a href="#" class="see-all">Browse all →</a>
+      <RouterLink to="/packages" class="see-all">
+  See all packages →
+</RouterLink>
     </div>
 
     <!-- Filter tabs -->

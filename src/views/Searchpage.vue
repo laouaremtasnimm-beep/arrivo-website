@@ -107,16 +107,17 @@
 </template>
 
 <script setup>
+import { allForSearch } from '@/data/content.js'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 
-import SearchHeader     from '@/components/SearchHeader.vue'
-import SidebarFilters   from '@/components/SidebarFilters.vue'
-import ResultsToolbar   from '@/components/ResultsToolbar.vue'
-import ResultCard       from '@/components/ResultCard.vue'
-import ResultListCard   from '@/components/ResultListCard.vue'
-import SearchPagination from '@/components/SearchPagination.vue'
-import BookingModal     from '@/components/BookingModal.vue'
+import SearchHeader     from '@/components/search/SearchHeader.vue'
+import SidebarFilters   from '@/components/search/SidebarFilters.vue'
+import ResultsToolbar   from '@/components/search/ResultsToolbar.vue'
+import ResultCard       from '@/components/search/ResultCard.vue'
+import ResultListCard   from '@/components/search/ResultListCard.vue'
+import SearchPagination from '@/components/search/SearchPagination.vue'
+import BookingModal     from '@/components/search/BookingModal.vue'
 
 const route = useRoute()
 
@@ -186,24 +187,7 @@ function handleBookingSubmit(payload) {
 
 // ── Data ───────────────────────────────────────────────────────────────────
 // In production: move to a Pinia store and replace with API calls.
-const allResults = ref([
-  { id:1,   category:'package', categoryLabel:'Travel Package', title:'Swiss Alps Winter Retreat',  desc:'Ski, snowboard and relax in cozy mountain chalets with breathtaking alpine views.',                                img:'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=700&q=75', price:2490, rating:4.9, reviews:214,  duration:8,  spots:4,  type:'Adventure', tag:'🔥 Popular',  ctaLabel:'Book now',     priceLabel:'per person'    },
-  { id:2,   category:'package', categoryLabel:'Travel Package', title:'Bali Spiritual Journey',     desc:'Discover temples, rice terraces and traditional healing rituals across the island of gods.',                      img:'https://images.unsplash.com/photo-1604999565976-8913ad2ddb7c?w=700&q=75', price:1650, rating:4.8, reviews:183,  duration:10, spots:8,  type:'Cultural', tag:'✨ New',       ctaLabel:'Book now',     priceLabel:'per person'    },
-  { id:3,   category:'package', categoryLabel:'Travel Package', title:'Greek Island Odyssey',       desc:'Sail between Santorini, Mykonos and Crete on a private yacht with full crew.',                                   img:'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=700&q=75', price:3100, rating:4.9, reviews:320,  duration:14, spots:2,  type:'Beach',    tag:'⚡ 2 left',   ctaLabel:'Book now',     priceLabel:'per person'    },
-  { id:4,   category:'package', categoryLabel:'Travel Package', title:'Sahara Desert Adventure',   desc:'Ride camels at sunset, sleep under the stars and explore ancient kasbahs.',                                       img:'https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=700&q=75', price:980,  rating:4.7, reviews:98,   duration:6,  spots:12, type:'Adventure', tag:null,           ctaLabel:'Book now',     priceLabel:'per person'    },
-  { id:5,   category:'package', categoryLabel:'Travel Package', title:'Tokyo Family Explorer',      desc:'Anime, tech, temples and theme parks — a magical Japanese adventure for the whole family.',                       img:'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=700&q=75', price:2200, rating:4.8, reviews:145,  duration:9,  spots:6,  type:'Family',   tag:null,           ctaLabel:'Book now',     priceLabel:'per person'    },
-  { id:6,   category:'package', categoryLabel:'Travel Package', title:'Amalfi Coast Drive',         desc:'Wind along the cliffside roads of southern Italy, stopping in Positano and Capri.',                              img:'https://images.unsplash.com/photo-1533606688076-b6683a5f59f1?w=700&q=75', price:1890, rating:4.9, reviews:267,  duration:7,  spots:5,  type:'Beach',    tag:'🏅 Top rated', ctaLabel:'Book now',     priceLabel:'per person'    },
-  { id:7,   category:'package', categoryLabel:'Travel Package', title:'Morocco Medina Discovery',   desc:'Explore the souks, palaces and riads of Fez, Marrakech and Chefchaouen.',                                        img:'https://images.unsplash.com/photo-1539020140153-e479b8c22e70?w=700&q=75', price:1100, rating:4.7, reviews:112,  duration:8,  spots:10, type:'Cultural', tag:null,           ctaLabel:'Book now',     priceLabel:'per person'    },
-  { id:8,   category:'package', categoryLabel:'Travel Package', title:'Maldives Overwater Escape',  desc:'Luxury overwater bungalows, snorkelling, spa and pristine private beaches.',                                      img:'https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=700&q=75', price:4200, rating:5.0, reviews:89,   duration:7,  spots:4,  type:'Beach',    tag:'💎 Luxury',    ctaLabel:'Book now',     priceLabel:'per person'    },
-  { id:101, category:'service', categoryLabel:'Service',        title:'Private Airport Transfer',   desc:'Comfortable door-to-door transfers from any airport. Available 24/7.',                                            img:'https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?w=700&q=75', price:45,   rating:4.9, reviews:540,  duration:null,spots:null,type:'City Break',tag:null,           ctaLabel:'Book service', priceLabel:'per trip'      },
-  { id:102, category:'service', categoryLabel:'Service',        title:'Certified Mountain Guide',   desc:'Expert local guides for hiking, climbing and multi-day treks in any terrain.',                                    img:'https://images.unsplash.com/photo-1551632811-561732d1e306?w=700&q=75', price:120,  rating:4.8, reviews:312,  duration:null,spots:null,type:'Adventure', tag:null,           ctaLabel:'Book service', priceLabel:'per day'       },
-  { id:103, category:'service', categoryLabel:'Service',        title:'Private Chef Experience',    desc:'A local chef comes to your villa and prepares a fully authentic dinner.',                                          img:'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=700&q=75', price:180,  rating:5.0, reviews:178,  duration:null,spots:null,type:'Wellness',  tag:'⭐ Top rated', ctaLabel:'Book service', priceLabel:'per evening'   },
-  { id:104, category:'service', categoryLabel:'Service',        title:'Scuba Diving Lessons',       desc:'PADI-certified instructors for beginners and advanced divers alike.',                                              img:'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=700&q=75', price:95,   rating:4.9, reviews:223,  duration:null,spots:null,type:'Beach',     tag:null,           ctaLabel:'Book service', priceLabel:'per session'   },
-  { id:105, category:'service', categoryLabel:'Service',        title:'Travel Photography',         desc:'Professional photographer to document your journey with stunning shots.',                                          img:'https://images.unsplash.com/photo-1471341971476-ae15ff5dd4ea?w=700&q=75', price:150,  rating:4.7, reviews:98,   duration:null,spots:null,type:'City Break',tag:null,           ctaLabel:'Book service', priceLabel:'per day'       },
-  { id:201, category:'dest',    categoryLabel:'Destination',    title:'Santorini, Greece',          desc:'Famous for its white-washed cycladic houses, stunning sunsets and crystal-clear Aegean waters.',                 img:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=700&q=75', price:890,  rating:4.9, reviews:2140, duration:null,spots:null,type:'Beach',     tag:'🔥 Trending',  ctaLabel:'Explore',      priceLabel:'packages from' },
-  { id:202, category:'dest',    categoryLabel:'Destination',    title:'Kyoto, Japan',               desc:'Ancient temples, geisha districts, bamboo groves and world-class traditional cuisine.',                          img:'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=700&q=75', price:1200, rating:4.8, reviews:1830, duration:null,spots:null,type:'Cultural', tag:'🌸 Seasonal',  ctaLabel:'Explore',      priceLabel:'packages from' },
-  { id:203, category:'dest',    categoryLabel:'Destination',    title:'Marrakech, Morocco',         desc:'A sensory feast of souks, spices, stunning riads and the vibrant Djemaa el-Fna square.',                        img:'https://images.unsplash.com/photo-1539020140153-e479b8c22e70?w=700&q=75', price:640,  rating:4.7, reviews:950,  duration:null,spots:null,type:'Cultural', tag:null,           ctaLabel:'Explore',      priceLabel:'packages from' },
-])
+const allResults = ref(allForSearch)
 
 // ── Filtering & Sorting ────────────────────────────────────────────────────
 function matchesDuration(item) {

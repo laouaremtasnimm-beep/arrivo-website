@@ -4,15 +4,21 @@
     <RouterLink to="/" class="logo">Voya<span>go</span></RouterLink>
 
     <ul class="navbar__links">
-      <li><a href="#destinations">Destinations</a></li>
-      <li><a href="#packages">Packages</a></li>
-      <li><a href="#services">Services</a></li>
-      <li><a href="#agencies">For Agencies</a></li>
+      <li><RouterLink to="/destinations">Destinations</RouterLink></li>
+      <li><RouterLink to="/packages">Packages</RouterLink></li>
+      <li><RouterLink to="/services">Services</RouterLink></li>
+      <li><RouterLink to="/#agencies">For Agencies</RouterLink></li>
     </ul>
 
     <div class="navbar__actions">
-      <button class="btn btn-outline" @click="$router.push('/auth')">Sign in</button>
-      <button class="btn btn-coral"   @click="$emit('open-auth', 'register')">Join free</button>
+      <template v-if="canAccessDashboard">
+        <RouterLink to="/dashboard" class="btn btn-outline">Dashboard</RouterLink>
+        <button class="btn btn-coral" @click="handleLogout">Log out</button>
+      </template>
+      <template v-else>
+        <button class="btn btn-outline" @click="router.push('/auth?mode=login')">Sign in</button>
+        <button class="btn btn-coral"   @click="router.push('/auth?mode=register')">Join free</button>
+      </template>
     </div>
 
     <!-- Mobile burger -->
@@ -23,14 +29,20 @@
     <Transition name="slide-down">
       <div class="navbar__drawer" v-if="mobileOpen">
         <ul>
-          <li><a href="#destinations" @click="mobileOpen = false">Destinations</a></li>
-          <li><a href="#packages"     @click="mobileOpen = false">Packages</a></li>
-          <li><a href="#services"     @click="mobileOpen = false">Services</a></li>
-          <li><a href="#agencies"     @click="mobileOpen = false">For Agencies</a></li>
+          <li><RouterLink to="/destinations" @click="mobileOpen = false">Destinations</RouterLink></li>
+          <li><RouterLink to="/packages"     @click="mobileOpen = false">Packages</RouterLink></li>
+          <li><RouterLink to="/services"     @click="mobileOpen = false">Services</RouterLink></li>
+          <li><RouterLink to="/#agencies"    @click="mobileOpen = false">For Agencies</RouterLink></li>
         </ul>
         <div class="drawer-actions">
-          <button class="btn btn-outline" @click="$emit('open-auth','login');   mobileOpen=false">Sign in</button>
-          <button class="btn btn-coral"   @click="$emit('open-auth','register');mobileOpen=false">Join free</button>
+          <template v-if="canAccessDashboard">
+            <RouterLink to="/dashboard" class="btn btn-outline" @click="mobileOpen = false">Dashboard</RouterLink>
+            <button class="btn btn-coral" @click="handleLogout; mobileOpen = false">Log out</button>
+          </template>
+          <template v-else>
+            <button class="btn btn-outline" @click="router.push('/auth?mode=login');    mobileOpen = false">Sign in</button>
+            <button class="btn btn-coral"   @click="router.push('/auth?mode=register'); mobileOpen = false">Join free</button>
+          </template>
         </div>
       </div>
     </Transition>
@@ -40,11 +52,16 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 
-defineEmits(['open-auth'])
+const router = useRouter()
+const { canAccessDashboard, logout } = useAuth()
 
 const scrolled   = ref(false)
 const mobileOpen = ref(false)
+
+function handleLogout() { logout(); router.push('/') }
 
 function onScroll() { scrolled.value = window.scrollY > 30 }
 onMounted(()  => window.addEventListener('scroll', onScroll))
@@ -67,6 +84,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   font-family: 'Fraunces', serif;
   font-size: 1.6rem; font-weight: 700;
   color: var(--indigo); letter-spacing: -.5px;
+  text-decoration: none;
 }
 .logo span { color: var(--coral); }
 
@@ -74,12 +92,14 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
   display: flex; align-items: center; gap: 32px;
   list-style: none; font-size: .95rem; font-weight: 500;
 }
-.navbar__links a { color: var(--gray-600); transition: color var(--transition); }
-.navbar__links a:hover { color: var(--coral); }
+.navbar__links a {
+  color: var(--gray-600); transition: color var(--transition); text-decoration: none;
+}
+.navbar__links a:hover,
+.navbar__links a.router-link-active { color: var(--coral); }
 
 .navbar__actions { display: flex; align-items: center; gap: 12px; }
 
-/* Burger */
 .navbar__burger {
   display: none; flex-direction: column; gap: 5px;
   background: none; border: none; cursor: pointer; padding: 6px;
@@ -93,14 +113,13 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .navbar__burger.open span:nth-child(2) { opacity: 0; }
 .navbar__burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
-/* Drawer */
 .navbar__drawer {
   position: fixed; top: 72px; left: 0; right: 0;
   background: var(--white); border-bottom: 1px solid var(--gray-200);
   padding: 24px 5% 28px; box-shadow: var(--shadow-md);
 }
 .navbar__drawer ul { list-style: none; display: flex; flex-direction: column; gap: 18px; }
-.navbar__drawer ul a { font-size: 1.1rem; font-weight: 600; color: var(--indigo); }
+.navbar__drawer ul a { font-size: 1.1rem; font-weight: 600; color: var(--indigo); text-decoration: none; }
 .drawer-actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
 .drawer-actions .btn { flex: 1; justify-content: center; }
 

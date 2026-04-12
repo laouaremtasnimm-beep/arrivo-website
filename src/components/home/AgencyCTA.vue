@@ -9,7 +9,7 @@
           thousands of tourists on our platform.
         </p>
         <div class="cta-actions">
-          <button class="btn btn-white cta-btn" @click="$emit('open-auth', 'register')">
+          <button class="btn btn-white cta-btn" @click="router.push('/auth?mode=register')">
             Start for free
           </button>
           <button class="btn btn-ghost cta-btn">Learn more</button>
@@ -27,7 +27,9 @@
 </template>
 
 <script setup>
-defineEmits(['open-auth'])
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const features = [
   { icon: '📊', label: 'Full analytics dashboard' },
@@ -46,8 +48,6 @@ const features = [
   display: flex; align-items: center; justify-content: space-between; gap: 48px;
   position: relative; overflow: hidden;
 }
-
-/* Decorative blobs */
 .agency-cta::before {
   content: ''; position: absolute; right: -80px; top: -80px;
   width: 320px; height: 320px; border-radius: 50%;
@@ -59,7 +59,6 @@ const features = [
   background: rgba(255,90,95,.10); pointer-events: none;
 }
 
-/* Content */
 .cta-content { position: relative; z-index: 1; }
 .cta-overline {
   font-size: .78rem; font-weight: 700; letter-spacing: .10em;
@@ -75,7 +74,6 @@ const features = [
 .cta-actions { display: flex; gap: 14px; margin-top: 32px; flex-wrap: wrap; }
 .cta-btn { padding: 14px 30px; }
 
-/* Features */
 .cta-features {
   position: relative; z-index: 1;
   list-style: none; display: flex; flex-direction: column; gap: 18px;

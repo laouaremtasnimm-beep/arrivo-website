@@ -6,7 +6,9 @@
         <h2 class="section-title">Trending <em>destinations</em></h2>
         <p class="section-sub">Handpicked places loved by thousands of travellers this season.</p>
       </div>
-      <a href="#" class="see-all">See all →</a>
+      <RouterLink to="/destinations" class="see-all">
+  See all destinations →
+</RouterLink>
     </div>
 
     <div class="dest-grid">
@@ -39,10 +41,13 @@
 </template>
 
 <script setup>
+
+
 defineProps({
   destinations: { type: Array, default: () => [] },
 })
-defineEmits(['select'])
+defineEmits(['select']);
+
 </script>
 
 <style scoped>

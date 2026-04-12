@@ -65,20 +65,20 @@ const router = useRouter()
 
 // Components
 
-import NavBar          from '@/components/NavBar.vue'
-import HeroSection     from '@/components/HeroSection.vue'
-import SearchBar       from '@/components/SearchBar.vue'
-import SpecialOffers   from '@/components/SpecialOffers.vue'
-import DestinationGrid from '@/components/DestinationGrid.vue'
-import TravelPackages  from '@/components/TravelPackages.vue'
-import ServicesGrid    from '@/components/ServicesGrid.vue'
-import HowItWorks      from '@/components/HowItWorks.vue'
-import ReviewsSection  from '@/components/ReviewsSection.vue'
-import AgencyCTA       from '@/components/AgencyCTA.vue'
-import NewsletterSection from '@/components/NewsletterSection.vue'
-import SiteFooter      from '@/components/SiteFooter.vue'
-import AuthModal       from '@/components/AuthModal.vue'
-import BookingModal    from '@/components/BookingModal.vue'
+import NavBar          from '@/components/home/NavBar.vue'
+import HeroSection     from '@/components/home/HeroSection.vue'
+import SearchBar       from '@/components/home/SearchBar.vue'
+import SpecialOffers   from '@/components/home/SpecialOffers.vue'
+import DestinationGrid from '@/components/home/DestinationGrid.vue'
+import TravelPackages  from '@/components/home/TravelPackages.vue'
+import ServicesGrid    from '@/components/home/ServicesGrid.vue'
+import HowItWorks      from '@/components/home/HowItWorks.vue'
+import ReviewsSection  from '@/components/home/ReviewsSection.vue'
+import AgencyCTA       from '@/components/home/AgencyCTA.vue'
+import NewsletterSection from '@/components/home/NewsletterSection.vue'
+import SiteFooter      from '@/components/home/SiteFooter.vue'
+import AuthModal       from '@/components/home/AuthModal.vue'
+import BookingModal    from '@/components/home/BookingModal.vue'
 
 // ── Modal state ────────────────────────────────────────────────────────────
 const authModal      = ref(null)   // 'login' | 'register' | null

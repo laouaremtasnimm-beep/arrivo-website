@@ -34,7 +34,7 @@
       <div class="result-card__footer">
         <div>
           <div class="result-card__from">{{ item.priceLabel || 'from' }}</div>
-          <div class="result-card__price">${{ item.price.toLocaleString() }}</div>
+          <div class="result-card__price">${{ item.price?.toLocaleString?.() || '' }}</div>
         </div>
         <button class="btn btn-coral result-card__cta" @click.stop="$emit('book', item)">
           {{ item.ctaLabel || 'Book now' }}
