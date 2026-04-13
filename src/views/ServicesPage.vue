@@ -52,7 +52,7 @@
             :key="item.id"
             :item="item"
             :saved="wishlist.includes(item.id)"
-            @select="handleSelect"
+            @select="goToDetail"
             @book="openBooking"
             @toggle-wishlist="toggleWishlist"
           />
@@ -71,10 +71,12 @@
 </template>
 
 <script setup>
-import { services } from '@/data/content.js'
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useListPage } from '@/composables/useListPage'
+import { services } from '@/data/content.js'
 
+// ── All imports use the correct paths ─────────────────────────────────────
 import NavBar           from '@/components/home/NavBar.vue'
 import PageHero         from '@/components/shared/PageHero.vue'
 import FilterBar        from '@/components/shared/FilterBar.vue'
@@ -84,31 +86,39 @@ import SidebarFilters   from '@/components/search/SidebarFilters.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal     from '@/components/home/BookingModal.vue'
 
-const sidebarOpen = ref(false)
-const bookingOpen = ref(false)
+const router       = useRouter()
+const sidebarOpen  = ref(false)
+const bookingOpen  = ref(false)
 const selectedItem = ref(null)
+const allItems     = ref(services)
 
-function handleSelect(item) { selectedItem.value = item }
-function openBooking(item)  { selectedItem.value = item; bookingOpen.value = true }
+// Clicking the card body → go to detail page
+function goToDetail(item) {
+  router.push(`/services/${item.id}`)
+}
+
+// Clicking "Book service" button → open booking modal (button uses @click.stop)
+function openBooking(item) {
+  selectedItem.value = item
+  bookingOpen.value  = true
+}
 function handleBooking(payload) { console.log('Service booked:', payload) }
 
 const heroStats = [
-  { icon: '🛎️', value: '500+',  label: 'services'          },
-  { icon: '✅',  value: '100%',  label: 'verified providers' },
-  { icon: '⭐',  value: '4.8',   label: 'avg rating'         },
+  { icon: '🛎️', value: '500+',  label: 'services'           },
+  { icon: '✅',  value: '100%',  label: 'verified providers'  },
+  { icon: '⭐',  value: '4.8',   label: 'avg rating'          },
 ]
 
 const categories = [
-  { value: 'all',        label: 'All',          icon: '🌐', count: 20 },
-  { value: 'Transport',  label: 'Transport',    icon: '🚐', count: 5  },
-  { value: 'Adventure',  label: 'Adventure',    icon: '🧗', count: 4  },
-  { value: 'Food',       label: 'Food & Drink', icon: '🍽️', count: 4  },
-  { value: 'Wellness',   label: 'Wellness',     icon: '🧘', count: 3  },
-  { value: 'Photography',label: 'Photography',  icon: '📸', count: 2  },
-  { value: 'Tours',      label: 'Tours',        icon: '🗺️', count: 2  },
+  { value: 'all',         label: 'All',          icon: '🌐' },
+  { value: 'Transport',   label: 'Transport',    icon: '🚐' },
+  { value: 'Adventure',   label: 'Adventure',    icon: '🧗' },
+  { value: 'Food',        label: 'Food & Drink', icon: '🍽️' },
+  { value: 'Wellness',    label: 'Wellness',     icon: '🧘' },
+  { value: 'Photography', label: 'Photography',  icon: '📸' },
+  { value: 'Tours',       label: 'Tours',        icon: '🗺️' },
 ]
-
-const allItems = ref(services)
 
 const {
   query, activeCategory, sortBy, viewMode, loading, page,

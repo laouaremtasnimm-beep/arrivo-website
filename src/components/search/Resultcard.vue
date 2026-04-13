@@ -1,5 +1,5 @@
 <template>
-  <article class="result-card" @click="$emit('select', item)">
+  <article class="result-card" @click="$emit('select', item)"style="cursor:pointer">
 
     <div class="result-card__img">
       <img :src="item.img" :alt="item.title" loading="lazy" />

@@ -52,7 +52,7 @@
             :key="item.id"
             :item="item"
             :saved="wishlist.includes(item.id)"
-            @select="handleSelect"
+            @select="goToDetail"
             @book="openBooking"
             @toggle-wishlist="toggleWishlist"
           />
@@ -71,10 +71,12 @@
 </template>
 
 <script setup>
-import { packages } from '@/data/content.js'
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useListPage } from '@/composables/useListPage'
+import { packages } from '@/data/content.js'
 
+// ── All imports use the correct paths ─────────────────────────────────────
 import NavBar           from '@/components/home/NavBar.vue'
 import PageHero         from '@/components/shared/PageHero.vue'
 import FilterBar        from '@/components/shared/FilterBar.vue'
@@ -84,30 +86,39 @@ import SidebarFilters   from '@/components/search/SidebarFilters.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal     from '@/components/home/BookingModal.vue'
 
-const sidebarOpen = ref(false)
-const bookingOpen = ref(false)
+const router       = useRouter()
+const sidebarOpen  = ref(false)
+const bookingOpen  = ref(false)
 const selectedItem = ref(null)
+const allItems     = ref(packages)
 
-function handleSelect(item) { selectedItem.value = item }
-function openBooking(item)  { selectedItem.value = item; bookingOpen.value = true }
+// Clicking the card body → go to detail page
+function goToDetail(item) {
+  router.push(`/packages/${item.id}`)
+}
+
+// Clicking "Book now" button → open booking modal (button uses @click.stop so won't also navigate)
+function openBooking(item) {
+  selectedItem.value = item
+  bookingOpen.value  = true
+}
 function handleBooking(payload) { console.log('Booked:', payload) }
 
 const heroStats = [
-  { icon: '✈️', value: '340+', label: 'packages'        },
-  { icon: '🏢', value: '120+', label: 'verified agencies'},
-  { icon: '⭐', value: '4.9',  label: 'avg rating'       },
+  { icon: '✈️', value: '340+', label: 'packages'         },
+  { icon: '🏢', value: '120+', label: 'verified agencies' },
+  { icon: '⭐', value: '4.9',  label: 'avg rating'        },
 ]
 
 const categories = [
-  { value: 'all',       label: 'All',       icon: '🌐', count: 20 },
-  { value: 'Adventure', label: 'Adventure', icon: '🧗', count: 6  },
-  { value: 'Beach',     label: 'Beach',     icon: '🏖️', count: 5  },
-  { value: 'Cultural',  label: 'Cultural',  icon: '🏛️', count: 4  },
-  { value: 'Family',    label: 'Family',    icon: '👨‍👩‍👧', count: 3  },
-  { value: 'Wellness',  label: 'Wellness',  icon: '🧘', count: 2  },
+  { value: 'all',       label: 'All',       icon: '🌐' },
+  { value: 'Adventure', label: 'Adventure', icon: '🧗' },
+  { value: 'Beach',     label: 'Beach',     icon: '🏖️' },
+  { value: 'Cultural',  label: 'Cultural',  icon: '🏛️' },
+  { value: 'Family',    label: 'Family',    icon: '👨‍👩‍👧' },
+  { value: 'Wellness',  label: 'Wellness',  icon: '🧘' },
 ]
 
-const allItems = ref(packages)
 const {
   query, activeCategory, sortBy, viewMode, loading, page,
   filters, activeFilterCount, allFiltered, totalPages, pagedResults,

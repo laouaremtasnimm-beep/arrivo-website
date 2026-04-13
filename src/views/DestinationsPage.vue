@@ -25,7 +25,6 @@
 
     <div class="list-page__body">
 
-      <!-- Sidebar -->
       <SidebarFilters
         v-model:filters="filters"
         :open="sidebarOpen"
@@ -37,7 +36,6 @@
         <div class="sidebar-backdrop" v-if="sidebarOpen" @click="sidebarOpen = false" />
       </Transition>
 
-      <!-- Results -->
       <main class="list-page__main">
         <ItemGrid
           :items="pagedResults"
@@ -54,7 +52,7 @@
             :key="item.id"
             :item="item"
             :saved="wishlist.includes(item.id)"
-            @select="handleSelect"
+            @select="goToDetail"
             @toggle-wishlist="toggleWishlist"
           />
         </ItemGrid>
@@ -66,17 +64,16 @@
         />
       </main>
     </div>
-
-    <BookingModal v-model="bookingOpen" :pkg="selectedItem" @submit="handleBooking" />
   </div>
 </template>
 
 <script setup>
-import { destinations } from '@/data/content.js'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useListPage } from '@/composables/useListPage'
+import { destinations } from '@/data/content.js'
 
+// ── All imports use the correct paths ─────────────────────────────────────
 import NavBar          from '@/components/home/NavBar.vue'
 import PageHero        from '@/components/shared/PageHero.vue'
 import FilterBar       from '@/components/shared/FilterBar.vue'
@@ -86,16 +83,14 @@ import SidebarFilters  from '@/components/search/SidebarFilters.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal    from '@/components/home/BookingModal.vue'
 
-const router = useRouter()
-
+const router      = useRouter()
 const sidebarOpen = ref(false)
-const bookingOpen = ref(false)
-const selectedItem = ref(null)
+const allItems    = ref(destinations)
 
-function handleSelect(item) {
-  router.push({ path: '/search', query: { q: item.name } })
+// Clicking anywhere on the card → go to detail page
+function goToDetail(item) {
+  router.push(`/destinations/${item.id}`)
 }
-function handleBooking(payload) { console.log('Booked:', payload) }
 
 const heroStats = [
   { icon: '📍', value: '1,200+', label: 'destinations' },
@@ -104,16 +99,13 @@ const heroStats = [
 ]
 
 const categories = [
-  { value: 'all',       label: 'All',         icon: '🌐', count: 16  },
-  { value: 'Beach',     label: 'Beach',        icon: '🏖️', count: 5   },
-  { value: 'Cultural',  label: 'Cultural',     icon: '🏛️', count: 4   },
-  { value: 'Adventure', label: 'Adventure',    icon: '🧗', count: 3   },
-  { value: 'City',      label: 'City Break',   icon: '🌆', count: 2   },
-  { value: 'Nature',    label: 'Nature',       icon: '🌿', count: 2   },
+  { value: 'all',       label: 'All',       icon: '🌐' },
+  { value: 'Beach',     label: 'Beach',     icon: '🏖️' },
+  { value: 'Cultural',  label: 'Cultural',  icon: '🏛️' },
+  { value: 'Adventure', label: 'Adventure', icon: '🧗' },
+  { value: 'City',      label: 'City Break',icon: '🌆' },
+  { value: 'Nature',    label: 'Nature',    icon: '🌿' },
 ]
-
-// ── Data ───────────────────────────────────────────────────────────────────
-const allItems = ref(destinations)
 
 const {
   query, activeCategory, sortBy, viewMode, loading, page,
@@ -124,21 +116,14 @@ const {
 
 <style scoped>
 .list-page { min-height: 100vh; background: var(--gray-50); }
-
-.list-page__body {
-  display: grid; grid-template-columns: 280px 1fr;
-  align-items: flex-start;
-}
-
+.list-page__body { display: grid; grid-template-columns: 280px 1fr; align-items: flex-start; }
 .list-page__main { padding: 32px; }
-
 .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 60; }
 .backdrop-fade-enter-active, .backdrop-fade-leave-active { transition: opacity .25s ease; }
 .backdrop-fade-enter-from, .backdrop-fade-leave-to       { opacity: 0; }
-
 @media (max-width: 768px) {
-  .list-page__body      { grid-template-columns: 1fr; }
-  .list-page__main      { padding: 20px 4%; }
-  .sidebar-backdrop     { display: block; }
+  .list-page__body  { grid-template-columns: 1fr; }
+  .list-page__main  { padding: 20px 4%; }
+  .sidebar-backdrop { display: block; }
 }
 </style>

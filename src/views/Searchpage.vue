@@ -1,17 +1,14 @@
 <template>
   <div class="search-page">
 
-    <!-- ── Sticky search header ───────────────── -->
     <SearchHeader
       v-model="query"
       v-model:activeCategory="activeCategory"
       @search="runSearch"
     />
 
-    <!-- ── Body ──────────────────────────────── -->
     <div class="search-body">
 
-      <!-- ── Sidebar filters ──────────────────── -->
       <SidebarFilters
         v-model:filters="filters"
         :open="mobileSidebarOpen"
@@ -20,7 +17,6 @@
         @close="mobileSidebarOpen = false"
       />
 
-      <!-- Mobile backdrop -->
       <Transition name="backdrop-fade">
         <div
           v-if="mobileSidebarOpen"
@@ -29,7 +25,6 @@
         />
       </Transition>
 
-      <!-- ── Results ───────────────────────────── -->
       <main class="results-area">
 
         <ResultsToolbar
@@ -69,6 +64,7 @@
             :key="item.id + '-grid'"
             :item="item"
             :saved="wishlist.includes(item.id)"
+            @select="goToDetail"
             @book="handleBook"
             @toggle-wishlist="toggleWishlist"
           />
@@ -81,12 +77,12 @@
             :key="item.id + '-list'"
             :item="item"
             :saved="wishlist.includes(item.id)"
+            @select="goToDetail"
             @book="handleBook"
             @toggle-wishlist="toggleWishlist"
           />
         </div>
 
-        <!-- Pagination -->
         <SearchPagination
           v-if="!loading && pagedResults.length > 0"
           v-model="page"
@@ -96,7 +92,6 @@
       </main>
     </div>
 
-    <!-- Reuse existing BookingModal component -->
     <BookingModal
       v-model="bookingOpen"
       :pkg="selectedItem"
@@ -107,10 +102,11 @@
 </template>
 
 <script setup>
-import { allForSearch } from '@/data/content.js'
 import { ref, computed, watch, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { allForSearch } from '@/data/content.js'
 
+// ── All imports use the correct paths ─────────────────────────────────────
 import SearchHeader     from '@/components/search/SearchHeader.vue'
 import SidebarFilters   from '@/components/search/SidebarFilters.vue'
 import ResultsToolbar   from '@/components/search/ResultsToolbar.vue'
@@ -119,7 +115,8 @@ import ResultListCard   from '@/components/search/ResultListCard.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal     from '@/components/search/BookingModal.vue'
 
-const route = useRoute()
+const route  = useRoute()
+const router = useRouter()
 
 // ── UI state ───────────────────────────────────────────────────────────────
 const query             = ref(route.query.q || '')
@@ -159,11 +156,18 @@ function resetFilters() {
   page.value           = 1
 }
 
+// ── Navigate to the correct detail page based on item category ─────────────
+function goToDetail(item) {
+  if (item.category === 'dest')    return router.push(`/destinations/${item.id}`)
+  if (item.category === 'package') return router.push(`/packages/${item.id}`)
+  if (item.category === 'service') return router.push(`/services/${item.id}`)
+}
+
 // ── Search ─────────────────────────────────────────────────────────────────
 function runSearch() {
   loading.value = true
   page.value    = 1
-  setTimeout(() => { loading.value = false }, 900)
+  setTimeout(() => { loading.value = false }, 700)
 }
 
 onMounted(() => { if (query.value) runSearch() })
@@ -182,11 +186,9 @@ function handleBook(item) {
 
 function handleBookingSubmit(payload) {
   console.log('Booking submitted:', payload)
-  // TODO: call your bookings API
 }
 
 // ── Data ───────────────────────────────────────────────────────────────────
-// In production: move to a Pinia store and replace with API calls.
 const allResults = ref(allForSearch)
 
 // ── Filtering & Sorting ────────────────────────────────────────────────────
@@ -209,7 +211,10 @@ const allFiltered = computed(() => {
 
   if (query.value.trim()) {
     const q = query.value.toLowerCase()
-    r = r.filter(i => i.title.toLowerCase().includes(q) || i.desc.toLowerCase().includes(q))
+    r = r.filter(i =>
+      i.title?.toLowerCase().includes(q) ||
+      i.desc?.toLowerCase().includes(q)
+    )
   }
 
   if (filters.value.priceMin != null) r = r.filter(i => i.price >= filters.value.priceMin)
@@ -237,41 +242,30 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
 
 <style scoped>
 .search-page {
-  min-height: 100vh;
-  display: flex; flex-direction: column;
+  min-height: 100vh; display: flex; flex-direction: column;
   background: var(--gray-50);
 }
-
 .search-body {
-  display: grid;
-  grid-template-columns: 280px 1fr;
+  display: grid; grid-template-columns: 280px 1fr;
   flex: 1; align-items: flex-start;
 }
-
 .results-area  { padding: 28px 32px; min-height: 80vh; }
 .results-grid  { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
 .results-list  { display: flex; flex-direction: column; gap: 18px; }
 
-/* Skeletons */
 .skeleton-card { background: var(--white); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
-.skeleton-img  {
-  height: 200px;
-  background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%);
-  background-size: 200% 100%; animation: shimmer 1.4s infinite;
-}
-.skeleton-body        { padding: 20px; }
-.skeleton-line        { height: 14px; border-radius: 7px; margin-bottom: 10px; background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+.skeleton-img  { height: 200px; background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+.skeleton-body { padding: 20px; }
+.skeleton-line { height: 14px; border-radius: 7px; margin-bottom: 10px; background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
 .skeleton-line--short { width: 40%; }
 .skeleton-line--med   { width: 65%; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
-/* Empty state */
 .empty-state        { text-align: center; padding: 80px 20px; }
 .empty-state__icon  { font-size: 3.5rem; margin-bottom: 16px; }
 .empty-state__title { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; }
 .empty-state__sub   { font-size: .95rem; color: var(--gray-400); margin-bottom: 28px; }
 
-/* Backdrop */
 .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 60; }
 .backdrop-fade-enter-active, .backdrop-fade-leave-active { transition: opacity .25s ease; }
 .backdrop-fade-enter-from, .backdrop-fade-leave-to       { opacity: 0; }
