@@ -38,6 +38,7 @@
         :notification-count="notificationCount"
         @open-mobile-sidebar="mobileSidebarOpen = true"
         @quick-action="handleQuickAction"
+        @navigate-section="setSection"
       />
 
       <div class="dashboard__section-bar">
@@ -421,11 +422,11 @@ const reviews = ref([
   { reviewID: 3, touristName: 'Lena Müller',   itemName: 'Amalfi Coast Drive',        rating: 4, comment: 'Beautiful scenery and great organisation. A few minor hiccups but wonderful overall.', date: 'Jun 3, 2025' },
 ])
 
-// source: 'Solo' | 'collab'
+// source: 'manual' | 'collab'
 const specialOffers = ref([
-  { offerID: 1, source: 'Solo', discount: 25, title: 'Early Bird Summer',   startDate: 'Jun 1',  endDate: 'Jun 30', active: true,  description: 'Book any summer package before June 30 and get 25% off.' },
-  { offerID: 2, source: 'Solo', discount: 15, title: 'Returning Traveller', startDate: 'Jul 1',  endDate: 'Jul 31', active: true,  description: 'Exclusive discount for customers who have booked with us before.' },
-  { offerID: 3, source: 'Solo', discount: 30, title: 'Last Minute Alps',    startDate: 'Jun 15', endDate: 'Jun 20', active: false, description: 'Limited spots available for the Swiss Alps Retreat at a special rate.' },
+  { offerID: 1, source: 'manual', discount: 25, title: 'Early Bird Summer',   startDate: 'Jun 1',  endDate: 'Jun 30', active: true,  description: 'Book any summer package before June 30 and get 25% off.' },
+  { offerID: 2, source: 'manual', discount: 15, title: 'Returning Traveller', startDate: 'Jul 1',  endDate: 'Jul 31', active: true,  description: 'Exclusive discount for customers who have booked with us before.' },
+  { offerID: 3, source: 'manual', discount: 30, title: 'Last Minute Alps',    startDate: 'Jun 15', endDate: 'Jun 20', active: false, description: 'Limited spots available for the Swiss Alps Retreat at a special rate.' },
 ])
 
 const collaborations = ref([

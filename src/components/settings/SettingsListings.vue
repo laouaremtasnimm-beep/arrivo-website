@@ -6,7 +6,7 @@
 
     <!-- Availability -->
     <div class="block-label">Default Availability</div>
-    <SettingsRow label="Accept New Bookings" desc="Temporarily pause all new booking requests">
+    <SettingsRow label="Accept New Bookings" desc="Accept all new booking requests">
       <ToggleSwitch v-model="listings.acceptBookings" />
     </SettingsRow>
     <SettingsRow label="Instant Booking" desc="Allow guests to book without manual approval">

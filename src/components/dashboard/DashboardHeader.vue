@@ -17,43 +17,78 @@
         + {{ user.role === 'agency' ? 'New Package' : 'New Service' }}
       </button>
 
-      <!-- Notifications -->
-      <button class="dash-header__icon-btn" @click="$emit('open-notifications')" title="Notifications">
-        🔔
-        <span class="dash-header__notif-dot" v-if="notificationCount > 0">{{ notificationCount }}</span>
-      </button>
+      <!-- Notifications bell -->
+      <div class="notif-trigger" ref="bellRef">
+        <button
+          class="dash-header__icon-btn"
+          :class="{ active: notifOpen }"
+          @click="toggleNotifPanel"
+          title="Notifications"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+          </svg>
+          <span class="dash-header__notif-dot" v-if="notificationCount > 0">{{ notificationCount }}</span>
+        </button>
+      </div>
 
       <!-- Avatar -->
       <div class="dash-header__avatar" :title="user.name">{{ initials }}</div>
 
     </div>
+
+    <!-- Notification panel — floats below the bell -->
+    <NotificationPanel
+      v-model="notifOpen"
+      :role="user.role"
+      :anchor="bellAnchor"
+      @navigate="handleNavigate"
+    />
+
   </header>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
+import { useNotifications } from '@/composables/useNotifications'
+import NotificationPanel from '@/components/shared/NotificationPanel.vue'
 
 const props = defineProps({
   user:              { type: Object, required: true },
   notificationCount: { type: Number, default: 0 },
 })
 
-defineEmits(['open-mobile-sidebar', 'open-notifications', 'quick-action'])
+const emit = defineEmits(['open-mobile-sidebar', 'quick-action', 'navigate-section'])
+
+const { unreadCount: getUnreadCount } = useNotifications()
+
+const bellRef    = ref(null)
+const notifOpen  = ref(false)
+const bellAnchor = ref(null)
+
+function toggleNotifPanel() {
+  if (bellRef.value) bellAnchor.value = bellRef.value.getBoundingClientRect()
+  notifOpen.value = !notifOpen.value
+}
+
+// Re-emit navigate so DashboardPage can call setSection
+function handleNavigate(section) {
+  emit('navigate-section', section)
+  notifOpen.value = false
+}
 
 const firstName = computed(() => props.user.name?.split(' ')[0] || '')
-
-const initials = computed(() => {
+const initials  = computed(() => {
   const parts = props.user.name?.split(' ') || []
   return parts.map(p => p[0]).slice(0, 2).join('').toUpperCase()
 })
-
 const greeting = computed(() => {
   const h = new Date().getHours()
   if (h < 12) return 'Good morning'
   if (h < 18) return 'Good afternoon'
   return 'Good evening'
 })
-
 const dateLabel = computed(() =>
   new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 )
@@ -78,8 +113,7 @@ const dateLabel = computed(() =>
 
 .dash-header__greeting { flex: 1; min-width: 0; }
 .dash-header__title {
-  font-family: 'Fraunces', serif;
-  font-size: 1.25rem; font-weight: 700;
+  font-family: 'Fraunces', serif; font-size: 1.25rem; font-weight: 700;
   color: var(--indigo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .dash-header__sub { font-size: .8rem; color: var(--gray-400); margin-top: 1px; }
@@ -88,20 +122,24 @@ const dateLabel = computed(() =>
 
 .dash-header__action { padding: 9px 20px; font-size: .88rem; }
 
+/* Bell button */
+.notif-trigger { position: relative; }
 .dash-header__icon-btn {
   width: 40px; height: 40px; border-radius: 10px; border: none;
-  background: var(--gray-100); font-size: 1.1rem; cursor: pointer;
+  background: var(--gray-100); color: var(--indigo);
+  font-size: 1rem; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   position: relative; transition: background var(--transition);
 }
-.dash-header__icon-btn:hover { background: var(--gray-200); }
-
+.dash-header__icon-btn:hover,
+.dash-header__icon-btn.active { background: var(--gray-200); }
 .dash-header__notif-dot {
-  position: absolute; top: 4px; right: 4px;
+  position: absolute; top: 6px; right: 6px;
   min-width: 16px; height: 16px; padding: 0 4px;
   background: var(--coral); color: #fff; border-radius: 50px;
   font-size: .62rem; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
+  border: 2px solid #fff;
 }
 
 .dash-header__avatar {
