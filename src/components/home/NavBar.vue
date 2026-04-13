@@ -11,13 +11,60 @@
     </ul>
 
     <div class="navbar__actions">
-      <template v-if="canAccessDashboard">
-        <RouterLink to="/dashboard" class="btn btn-outline">Dashboard</RouterLink>
-        <button class="btn btn-coral" @click="handleLogout">Log out</button>
-      </template>
-      <template v-else>
+      <!-- Logged out -->
+      <template v-if="!isLoggedIn">
         <button class="btn btn-outline" @click="router.push('/auth?mode=login')">Sign in</button>
-        <button class="btn btn-coral"   @click="router.push('/auth?mode=register')">Join free</button>
+        <button class="btn btn-coral"   @click="router.push('/auth?mode=register')"> Register </button>
+      </template>
+
+      <!-- Logged in -->
+      <template v-else>
+        <RouterLink v-if="canAccessDashboard" to="/dashboard" class="btn btn-outline">Dashboard</RouterLink>
+
+        <!-- Avatar dropdown -->
+        <div class="user-menu" ref="menuRef">
+          <button class="avatar-btn" @click="menuOpen = !menuOpen">
+            <div class="nav-avatar">{{ initials }}</div>
+            <svg class="chevron" :class="{ open: menuOpen }" width="14" height="14"
+                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          <Transition name="dropdown">
+            <div v-if="menuOpen" class="dropdown-menu">
+              <div class="dropdown-header">
+                <p class="dropdown-name">{{ user.name }}</p>
+                <p class="dropdown-email">{{ user.email }}</p>
+                <span class="dropdown-role" :class="`role-${user.role}`">{{ roleLabel }}</span>
+              </div>
+              <div class="dropdown-divider"></div>
+              <RouterLink to="/profile" class="dropdown-item" @click="menuOpen = false">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+                My Profile
+              </RouterLink>
+              <RouterLink v-if="canAccessDashboard" to="/dashboard" class="dropdown-item" @click="menuOpen = false">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                  <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                Dashboard
+              </RouterLink>
+              <div class="dropdown-divider"></div>
+              <button class="dropdown-item dropdown-logout" @click="handleLogout">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                  <polyline points="16 17 21 12 16 7"/>
+                  <line x1="21" y1="12" x2="9" y2="12"/>
+                </svg>
+                Log out
+              </button>
+            </div>
+          </Transition>
+        </div>
       </template>
     </div>
 
@@ -35,13 +82,14 @@
           <li><RouterLink to="/#agencies"    @click="mobileOpen = false">For Agencies</RouterLink></li>
         </ul>
         <div class="drawer-actions">
-          <template v-if="canAccessDashboard">
-            <RouterLink to="/dashboard" class="btn btn-outline" @click="mobileOpen = false">Dashboard</RouterLink>
-            <button class="btn btn-coral" @click="handleLogout; mobileOpen = false">Log out</button>
-          </template>
-          <template v-else>
+          <template v-if="!isLoggedIn">
             <button class="btn btn-outline" @click="router.push('/auth?mode=login');    mobileOpen = false">Sign in</button>
             <button class="btn btn-coral"   @click="router.push('/auth?mode=register'); mobileOpen = false">Join free</button>
+          </template>
+          <template v-else>
+            <RouterLink to="/profile"   class="btn btn-outline" @click="mobileOpen = false">My Profile</RouterLink>
+            <RouterLink v-if="canAccessDashboard" to="/dashboard" class="btn btn-outline" @click="mobileOpen = false">Dashboard</RouterLink>
+            <button class="btn btn-coral" @click="handleLogout; mobileOpen = false">Log out</button>
           </template>
         </div>
       </div>
@@ -51,21 +99,49 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
 const router = useRouter()
-const { canAccessDashboard, logout } = useAuth()
+const { user, isLoggedIn, canAccessDashboard, logout } = useAuth()
 
 const scrolled   = ref(false)
 const mobileOpen = ref(false)
+const menuOpen   = ref(false)
+const menuRef    = ref(null)
 
-function handleLogout() { logout(); router.push('/') }
+const initials = computed(() => {
+  if (!user.value?.name) return '?'
+  return user.value.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
+})
+
+const roleLabel = computed(() => ({
+  tourist:  'Traveler',
+  agency:   'Travel Agency',
+  provider: 'Service Provider',
+}[user.value?.role] || ''))
+
+function handleLogout() {
+  menuOpen.value = false
+  logout()
+  router.push('/')
+}
 
 function onScroll() { scrolled.value = window.scrollY > 30 }
-onMounted(()  => window.addEventListener('scroll', onScroll))
-onUnmounted(() => window.removeEventListener('scroll', onScroll))
+
+function onClickOutside(e) {
+  if (menuRef.value && !menuRef.value.contains(e.target)) menuOpen.value = false
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', onScroll)
+  document.addEventListener('click', onClickOutside)
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
+  document.removeEventListener('click', onClickOutside)
+})
 </script>
 
 <style scoped>
@@ -100,6 +176,80 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 
 .navbar__actions { display: flex; align-items: center; gap: 12px; }
 
+/* ── Avatar button ── */
+.user-menu { position: relative; }
+
+.avatar-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: none; border: 1.5px solid var(--gray-200);
+  border-radius: 50px; padding: 4px 12px 4px 4px;
+  cursor: pointer; transition: border-color var(--transition);
+}
+.avatar-btn:hover { border-color: var(--teal); }
+
+.nav-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--teal-lt, rgba(46,196,182,.10));
+  color: var(--teal, #2EC4B6);
+  font-size: 13px; font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.chevron {
+  color: var(--gray-600);
+  transition: transform var(--transition);
+}
+.chevron.open { transform: rotate(180deg); }
+
+/* ── Dropdown ── */
+.dropdown-menu {
+  position: absolute; right: 0; top: calc(100% + 10px);
+  width: 240px;
+  background: #fff;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius, 16px);
+  box-shadow: var(--shadow-md, 0 8px 40px rgba(45,49,66,.11));
+  z-index: 200;
+  overflow: hidden;
+}
+
+.dropdown-header { padding: 16px 16px 12px; }
+.dropdown-name  { font-size: 14px; font-weight: 700; color: var(--indigo); margin: 0 0 2px; }
+.dropdown-email { font-size: 12px; color: var(--gray-600); margin: 0 0 8px; }
+
+.dropdown-role {
+  display: inline-block; font-size: 11px; font-weight: 600;
+  padding: 2px 10px; border-radius: 50px; letter-spacing: .02em;
+}
+.role-tourist  { background: var(--teal-lt, rgba(46,196,182,.10)); color: var(--teal, #2EC4B6); }
+.role-agency   { background: rgba(255,90,95,.10); color: var(--coral, #FF5A5F); }
+.role-provider { background: rgba(45,49,66,.08); color: var(--indigo, #2D3142); }
+
+.dropdown-divider { height: 1px; background: var(--gray-200, #E8E8E8); margin: 4px 0; }
+
+.dropdown-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 16px;
+  font-size: 14px; font-weight: 500;
+  color: var(--indigo); text-decoration: none;
+  background: none; border: none; width: 100%;
+  cursor: pointer; font-family: 'DM Sans', sans-serif;
+  transition: background var(--transition);
+  text-align: left;
+}
+.dropdown-item:hover { background: var(--gray-50, #F9F9F9); }
+
+.dropdown-logout { color: var(--coral, #FF5A5F); }
+.dropdown-logout:hover { background: rgba(255,90,95,.07); }
+
+/* ── Dropdown animation ── */
+.dropdown-enter-active,
+.dropdown-leave-active { transition: opacity .18s ease, transform .18s ease; }
+.dropdown-enter-from,
+.dropdown-leave-to { opacity: 0; transform: translateY(-8px); }
+
+/* ── Burger ── */
 .navbar__burger {
   display: none; flex-direction: column; gap: 5px;
   background: none; border: none; cursor: pointer; padding: 6px;
@@ -113,6 +263,7 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll))
 .navbar__burger.open span:nth-child(2) { opacity: 0; }
 .navbar__burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
 
+/* ── Mobile drawer ── */
 .navbar__drawer {
   position: fixed; top: 72px; left: 0; right: 0;
   background: var(--white); border-bottom: 1px solid var(--gray-200);

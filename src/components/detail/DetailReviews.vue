@@ -33,7 +33,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import ReviewCard from './ReviewCard.vue'
+import ReviewCard from '@/components/detail/ReviewCard.vue'
 
 const props = defineProps({
   rating:       { type: Number, required: true },

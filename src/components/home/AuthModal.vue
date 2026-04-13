@@ -43,7 +43,7 @@
 
           <p class="modal__footer" v-if="isLogin">
             Don't have an account?
-            <a @click="activeTab = 'register'">Join free</a>
+            <a @click="activeTab = 'register'">Register</a>
           </p>
         </div>
       </div>

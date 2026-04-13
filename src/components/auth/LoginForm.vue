@@ -45,7 +45,7 @@
 
     <p class="switch-hint">
       Don't have an account?
-      <a @click.prevent="$emit('switch-mode', 'register')">Join free →</a>
+      <a @click.prevent="$emit('switch-mode', 'register')">Register →</a>
     </p>
 
   </form>
