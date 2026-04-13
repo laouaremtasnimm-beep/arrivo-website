@@ -1,15 +1,10 @@
 <template>
   <div class="social-btns">
     <button type="button" class="social-btn" @click="$emit('social-login', 'google')">
-      <img
-        src="https://www.svgrepo.com/show/475656/google-color.svg"
-        alt="Google"
-        width="20" height="20"
-      />
-      Continue with Google
+            Continue with Google
     </button>
     <button type="button" class="social-btn social-btn--fb" @click="$emit('social-login', 'facebook')">
-      <span class="social-btn__fb-icon">📘</span>
+      <span class="social-btn__fb-icon"></span>
       Continue with Facebook
     </button>
   </div>

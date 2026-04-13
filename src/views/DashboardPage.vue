@@ -7,6 +7,7 @@
       :active-section="activeSection"
       :collapsed="sidebarCollapsed"
       :unread-messages="unreadMessages"
+      :pending-collabs="pendingCollabs"
       @toggle="sidebarCollapsed = !sidebarCollapsed"
       @navigate="setSection"
       @logout="handleLogout"
@@ -22,6 +23,7 @@
         :active-section="activeSection"
         :collapsed="false"
         :unread-messages="unreadMessages"
+        :pending-collabs="pendingCollabs"
         @toggle="mobileSidebarOpen = false"
         @navigate="setSection($event); mobileSidebarOpen = false"
         @logout="handleLogout"
@@ -38,17 +40,14 @@
         @quick-action="handleQuickAction"
       />
 
-      <!-- Section title breadcrumb -->
       <div class="dashboard__section-bar">
         <div class="dashboard__section-title">{{ sectionTitle }}</div>
         <div class="dashboard__section-meta">{{ sectionMeta }}</div>
       </div>
 
-      <!-- ── Content: only active section rendered ── -->
       <div class="dashboard__content">
         <Transition name="section-fade" mode="out-in">
 
-          <!-- OVERVIEW -->
           <OverviewSection
             v-if="activeSection === 'overview'"
             key="overview"
@@ -59,7 +58,6 @@
             @open-message="handleOpenMessage"
           />
 
-          <!-- BOOKINGS -->
           <BookingsTable
             v-else-if="activeSection === 'bookings'"
             key="bookings"
@@ -70,7 +68,6 @@
             @view="handleViewBooking"
           />
 
-          <!-- PACKAGES (agency only) -->
           <div v-else-if="activeSection === 'packages' && isAgency" key="packages">
             <PackagesTable
               :packages="packages"
@@ -80,7 +77,6 @@
             />
           </div>
 
-          <!-- SERVICES (provider only) -->
           <div v-else-if="activeSection === 'services' && isProvider" key="services">
             <ServicesTable
               :services="services"
@@ -91,7 +87,6 @@
             />
           </div>
 
-          <!-- MESSAGES -->
           <MessagesPanel
             v-else-if="activeSection === 'messages'"
             key="messages"
@@ -100,7 +95,6 @@
             @compose="handleCompose"
           />
 
-          <!-- REVIEWS -->
           <ReviewsPanel
             v-else-if="activeSection === 'reviews'"
             key="reviews"
@@ -109,14 +103,25 @@
             @delete="handleDeleteReview"
           />
 
-          <!-- OFFERS (agency only) -->
+          <!-- OFFERS — fully reactive, add + edit open the form modal -->
           <OffersPanel
             v-else-if="activeSection === 'offers' && isAgency"
             key="offers"
             :offers="specialOffers"
-            @add="handleAddOffer"
-            @edit="handleEditOffer"
+            @add="openOfferForm(null)"
+            @edit="openOfferForm($event)"
             @delete="handleDeleteOffer"
+          />
+
+          <!-- COLLABORATIONS -->
+          <CollaborationsPanel
+            v-else-if="activeSection === 'collaborations'"
+            key="collaborations"
+            :collaborations="collaborations"
+            @open-form="collabFormOpen = true"
+            @accept="handleAcceptCollab"
+            @decline="handleDeclineCollab"
+            @end="handleEndCollab"
           />
 
         </Transition>
@@ -136,6 +141,17 @@
       @save="handleSaveService"
     />
 
+    <OfferFormModal
+      v-model="offerFormOpen"
+      :offer="editingOffer"
+      @save="handleSaveOffer"
+    />
+
+    <CollabFormModal
+      v-model="collabFormOpen"
+      @send="handleSendCollab"
+    />
+
   </div>
 </template>
 
@@ -144,58 +160,60 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 
-import DashboardSidebar  from '@/components/dashboard/DashboardSidebar.vue'
-import DashboardHeader   from '@/components/dashboard/DashboardHeader.vue'
-import OverviewSection   from '@/components/dashboard/OverviewSection.vue'
-import BookingsTable     from '@/components/dashboard/BookingsTable.vue'
-import PackagesTable     from '@/components/dashboard/PackagesTable.vue'
-import ServicesTable     from '@/components/dashboard/ServicesTable.vue'
-import MessagesPanel     from '@/components/dashboard/MessagesPanel.vue'
-import ReviewsPanel      from '@/components/dashboard/ReviewsPanel.vue'
-import OffersPanel       from '@/components/dashboard/OffersPanel.vue'
-import PackageFormModal  from '@/components/dashboard/PackageFormModal.vue'
-import ServiceFormModal  from '@/components/dashboard/ServiceFormModal.vue'
+import DashboardSidebar    from '@/components/dashboard/DashboardSidebar.vue'
+import DashboardHeader     from '@/components/dashboard/DashboardHeader.vue'
+import OverviewSection     from '@/components/dashboard/OverviewSection.vue'
+import BookingsTable       from '@/components/dashboard/BookingsTable.vue'
+import PackagesTable       from '@/components/dashboard/PackagesTable.vue'
+import ServicesTable       from '@/components/dashboard/ServicesTable.vue'
+import MessagesPanel       from '@/components/dashboard/MessagesPanel.vue'
+import ReviewsPanel        from '@/components/dashboard/ReviewsPanel.vue'
+import OffersPanel         from '@/components/dashboard/OffersPanel.vue'
+import OfferFormModal      from '@/components/dashboard/OfferFormModal.vue'
+import PackageFormModal    from '@/components/dashboard/PackageFormModal.vue'
+import ServiceFormModal    from '@/components/dashboard/ServiceFormModal.vue'
+import CollaborationsPanel from '@/components/dashboard/CollaborationsPanel.vue'
+import CollabFormModal     from '@/components/dashboard/CollabFormModal.vue'
 
 const router = useRouter()
 const { user, isAgency, isProvider, logout } = useAuth()
 
-// ── Layout state ───────────────────────────────────────────────────────────
+// ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
 const mobileSidebarOpen = ref(false)
 const activeSection     = ref('overview')
 
-// ── Section metadata ───────────────────────────────────────────────────────
 const sectionMap = {
-  overview: { title: 'Overview',        meta: 'Your dashboard at a glance'              },
-  bookings: { title: 'Bookings',         meta: 'Manage and track all reservations'       },
-  packages: { title: 'Travel Packages',  meta: 'Create and manage your packages'         },
-  services: { title: 'My Services',      meta: 'Create and manage your service listings' },
-  messages: { title: 'Messages',         meta: 'Communicate with your customers'         },
-  reviews:  { title: 'Reviews',          meta: 'See what customers are saying'           },
-  offers:   { title: 'Special Offers',   meta: 'Run promotions and discount campaigns'   },
+  overview:       { title: 'Overview',        meta: 'Your dashboard at a glance'               },
+  bookings:       { title: 'Bookings',         meta: 'Manage and track all reservations'        },
+  packages:       { title: 'Travel Packages',  meta: 'Create and manage your packages'          },
+  services:       { title: 'My Services',      meta: 'Create and manage your service listings'  },
+  messages:       { title: 'Messages',         meta: 'Communicate with your customers'          },
+  reviews:        { title: 'Reviews',          meta: 'See what customers are saying'            },
+  offers:         { title: 'Special Offers',   meta: 'Run promotions and discount campaigns'    },
+  collaborations: { title: 'Collaborations',   meta: 'Co-create joint offers with partners'     },
 }
-
 const sectionTitle = computed(() => sectionMap[activeSection.value]?.title || '')
 const sectionMeta  = computed(() => sectionMap[activeSection.value]?.meta  || '')
 
-function setSection(section) {
-  activeSection.value = section
+function setSection(s) {
+  activeSection.value = s
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-// ── Computed counts ────────────────────────────────────────────────────────
+// ── Counts ────────────────────────────────────────────────────────────────
 const unreadMessages    = computed(() => messages.value.filter(m => !m.read).length)
-const notificationCount = computed(() => unreadMessages.value)
+const pendingCollabs    = computed(() => collaborations.value.filter(c => c.direction === 'incoming' && c.status === 'pending').length)
+const notificationCount = computed(() => unreadMessages.value + pendingCollabs.value)
 
-// ── Auth ───────────────────────────────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────────────
 function handleLogout() { logout(); router.push('/') }
-
 function handleQuickAction() {
   if (isAgency.value)   { openPackageForm(null); setSection('packages') }
   if (isProvider.value) { openServiceForm(null); setSection('services') }
 }
 
-// ── Booking handlers ───────────────────────────────────────────────────────
+// ── Booking handlers ──────────────────────────────────────────────────────
 function handleConfirmBooking(b) {
   const idx = bookings.value.findIndex(x => x.reservationID === b.reservationID)
   if (idx !== -1) bookings.value[idx].status = 'confirmed'
@@ -206,7 +224,7 @@ function handleCancelBooking(b) {
 }
 function handleViewBooking(b) { console.log('View booking:', b) }
 
-// ── Package form modal ─────────────────────────────────────────────────────
+// ── Package handlers ──────────────────────────────────────────────────────
 const packageFormOpen = ref(false)
 const editingPackage  = ref(null)
 
@@ -214,24 +232,17 @@ function openPackageForm(pkg) {
   editingPackage.value  = pkg ?? null
   packageFormOpen.value = true
 }
-
 function handleSavePackage(payload) {
   const idx = packages.value.findIndex(p => p.packageID === payload.packageID)
-  if (idx !== -1) {
-    // Edit: replace in place
-    packages.value[idx] = payload
-  } else {
-    // Create: add to top of list
-    packages.value.unshift(payload)
-  }
+  if (idx !== -1) packages.value[idx] = payload
+  else packages.value.unshift(payload)
 }
-
 function handleDeletePackage(pkg) {
   if (!confirm(`Delete "${pkg.title}"? This cannot be undone.`)) return
   packages.value = packages.value.filter(p => p.packageID !== pkg.packageID)
 }
 
-// ── Service form modal ─────────────────────────────────────────────────────
+// ── Service handlers ──────────────────────────────────────────────────────
 const serviceFormOpen = ref(false)
 const editingService  = ref(null)
 
@@ -239,46 +250,137 @@ function openServiceForm(svc) {
   editingService.value  = svc ?? null
   serviceFormOpen.value = true
 }
-
 function handleSaveService(payload) {
   const idx = services.value.findIndex(s => s.serviceID === payload.serviceID)
-  if (idx !== -1) {
-    services.value[idx] = payload
-  } else {
-    services.value.unshift(payload)
-  }
+  if (idx !== -1) services.value[idx] = payload
+  else services.value.unshift(payload)
 }
-
 function handleDeleteService(svc) {
   if (!confirm(`Delete "${svc.title}"? This cannot be undone.`)) return
   services.value = services.value.filter(s => s.serviceID !== svc.serviceID)
 }
-
 function handleToggleAvailability(svc) {
   const idx = services.value.findIndex(s => s.serviceID === svc.serviceID)
   if (idx !== -1) services.value[idx].availability = !services.value[idx].availability
 }
 
-// ── Message handlers ───────────────────────────────────────────────────────
+// ── Message handlers ──────────────────────────────────────────────────────
 function handleOpenMessage(msg) {
   const idx = messages.value.findIndex(m => m.messageID === msg.messageID)
   if (idx !== -1) messages.value[idx].read = true
 }
 function handleCompose() { console.log('Compose — wire to a compose modal later') }
 
-// ── Review handlers ────────────────────────────────────────────────────────
+// ── Review handlers ───────────────────────────────────────────────────────
 function handleReplyReview(r)  { console.log('Reply:', r) }
 function handleDeleteReview(r) {
   if (!confirm('Delete this review?')) return
   reviews.value = reviews.value.filter(x => x.reviewID !== r.reviewID)
 }
 
-// ── Offer handlers ─────────────────────────────────────────────────────────
-function handleAddOffer()     { console.log('Add offer — wire to offer form modal') }
-function handleEditOffer(o)   { console.log('Edit offer:', o) }
-function handleDeleteOffer(o) {
-  if (!confirm(`Delete "${o.title}"?`)) return
-  specialOffers.value = specialOffers.value.filter(x => x.offerID !== o.offerID)
+// ── Offer handlers ────────────────────────────────────────────────────────
+const offerFormOpen = ref(false)
+const editingOffer  = ref(null)
+
+function openOfferForm(offer) {
+  // Collab offers are not editable via the form
+  if (offer?.source === 'collab') return
+  editingOffer.value  = offer ?? null
+  offerFormOpen.value = true
+}
+
+function handleSaveOffer(payload) {
+  const idx = specialOffers.value.findIndex(o => o.offerID === payload.offerID)
+  if (idx !== -1) {
+    specialOffers.value[idx] = { ...specialOffers.value[idx], ...payload }
+  } else {
+    specialOffers.value.unshift(payload)
+  }
+}
+
+function handleDeleteOffer(offer) {
+  const label = offer.source === 'collab'
+    ? `End the joint offer "${offer.title}"?`
+    : `Delete "${offer.title}"? This cannot be undone.`
+  if (!confirm(label)) return
+
+  specialOffers.value = specialOffers.value.filter(o => o.offerID !== offer.offerID)
+
+  // If it was a collab offer, also mark the collaboration itself as ended
+  if (offer.source === 'collab' && offer.collabID) {
+    collaborations.value = collaborations.value.map(c =>
+      c.collabID === offer.collabID ? { ...c, status: 'ended' } : c
+    )
+  }
+}
+
+// ── Collaboration handlers ────────────────────────────────────────────────
+const collabFormOpen = ref(false)
+
+function handleSendCollab(payload) {
+  collaborations.value.unshift({ ...payload, direction: 'outgoing', status: 'pending' })
+  // Simulate the partner receiving it after 1.5s (demo only)
+  setTimeout(() => {
+    collaborations.value.push({
+      ...payload,
+      collabID:  payload.collabID + 0.5,
+      direction: 'incoming',
+      status:    'pending',
+      initiator: { name: payload.partner.name, role: payload.partner.role },
+      partner:   { id: 'self', name: user.value?.name || 'You', role: user.value?.role, color: '#FF5A5F' },
+    })
+  }, 1500)
+}
+
+function handleAcceptCollab(collab) {
+  // 1. Mark incoming request accepted
+  const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
+  if (idx !== -1) collaborations.value[idx].status = 'accepted'
+
+  // 2. Match and accept the outgoing side too
+  const outIdx = collaborations.value.findIndex(
+    c => c.direction === 'outgoing' && c.title === collab.title && c.status === 'pending'
+  )
+  if (outIdx !== -1) collaborations.value[outIdx].status = 'accepted'
+
+  // 3. Create a joint offer in specialOffers (agencies see the Offers panel)
+  if (isAgency.value) {
+    const alreadyExists = specialOffers.value.some(
+      o => o.source === 'collab' && o.collabID === collab.collabID
+    )
+    if (!alreadyExists) {
+      specialOffers.value.unshift({
+        offerID:      Date.now(),
+        collabID:     collab.collabID,
+        source:       'collab',
+        title:        collab.title,
+        discount:     collab.discount,
+        type:         collab.type || 'Bundle',
+        startDate:    collab.startDate || '',
+        endDate:      collab.endDate   || '',
+        description:  collab.description,
+        partnerName:  collab.initiator?.name || collab.partner?.name,
+        partnerColor: collab.partner?.color  || '#2EC4B6',
+        active:       true,
+      })
+    }
+  }
+}
+
+function handleDeclineCollab(collab) {
+  const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
+  if (idx !== -1) collaborations.value[idx].status = 'declined'
+}
+
+function handleEndCollab(collab) {
+  if (!confirm(`End the "${collab.title}" collaboration?`)) return
+  collaborations.value = collaborations.value.map(c =>
+    c.title === collab.title ? { ...c, status: 'ended' } : c
+  )
+  // Remove the associated joint offer
+  specialOffers.value = specialOffers.value.filter(
+    o => !(o.source === 'collab' && o.collabID === collab.collabID)
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -293,17 +395,17 @@ const bookings = ref([
 ])
 
 const packages = ref([
-  { packageID: 1, title: 'Swiss Alps Winter Retreat', destination: 'Switzerland', img: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=200&q=70', type: 'Adventure', duration: 8,  price: 2490, rating: 4.9, bookings: 48, spots: 4,  desc: 'Ski, snowboard and relax in cozy mountain chalets with breathtaking alpine views.' },
-  { packageID: 2, title: 'Bali Spiritual Journey',    destination: 'Indonesia',   img: 'https://images.unsplash.com/photo-1604999565976-8913ad2ddb7c?w=200&q=70', type: 'Cultural',  duration: 10, price: 1650, rating: 4.8, bookings: 36, spots: 8,  desc: 'Discover temples, rice terraces and traditional healing rituals.' },
-  { packageID: 3, title: 'Greek Island Odyssey',      destination: 'Greece',      img: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=200&q=70', type: 'Beach',     duration: 14, price: 3100, rating: 4.9, bookings: 22, spots: 2,  desc: 'Sail between Santorini, Mykonos and Crete on a private yacht.' },
-  { packageID: 4, title: 'Amalfi Coast Drive',        destination: 'Italy',       img: 'https://images.unsplash.com/photo-1533606688076-b6683a5f59f1?w=200&q=70', type: 'Beach',     duration: 7,  price: 1890, rating: 4.9, bookings: 31, spots: 5,  desc: 'Wind along the cliffside roads of southern Italy.' },
+  { packageID: 1, title: 'Swiss Alps Winter Retreat', destination: 'Switzerland', img: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=200&q=70', type: 'Adventure', duration: 8,  price: 2490, rating: 4.9, bookings: 48, spots: 4  },
+  { packageID: 2, title: 'Bali Spiritual Journey',    destination: 'Indonesia',   img: 'https://images.unsplash.com/photo-1604999565976-8913ad2ddb7c?w=200&q=70', type: 'Cultural',  duration: 10, price: 1650, rating: 4.8, bookings: 36, spots: 8  },
+  { packageID: 3, title: 'Greek Island Odyssey',      destination: 'Greece',      img: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=200&q=70', type: 'Beach',     duration: 14, price: 3100, rating: 4.9, bookings: 22, spots: 2  },
+  { packageID: 4, title: 'Amalfi Coast Drive',        destination: 'Italy',       img: 'https://images.unsplash.com/photo-1533606688076-b6683a5f59f1?w=200&q=70', type: 'Beach',     duration: 7,  price: 1890, rating: 4.9, bookings: 31, spots: 5  },
 ])
 
 const services = ref([
-  { serviceID: 101, icon: '🚐', iconBg: 'svc-icon-coral', title: 'Private Airport Transfer', provider: 'Alpine Escapes', type: 'Transport',  price: 45,  unit: 'trip',    rating: 4.9, reviews: 540, bookings: 124, availability: true,  desc: 'Comfortable door-to-door transfers from any airport.' },
-  { serviceID: 102, icon: '🧗', iconBg: 'svc-icon-teal',  title: 'Mountain Guide',           provider: 'Alpine Escapes', type: 'Adventure',  price: 120, unit: 'day',     rating: 4.8, reviews: 312, bookings: 67,  availability: true,  desc: 'Certified local guides for hiking and multi-day treks.' },
-  { serviceID: 103, icon: '🍽️', iconBg: 'svc-icon-sand',  title: 'Private Chef Experience',  provider: 'Alpine Escapes', type: 'Food',       price: 180, unit: 'evening', rating: 5.0, reviews: 178, bookings: 45,  availability: false, desc: 'A local chef prepares an authentic dinner in your villa.' },
-  { serviceID: 104, icon: '📸', iconBg: 'svc-icon-teal',  title: 'Travel Photography',       provider: 'Alpine Escapes', type: 'Photography',price: 150, unit: 'day',     rating: 4.7, reviews: 98,  bookings: 38,  availability: true,  desc: 'Professional photographer to document your journey.' },
+  { serviceID: 101, icon: '🚐', iconBg: 'svc-icon-coral', title: 'Private Airport Transfer', provider: 'Alpine Escapes', type: 'Transport',   price: 45,  unit: 'trip',    rating: 4.9, reviews: 540, bookings: 124, availability: true  },
+  { serviceID: 102, icon: '🧗', iconBg: 'svc-icon-teal',  title: 'Mountain Guide',           provider: 'Alpine Escapes', type: 'Adventure',   price: 120, unit: 'day',     rating: 4.8, reviews: 312, bookings: 67,  availability: true  },
+  { serviceID: 103, icon: '🍽️', iconBg: 'svc-icon-sand',  title: 'Private Chef Experience',  provider: 'Alpine Escapes', type: 'Food',        price: 180, unit: 'evening', rating: 5.0, reviews: 178, bookings: 45,  availability: false },
+  { serviceID: 104, icon: '📸', iconBg: 'svc-icon-teal',  title: 'Travel Photography',       provider: 'Alpine Escapes', type: 'Photography', price: 150, unit: 'day',     rating: 4.7, reviews: 98,  bookings: 38,  availability: true  },
 ])
 
 const messages = ref([
@@ -315,14 +417,32 @@ const messages = ref([
 
 const reviews = ref([
   { reviewID: 1, touristName: 'Amelia Rhodes', itemName: 'Swiss Alps Winter Retreat', rating: 5, comment: 'Absolutely magical experience. The team was professional and attentive throughout.', date: 'Jun 9, 2025'  },
-  { reviewID: 2, touristName: 'Yuki Tanaka',   itemName: 'Bali Spiritual Journey',    rating: 5, comment: 'Life-changing trip. The spiritual experiences were authentic.', date: 'Jun 5, 2025'  },
+  { reviewID: 2, touristName: 'Yuki Tanaka',   itemName: 'Bali Spiritual Journey',    rating: 5, comment: 'Life-changing trip. The spiritual experiences were authentic.',                       date: 'Jun 5, 2025'  },
   { reviewID: 3, touristName: 'Lena Müller',   itemName: 'Amalfi Coast Drive',        rating: 4, comment: 'Beautiful scenery and great organisation. A few minor hiccups but wonderful overall.', date: 'Jun 3, 2025' },
 ])
 
+// source: 'Solo' | 'collab'
 const specialOffers = ref([
-  { offerID: 1, discount: 25, title: 'Early Bird Summer',   startDate: 'Jun 1',  endDate: 'Jun 30', description: 'Book any summer package before June 30 and get 25% off.' },
-  { offerID: 2, discount: 15, title: 'Returning Traveller', startDate: 'Jul 1',  endDate: 'Jul 31', description: 'Exclusive discount for customers who have booked with us before.' },
-  { offerID: 3, discount: 30, title: 'Last Minute Alps',    startDate: 'Jun 15', endDate: 'Jun 20', description: 'Limited spots available for the Swiss Alps Retreat at a special rate.' },
+  { offerID: 1, source: 'Solo', discount: 25, title: 'Early Bird Summer',   startDate: 'Jun 1',  endDate: 'Jun 30', active: true,  description: 'Book any summer package before June 30 and get 25% off.' },
+  { offerID: 2, source: 'Solo', discount: 15, title: 'Returning Traveller', startDate: 'Jul 1',  endDate: 'Jul 31', active: true,  description: 'Exclusive discount for customers who have booked with us before.' },
+  { offerID: 3, source: 'Solo', discount: 30, title: 'Last Minute Alps',    startDate: 'Jun 15', endDate: 'Jun 20', active: false, description: 'Limited spots available for the Swiss Alps Retreat at a special rate.' },
+])
+
+const collaborations = ref([
+  {
+    collabID:    9001,
+    direction:   'incoming',
+    status:      'pending',
+    initiator:   { name: 'Wanderlust Travels', role: 'agency' },
+    partner:     { id: 'p1', name: 'Alpine Escapes', role: 'Service Provider', color: '#2EC4B6' },
+    title:       'Alps Fly & Drive Bundle',
+    discount:    20,
+    type:        'Bundle',
+    startDate:   '2025-07-01',
+    endDate:     '2025-07-31',
+    description: 'We propose a joint summer bundle combining your Mountain Guide service with our Swiss Alps Winter Retreat package at a 20% combined discount.',
+    sentDate:    'Jun 11, 2025',
+  },
 ])
 </script>
 
@@ -330,12 +450,9 @@ const specialOffers = ref([
 .dashboard {
   display: flex; min-height: 100vh; background: var(--gray-50);
 }
-
 .dashboard__main {
   flex: 1; display: flex; flex-direction: column; min-width: 0; overflow-x: hidden;
 }
-
-/* Section bar */
 .dashboard__section-bar {
   display: flex; align-items: baseline; gap: 12px;
   padding: 20px 32px 0; flex-wrap: wrap;
@@ -343,22 +460,12 @@ const specialOffers = ref([
 .dashboard__section-title {
   font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; color: var(--indigo);
 }
-.dashboard__section-meta {
-  font-size: .84rem; color: var(--gray-400);
-}
-
-/* Content */
+.dashboard__section-meta { font-size: .84rem; color: var(--gray-400); }
 .dashboard__content { padding: 20px 32px 40px; flex: 1; }
 
-/* Section fade transition */
-.section-fade-enter-active, .section-fade-leave-active {
-  transition: opacity .18s ease, transform .18s ease;
-}
-.section-fade-enter-from, .section-fade-leave-to {
-  opacity: 0; transform: translateY(8px);
-}
+.section-fade-enter-active, .section-fade-leave-active { transition: opacity .18s ease, transform .18s ease; }
+.section-fade-enter-from, .section-fade-leave-to { opacity: 0; transform: translateY(8px); }
 
-/* Mobile sidebar */
 .mobile-sidebar {
   display: none; position: fixed; top: 0; left: -280px; bottom: 0;
   width: 260px; z-index: 80; transition: left .3s ease;
@@ -368,7 +475,7 @@ const specialOffers = ref([
   display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 75;
 }
 .backdrop-fade-enter-active, .backdrop-fade-leave-active { transition: opacity .25s ease; }
-.backdrop-fade-enter-from, .backdrop-fade-leave-to       { opacity: 0; }
+.backdrop-fade-enter-from, .backdrop-fade-leave-to { opacity: 0; }
 
 @media (max-width: 768px) {
   .dashboard            { display: block; }

@@ -64,10 +64,11 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  user:          { type: Object,  required: true },
-  activeSection: { type: String,  default: 'overview' },
-  collapsed:     { type: Boolean, default: false },
-  unreadMessages:{ type: Number,  default: 0 },
+  user:           { type: Object,  required: true },
+  activeSection:  { type: String,  default: 'overview' },
+  collapsed:      { type: Boolean, default: false },
+  unreadMessages: { type: Number,  default: 0 },
+  pendingCollabs: { type: Number,  default: 0 },
 })
 
 defineEmits(['toggle', 'navigate', 'logout'])
@@ -78,13 +79,14 @@ const initials = computed(() => {
 })
 
 const allLinks = [
-  { section: 'overview',  to: '#overview',  icon: '📊', label: 'Overview',       roles: ['agency', 'provider'] },
-  { section: 'bookings',  to: '#bookings',  icon: '📋', label: 'Bookings',        roles: ['agency', 'provider'] },
-  { section: 'packages',  to: '#packages',  icon: '✈️', label: 'Travel Packages', roles: ['agency'] },
-  { section: 'services',  to: '#services',  icon: '🛎️', label: 'My Services',     roles: ['provider'] },
-  { section: 'messages',  to: '#messages',  icon: '💬', label: 'Messages',         roles: ['agency', 'provider'], get badge() { return props.unreadMessages || null } },
-  { section: 'reviews',   to: '#reviews',   icon: '⭐', label: 'Reviews',          roles: ['agency', 'provider'] },
-  { section: 'offers',    to: '#offers',    icon: '🏷️', label: 'Special Offers',   roles: ['agency'] },
+  { section: 'overview',       icon: '📊', label: 'Overview',        roles: ['agency', 'provider'] },
+  { section: 'bookings',       icon: '📋', label: 'Bookings',         roles: ['agency', 'provider'] },
+  { section: 'packages',       icon: '✈️', label: 'Travel Packages',  roles: ['agency'] },
+  { section: 'services',       icon: '🛎️', label: 'My Services',      roles: ['provider'] },
+  { section: 'messages',       icon: '💬', label: 'Messages',          roles: ['agency', 'provider'], get badge() { return props.unreadMessages || null } },
+  { section: 'reviews',        icon: '⭐', label: 'Reviews',           roles: ['agency', 'provider'] },
+  { section: 'offers',         icon: '🏷️', label: 'Special Offers',    roles: ['agency'] },
+  { section: 'collaborations', icon: '🤝', label: 'Collaborations',    roles: ['agency', 'provider'], get badge() { return props.pendingCollabs || null } },
 ]
 
 const filteredLinks = computed(() =>
