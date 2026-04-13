@@ -12,8 +12,8 @@ import DestinationDetail from '@/views/DestinationDetail.vue'
 import PackageDetail    from '@/views/PackageDetail.vue'
 import ServiceDetail    from '@/views/ServiceDetail.vue'
 import DashboardPage    from '@/views/DashboardPage.vue'
-import ProfilePage      from '@/views/ProfilePage.vue'   // ← NEW
-
+import ProfilePage      from '@/views/ProfilePage.vue'  
+import SettingsPage     from '@/views/SettingsPage.vue'
 const routes = [
   { path: '/',                  component: Home },
   { path: '/auth',              component: AuthPage },
@@ -42,6 +42,15 @@ const routes = [
       else next()
     }
   },
+  {
+  path: '/settings',
+  component: SettingsPage,
+  beforeEnter: (to, from, next) => {
+    const { isLoggedIn } = useAuth()
+    if (!isLoggedIn.value) next('/auth?mode=login&redirect=/settings')
+    else next()
+  }
+},
 ]
 
 const router = createRouter({
