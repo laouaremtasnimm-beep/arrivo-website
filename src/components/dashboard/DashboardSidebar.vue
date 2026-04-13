@@ -30,11 +30,10 @@
 
     <!-- Nav links -->
     <nav class="sidebar__nav">
-      <div class="sidebar__nav-label" v-if="!collapsed">Overview</div>
-      <RouterLink
+      <div class="sidebar__nav-label" v-if="!collapsed">Menu</div>
+      <button
         v-for="link in filteredLinks"
-        :key="link.to"
-        :to="link.to"
+        :key="link.section"
         class="sidebar__link"
         :class="{ active: activeSection === link.section }"
         @click="$emit('navigate', link.section)"
@@ -45,7 +44,7 @@
           <span class="sidebar__link-label" v-if="!collapsed">{{ link.label }}</span>
         </Transition>
         <span class="sidebar__link-badge" v-if="link.badge && !collapsed">{{ link.badge }}</span>
-      </RouterLink>
+      </button>
     </nav>
 
     <!-- Logout -->
@@ -155,8 +154,10 @@ const filteredLinks = computed(() =>
   display: flex; align-items: center; gap: 12px;
   padding: 10px 12px; border-radius: 10px;
   text-decoration: none; color: rgba(255,255,255,.6);
-  font-size: .9rem; font-weight: 500;
+  font-size: .9rem; font-weight: 500; width: 100%;
+  background: none; border: none; cursor: pointer;
   transition: all var(--transition); white-space: nowrap; overflow: hidden;
+  font-family: 'DM Sans', sans-serif; text-align: left;
 }
 .sidebar__link:hover  { background: rgba(255,255,255,.08); color: #fff; }
 .sidebar__link.active { background: rgba(255,255,255,.12); color: #fff; font-weight: 600; }
