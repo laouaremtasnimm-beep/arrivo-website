@@ -94,6 +94,10 @@
           <span class="quick-btn__icon">🏷️</span>
           <span>Special Offers</span>
         </button>
+        <button class="quick-btn" v-if="isAgency || isProvider" @click="$emit('navigate', 'collaborations')">
+          <span class="quick-btn__icon">🤝</span>
+          <span>Collaborations</span>
+        </button>
       </div>
     </div>
 

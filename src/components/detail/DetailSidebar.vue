@@ -39,8 +39,8 @@
       </button>
 
       <button class="detail-sidebar__secondary" @click="$emit('message')">
-        💬 Message {{ entityLabel }}
-      </button>
+  {{ entityLabel }}
+</button>
 
       <p class="detail-sidebar__note">{{ note }}</p>
 

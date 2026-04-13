@@ -54,17 +54,17 @@
 
         <!-- Right: sidebar -->
         <DetailSidebar
-          :price="item.from"
-          price-label="Packages from"
-          :rating="item.rating"
-          :reviews="item.reviews"
-          :facts="item.facts?.slice(0, 4)"
-          cta-label="Find packages here"
-          entity-label="our team"
-          note="Browse all packages available for this destination."
-          @book="goToPackages"
-          @message="handleMessage"
-        />
+  :price="item.from"
+  price-label="Packages from"
+  :rating="item.rating"
+  :reviews="item.reviews"
+  :facts="item.facts?.slice(0, 4)"
+  cta-label="Find packages here"
+  entity-label="Find services here"
+  note="Browse packages and services for this destination."
+  @book="goToPackages"
+  @message="goToServices"
+/>
       </div>
 
       <!-- More like this -->
@@ -116,7 +116,9 @@ function goToPackages() {
 function goToDestination(dest) {
   router.push(`/destinations/${dest.id}`)
 }
-function handleMessage() { console.log('Message team') }
+function goToServices() {
+  router.push({ path: '/services', query: { q: item.value?.name } })
+}
 function handleBooking(payload) { console.log('Booked:', payload) }
 
 // Mock reviews — replace with real API data

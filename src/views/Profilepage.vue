@@ -6,7 +6,7 @@
       <aside class="profile-sidebar">
         <div class="avatar-block">
           <div class="avatar-wrap">
-            <img v-if="avatarPreview" :src="avatarPreview" class="avatar-img" alt="Avatar" />
+            <img v-if="avatarPreview" :src="avatarPreview" class="avatar-img" alt="Avatar"/>
             <div v-else class="avatar-initials">{{ initials }}</div>
             <label class="avatar-upload-btn" title="Change photo">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">

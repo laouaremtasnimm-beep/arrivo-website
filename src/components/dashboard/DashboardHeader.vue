@@ -34,7 +34,7 @@
       </div>
 
       <!-- Avatar -->
-      <div class="dash-header__avatar" :title="user.name">{{ initials }}</div>
+      <div class="dash-header__avatar" :title="user.name" @click="goToProfile">{{ initials }}</div>
 
     </div>
 
@@ -50,10 +50,11 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router'
 import { ref, computed } from 'vue'
 import { useNotifications } from '@/composables/useNotifications'
 import NotificationPanel from '@/components/shared/NotificationPanel.vue'
-
+const router = useRouter()
 const props = defineProps({
   user:              { type: Object, required: true },
   notificationCount: { type: Number, default: 0 },
@@ -66,6 +67,10 @@ const { unreadCount: getUnreadCount } = useNotifications()
 const bellRef    = ref(null)
 const notifOpen  = ref(false)
 const bellAnchor = ref(null)
+
+function goToProfile() {
+  router.push('/profile')
+}
 
 function toggleNotifPanel() {
   if (bellRef.value) bellAnchor.value = bellRef.value.getBoundingClientRect()
