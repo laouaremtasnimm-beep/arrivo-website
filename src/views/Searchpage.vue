@@ -37,6 +37,13 @@
           @open-filters="mobileSidebarOpen = true"
         />
 
+        <!-- ✦ Advanced Filters bar ─────────────────────────────────────── -->
+        <AdvancedFilters
+          v-model="advancedFilters"
+          class="advanced-filters-bar"
+        />
+        <!-- ──────────────────────────────────────────────────────────────── -->
+
         <!-- Loading skeletons -->
         <div v-if="loading" :class="viewMode === 'grid' ? 'results-grid' : 'results-list'">
           <div class="skeleton-card" v-for="i in 6" :key="i">
@@ -106,7 +113,6 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { allForSearch } from '@/data/content.js'
 
-// ── All imports use the correct paths ─────────────────────────────────────
 import SearchHeader     from '@/components/search/SearchHeader.vue'
 import SidebarFilters   from '@/components/search/SidebarFilters.vue'
 import ResultsToolbar   from '@/components/search/ResultsToolbar.vue'
@@ -114,6 +120,7 @@ import ResultCard       from '@/components/search/ResultCard.vue'
 import ResultListCard   from '@/components/search/ResultListCard.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal     from '@/components/search/BookingModal.vue'
+import AdvancedFilters  from '@/components/search/AdvancedFilters.vue'   // ← new
 
 const route  = useRoute()
 const router = useRouter()
@@ -131,13 +138,25 @@ const wishlist          = ref([])
 const bookingOpen       = ref(false)
 const selectedItem      = ref(null)
 
-// ── Filters ────────────────────────────────────────────────────────────────
+// ── Basic filters ──────────────────────────────────────────────────────────
 const filters = ref({
   priceMin:  null,
   priceMax:  null,
   durations: [],
   types:     [],
   minRating: null,
+})
+
+// ── Advanced filters (new) ─────────────────────────────────────────────────
+const advancedFilters = ref({
+  languages:           [],
+  groupSizes:          [],
+  months:              [],
+  difficulty:          null,
+  accommodations:      [],
+  perks:               [],
+  minReviews:          0,
+  instantConfirmation: false,
 })
 
 const activeFilterCount = computed(() => {
@@ -147,23 +166,34 @@ const activeFilterCount = computed(() => {
   if (filters.value.durations.length) c += filters.value.durations.length
   if (filters.value.types.length)     c += filters.value.types.length
   if (filters.value.minRating)        c++
+  // also count advanced
+  if (advancedFilters.value.languages.length)      c += advancedFilters.value.languages.length
+  if (advancedFilters.value.groupSizes.length)      c += advancedFilters.value.groupSizes.length
+  if (advancedFilters.value.months.length)          c += advancedFilters.value.months.length
+  if (advancedFilters.value.difficulty)             c++
+  if (advancedFilters.value.accommodations.length)  c += advancedFilters.value.accommodations.length
+  if (advancedFilters.value.perks.length)           c += advancedFilters.value.perks.length
+  if (advancedFilters.value.minReviews > 0)         c++
+  if (advancedFilters.value.instantConfirmation)    c++
   return c
 })
 
 function resetFilters() {
-  filters.value        = { priceMin: null, priceMax: null, durations: [], types: [], minRating: null }
+  filters.value = { priceMin: null, priceMax: null, durations: [], types: [], minRating: null }
+  advancedFilters.value = {
+    languages: [], groupSizes: [], months: [], difficulty: null,
+    accommodations: [], perks: [], minReviews: 0, instantConfirmation: false,
+  }
   activeCategory.value = 'all'
-  page.value           = 1
+  page.value = 1
 }
 
-// ── Navigate to the correct detail page based on item category ─────────────
 function goToDetail(item) {
   if (item.category === 'dest')    return router.push(`/destinations/${item.id}`)
   if (item.category === 'package') return router.push(`/packages/${item.id}`)
   if (item.category === 'service') return router.push(`/services/${item.id}`)
 }
 
-// ── Search ─────────────────────────────────────────────────────────────────
 function runSearch() {
   loading.value = true
   page.value    = 1
@@ -173,7 +203,6 @@ function runSearch() {
 onMounted(() => { if (query.value) runSearch() })
 watch(activeCategory, () => { page.value = 1 })
 
-// ── Wishlist & Booking ─────────────────────────────────────────────────────
 function toggleWishlist(id) {
   const idx = wishlist.value.indexOf(id)
   idx === -1 ? wishlist.value.push(id) : wishlist.value.splice(idx, 1)
@@ -191,7 +220,7 @@ function handleBookingSubmit(payload) {
 // ── Data ───────────────────────────────────────────────────────────────────
 const allResults = ref(allForSearch)
 
-// ── Filtering & Sorting ────────────────────────────────────────────────────
+// ── Filtering helpers ──────────────────────────────────────────────────────
 function matchesDuration(item) {
   if (!filters.value.durations.length || !item.duration) return true
   return filters.value.durations.some(d => {
@@ -203,6 +232,44 @@ function matchesDuration(item) {
   })
 }
 
+function matchesAdvanced(item) {
+  const af = advancedFilters.value
+
+  // Language – item.languages is string[] on your data, skip if absent
+  if (af.languages.length && item.languages?.length)
+    if (!af.languages.some(l => item.languages.includes(l))) return false
+
+  // Group size
+  if (af.groupSizes.length && item.groupSize)
+    if (!af.groupSizes.includes(item.groupSize)) return false
+
+  // Departure months
+  if (af.months.length && item.departureMonths?.length)
+    if (!af.months.some(m => item.departureMonths.includes(m))) return false
+
+  // Difficulty
+  if (af.difficulty && item.difficulty)
+    if (item.difficulty !== af.difficulty) return false
+
+  // Accommodation
+  if (af.accommodations.length && item.accommodation)
+    if (!af.accommodations.includes(item.accommodation)) return false
+
+  // Perks / inclusions
+  if (af.perks.length && item.perks?.length)
+    if (!af.perks.every(p => item.perks.includes(p))) return false
+
+  // Min reviews
+  if (af.minReviews > 0 && item.reviewCount != null)
+    if (item.reviewCount < af.minReviews) return false
+
+  // Instant confirmation
+  if (af.instantConfirmation && !item.instantConfirmation) return false
+
+  return true
+}
+
+// ── Filtering & Sorting ────────────────────────────────────────────────────
 const allFiltered = computed(() => {
   let r = [...allResults.value]
 
@@ -223,6 +290,9 @@ const allFiltered = computed(() => {
   if (filters.value.types.length)     r = r.filter(i => filters.value.types.includes(i.type))
   r = r.filter(matchesDuration)
 
+  // ✦ Apply advanced filters
+  r = r.filter(matchesAdvanced)
+
   if (sortBy.value === 'price_asc')  r.sort((a, b) => a.price - b.price)
   if (sortBy.value === 'price_desc') r.sort((a, b) => b.price - a.price)
   if (sortBy.value === 'rating')     r.sort((a, b) => b.rating - a.rating)
@@ -230,8 +300,7 @@ const allFiltered = computed(() => {
   return r
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(allFiltered.value.length / perPage)))
-
+const totalPages   = computed(() => Math.max(1, Math.ceil(allFiltered.value.length / perPage)))
 const pagedResults = computed(() => {
   const start = (page.value - 1) * perPage
   return allFiltered.value.slice(start, start + perPage)
@@ -252,6 +321,9 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
 .results-area  { padding: 28px 32px; min-height: 80vh; }
 .results-grid  { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
 .results-list  { display: flex; flex-direction: column; gap: 18px; }
+
+/* ── Advanced filters sits between toolbar and results ─────────────────── */
+.advanced-filters-bar { margin-bottom: 20px; }
 
 .skeleton-card { background: var(--white); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
 .skeleton-img  { height: 200px; background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
