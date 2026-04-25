@@ -1,6 +1,8 @@
 <template>
   <div class="profile-page">
+      <ProfileTopBar :user="user" :editingPersonal="editingPersonal" @edit="startEdit('personal')" />
     <div class="profile-container">
+    
 
       <!-- Left Sidebar -->
       <aside class="profile-sidebar">
@@ -406,6 +408,8 @@
 import { ref, computed, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
+
+import ProfileTopBar       from '@/components/profile/ProfileTopBar.vue'
 
 const router = useRouter()
 const { user: authUser, logout } = useAuth()
