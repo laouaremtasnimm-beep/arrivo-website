@@ -71,9 +71,7 @@ function handleSearch(query) {
 }
 
 // ── Card navigation ────────────────────────────────────────────────────────
-function handleOfferSelect(offer) {
-  router.push({ path: '/search', query: { q: offer.title } })
-}
+
 function handleDestSelect(dest)   { router.push(`/destinations/${dest.id}`) }
 function handlePackageSelect(pkg) { router.push(`/packages/${pkg.id}`) }
 function handleServiceSelect(svc) { router.push(`/services/${svc.id}`) }

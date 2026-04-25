@@ -14,9 +14,8 @@
         class="offer-card"
         v-for="offer in visibleOffers"
         :key="offer.offerID"
-        @click="$emit('select', offer)"
+        @click="openOffer(offer)"
       >
-        <!-- Collab badge -->
         <div v-if="offer.source === 'collab'" class="offer-collab-badge">🤝 Joint Offer</div>
 
         <div class="offer-card__top">
@@ -27,27 +26,36 @@
         <div class="offer-title">{{ offer.title }}</div>
         <div class="offer-dates">{{ offer.startDate }} → {{ offer.endDate }}</div>
         <p class="offer-desc">{{ offer.description }}</p>
-        <button class="btn btn-teal offer-btn">Grab deal</button>
+        <button class="btn btn-teal offer-btn" @click.stop="openOffer(offer)">Grab deal</button>
       </div>
 
-      <!-- Empty state -->
       <div v-if="visibleOffers.length === 0" class="offers-empty">
         <span>No active deals right now — check back soon!</span>
       </div>
     </div>
+
+    <OfferDetailModal
+      v-model="modalOpen"
+      :offer="selectedOffer"
+    />
   </section>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useOffers } from '@/composables/useOffers'
-
-defineEmits(['select'])
+import OfferDetailModal from '@/components/home/OfferDetailModal.vue'
 
 const { activeOffers } = useOffers()
-
-// Show at most 6 on the homepage strip
 const visibleOffers = computed(() => activeOffers.value.slice(0, 6))
+
+const modalOpen     = ref(false)
+const selectedOffer = ref(null)
+
+function openOffer(offer) {
+  selectedOffer.value = offer
+  modalOpen.value     = true
+}
 </script>
 
 <style scoped>
@@ -68,7 +76,6 @@ const visibleOffers = computed(() => activeOffers.value.slice(0, 6))
 }
 .offer-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
 
-/* Collab badge */
 .offer-collab-badge {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: .7rem; font-weight: 700; letter-spacing: .04em;
@@ -77,7 +84,6 @@ const visibleOffers = computed(() => activeOffers.value.slice(0, 6))
   border-radius: 50px; margin-bottom: 10px; width: fit-content;
 }
 
-/* Top row: discount + type tag */
 .offer-card__top {
   display: flex; align-items: center;
   justify-content: space-between; margin-bottom: 2px;
