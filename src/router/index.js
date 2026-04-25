@@ -58,6 +58,7 @@ const routes = [
 { path: '/guides', component: () => import('@/views/TravelGuidesPage.vue') },
 { path: '/visa-info', component: () => import('@/views/VisaInfoPage.vue') },
 { path: '/travel-insurance', component: () => import('@/views/TravelInsurancePage.vue') },
+{ path: '/partners/agencies', component: () => import('@/views/AgenciesPage.vue') }
 
 ]
 

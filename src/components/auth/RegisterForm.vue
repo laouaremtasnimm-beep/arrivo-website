@@ -6,6 +6,8 @@
       <p class="form-sub">Join thousands of travellers discovering the world through Voyago.</p>
     </div>
 
+    <!-- Role selector is shown but agency/provider are pre-selected and highlighted
+         when arriving from the partner pages -->
     <AccountTypeSelector v-model="form.role" />
 
     <div class="form-row">
@@ -79,6 +81,16 @@ import FormInput           from './FormInput.vue'
 import AccountTypeSelector from './AccountTypeSelector.vue'
 import PasswordStrengthBar from './PasswordStrengthBar.vue'
 
+const props = defineProps({
+  // When arriving from a partner page, pre-select the role.
+  // AccountTypeSelector still renders so the user can change it if they want.
+  defaultRole: {
+    type: String,
+    default: 'tourist',
+    validator: v => ['tourist', 'agency', 'provider'].includes(v),
+  },
+})
+
 defineEmits(['switch-mode'])
 
 const router = useRouter()
@@ -86,7 +98,8 @@ const { switchRole } = useAuth()
 
 const loading = ref(false)
 const form    = ref({
-  role: 'tourist', firstName: '', lastName: '',
+  role: props.defaultRole,   // ← seeded from prop
+  firstName: '', lastName: '',
   email: '', password: '', terms: false,
 })
 const errors = ref({})
@@ -107,7 +120,6 @@ async function submit() {
   await new Promise(r => setTimeout(r, 1400)) // simulate API call
 
   // TODO: replace with real API call
-  // For now we update the mock auth state with the chosen role
   switchRole(form.value.role)
 
   loading.value = false
