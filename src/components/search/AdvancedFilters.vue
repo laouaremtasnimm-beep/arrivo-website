@@ -22,7 +22,6 @@
     <Transition name="adv-slide">
       <div v-if="panelOpen" class="adv-panel">
 
-        <!-- Language + Group size -->
         <div class="adv-row">
           <div class="adv-block">
             <p class="adv-label">Guide language</p>
@@ -47,7 +46,6 @@
           </div>
         </div>
 
-        <!-- Departure month -->
         <div class="adv-block">
           <p class="adv-label">Departure month</p>
           <div class="month-grid">
@@ -59,35 +57,17 @@
           </div>
         </div>
 
-        <!-- Difficulty + Accommodation -->
-        <div class="adv-row">
-          <div class="adv-block">
-            <p class="adv-label">Difficulty</p>
-            <div class="tag-group">
-              <button
-                v-for="d in DIFFICULTIES" :key="d.value"
-                class="diff-btn" :class="{ 'diff-btn--active': local.difficulty === d.value }"
-                @click="local.difficulty = local.difficulty === d.value ? null : d.value"
-              >
-                <span class="diff-dot" :style="{ background: d.color }"></span>
-                {{ d.label }}
-              </button>
-            </div>
-          </div>
-
-          <div class="adv-block">
-            <p class="adv-label">Accommodation</p>
-            <div class="tag-group">
-              <button
-                v-for="a in ACCOMMODATIONS" :key="a"
-                class="tag-btn" :class="{ 'tag-btn--active': local.accommodations.includes(a) }"
-                @click="toggleArr('accommodations', a)"
-              >{{ a }}</button>
-            </div>
+        <div class="adv-block">
+          <p class="adv-label">Accommodation</p>
+          <div class="tag-group">
+            <button
+              v-for="a in ACCOMMODATIONS" :key="a"
+              class="tag-btn" :class="{ 'tag-btn--active': local.accommodations.includes(a) }"
+              @click="toggleArr('accommodations', a)"
+            >{{ a }}</button>
           </div>
         </div>
 
-        <!-- Inclusions -->
         <div class="adv-block">
           <p class="adv-label">Includes</p>
           <div class="perks-grid">
@@ -102,7 +82,6 @@
           </div>
         </div>
 
-        <!-- Min reviews -->
         <div class="adv-block">
           <p class="adv-label">
             Minimum reviews
@@ -118,7 +97,6 @@
           </div>
         </div>
 
-        <!-- Instant confirmation -->
         <div class="adv-block adv-block--row">
           <p class="adv-label" style="margin:0">Instant confirmation only</p>
           <button
@@ -129,7 +107,6 @@
           </button>
         </div>
 
-        <!-- Footer -->
         <div class="adv-footer">
           <button class="adv-clear" @click="clearAll">Clear all</button>
           <button class="btn btn-coral adv-apply" @click="apply">
@@ -163,12 +140,6 @@ const MONTHS = [
   { l: 'Jul', v: 7 }, { l: 'Aug', v: 8 }, { l: 'Sep', v: 9 },
   { l: 'Oct', v: 10 }, { l: 'Nov', v: 11 }, { l: 'Dec', v: 12 },
 ]
-const DIFFICULTIES = [
-  { label: 'Easy',     value: 'easy',     color: '#22c55e' },
-  { label: 'Moderate', value: 'moderate', color: '#f59e0b' },
-  { label: 'Hard',     value: 'hard',     color: '#ef4444' },
-  { label: 'Expert',   value: 'expert',   color: '#7c3aed' },
-]
 const ACCOMMODATIONS = ['Hotel', 'Hostel', 'Resort', 'Camping', 'Boutique', 'Airbnb']
 const PERKS = [
   { value: 'flights',   icon: '✈️', label: 'Flights'     },
@@ -177,11 +148,12 @@ const PERKS = [
   { value: 'guide',     icon: '🧭', label: 'Local guide' },
   { value: 'insurance', icon: '🛡️', label: 'Insurance'   },
   { value: 'visa',      icon: '📄', label: 'Visa assist' },
+  { value: 'pets',      icon: '🐾', label: 'Pets allowed' },
 ]
 
 function blank() {
   return {
-    languages: [], groupSizes: [], months: [], difficulty: null,
+    languages: [], groupSizes: [], months: [],
     accommodations: [], perks: [], minReviews: 0, instantConfirmation: false,
   }
 }
@@ -190,7 +162,6 @@ function clone(src) {
     languages:           [...(src.languages           ?? [])],
     groupSizes:          [...(src.groupSizes          ?? [])],
     months:              [...(src.months              ?? [])],
-    difficulty:          src.difficulty              ?? null,
     accommodations:      [...(src.accommodations      ?? [])],
     perks:               [...(src.perks               ?? [])],
     minReviews:          src.minReviews              ?? 0,
@@ -220,8 +191,7 @@ function apply() {
 const advancedCount = computed(() => {
   const l = local.value
   return (
-    l.languages.length + l.groupSizes.length + l.months.length +
-    (l.difficulty ? 1 : 0) + l.accommodations.length + l.perks.length +
+    l.languages.length + l.groupSizes.length + l.months.length + l.accommodations.length + l.perks.length +
     (l.minReviews > 0 ? 1 : 0) + (l.instantConfirmation ? 1 : 0)
   )
 })
@@ -325,17 +295,6 @@ const advancedCount = computed(() => {
 .tag-btn:hover      { border-color: var(--coral); color: var(--coral); }
 .tag-btn--active    { background: var(--coral); border-color: var(--coral); color: #fff; }
 
-/* ── Difficulty ──────────────────────────────────────────────────────────── */
-.diff-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 14px; border-radius: 50px;
-  border: 1.5px solid var(--gray-200); background: var(--white);
-  font-family: 'DM Sans', sans-serif; font-size: .82rem; font-weight: 600;
-  color: var(--gray-600); cursor: pointer; transition: all var(--transition);
-}
-.diff-btn:hover   { border-color: var(--coral); color: var(--coral); }
-.diff-btn--active { border-color: var(--indigo); background: var(--indigo); color: #fff; }
-.diff-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
 /* ── Months ──────────────────────────────────────────────────────────────── */
 .month-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 6px; }
