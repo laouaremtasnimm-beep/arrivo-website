@@ -1,65 +1,92 @@
 /**
- * useWishlist.js  ─  src/composables/useWishlist.js
+ * useWishlist.js  —  src/composables/useWishlist.js
  *
- * Singleton wishlist — module-level refs mean every component that calls
- * useWishlist() reads & writes the SAME reactive arrays.
+ * Ground-up rewrite. The core bug in the previous version was that
+ * destinations and packages share the same ID space (both 1–12), so
+ * saving by numeric ID alone made it impossible to tell them apart.
  *
- * ID ranges (from content.js):
- *   destinations  →  1  – 100
- *   packages      →  101 – 200
- *   services      →  201 – 999
+ * This version stores wishlist entries as { type, id } objects, where
+ * type is one of: 'destination' | 'package' | 'service'.
+ *
+ * Public API (returned by useWishlist()):
+ *   isSaved(type, id)   → Boolean  — is this item in the wishlist?
+ *   toggle(type, id)    → Boolean  — toggles item; returns true if ADDED
+ *   clearType(type)     → void     — removes all items of that type
+ *   itemsOfType(type)   → Ref<{type,id}[]>  — reactive list for one type
  */
 
 import { ref, computed } from 'vue'
 
-const KEYS = {
-  destinations: 'voyago_wish_dest',
-  packages:     'voyago_wish_pkg',
-  services:     'voyago_wish_svc',
-}
+const STORAGE_KEY = 'arrivo_wishlist_v2'
 
-function load(key) {
-  try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] }
-}
-function persist(key, ids) {
-  localStorage.setItem(key, JSON.stringify(ids))
-}
+// One-time cleanup: remove old single-bucket keys from the previous buggy version
+;['voyago_wish_dest', 'voyago_wish_pkg', 'voyago_wish_svc'].forEach(k => localStorage.removeItem(k))
 
-// Module-level — created once, shared across all components
-const destIds = ref(load(KEYS.destinations))
-const pkgIds  = ref(load(KEYS.packages))
-const svcIds  = ref(load(KEYS.services))
-
-// Flat merged list — used for :saved="wishlist.includes(item.id)" checks
-const wishlist = computed(() => [...destIds.value, ...pkgIds.value, ...svcIds.value])
-
-function bucketOf(id) {
-  if (id >= 1   && id <= 100) return 'destinations'
-  if (id >= 101 && id <= 200) return 'packages'
-  return 'services'
-}
-function idsRefFor(type) {
-  if (type === 'destinations') return destIds
-  if (type === 'packages')     return pkgIds
-  return svcIds
-}
-
-function toggleWishlist(id) {
-  const type   = bucketOf(id)
-  const idsRef = idsRefFor(type)
-  if (idsRef.value.includes(id)) {
-    idsRef.value = idsRef.value.filter(x => x !== id)
-  } else {
-    idsRef.value = [...idsRef.value, id]
+/** Load the saved list from localStorage. Returns an array of {type, id}. */
+function load() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+  } catch {
+    return []
   }
-  persist(KEYS[type], idsRef.value)
 }
 
-function clearCategory(type) {
-  idsRefFor(type).value = []
-  persist(KEYS[type], [])
+/** Persist the current list to localStorage. */
+function save(list) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
+}
+
+// Module-level — one reactive array, shared across every component that calls useWishlist().
+const entries = ref(load())
+
+/**
+ * Check whether a given (type, id) pair is currently wishlisted.
+ */
+const isSaved = computed(() => (type, id) =>
+  entries.value.some(e => e.type === type && e.id === id)
+)
+
+/**
+ * Toggle a (type, id) pair.
+ * Returns true  → item was just ADDED
+ * Returns false → item was just REMOVED
+ */
+function toggle(type, id) {
+  const idx = entries.value.findIndex(e => e.type === type && e.id === id)
+  if (idx !== -1) {
+    // Remove
+    entries.value = entries.value.filter((_, i) => i !== idx)
+    save(entries.value)
+    return false
+  } else {
+    // Add
+    entries.value = [...entries.value, { type, id }]
+    save(entries.value)
+    return true
+  }
+}
+
+/**
+ * Remove all entries of a given type.
+ */
+function clearType(type) {
+  entries.value = entries.value.filter(e => e.type !== type)
+  save(entries.value)
+}
+
+/**
+ * Return a computed ref containing only the entries for a specific type.
+ */
+function itemsOfType(type) {
+  return computed(() => entries.value.filter(e => e.type === type))
 }
 
 export function useWishlist() {
-  return { wishlist, destIds, pkgIds, svcIds, toggleWishlist, clearCategory }
+  return {
+    entries,
+    isSaved,
+    toggle,
+    clearType,
+    itemsOfType,
+  }
 }

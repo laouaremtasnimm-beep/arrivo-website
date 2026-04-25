@@ -10,8 +10,8 @@
           :main-img="item.img"
           :gallery="item.gallery"
           :title="item.title"
-          :saved="saved"
-          @toggle-wishlist="saved = !saved"
+          :saved="isSavedVal"
+          @toggle-wishlist="handleToggleWishlist"
         />
       </div>
 
@@ -98,6 +98,7 @@
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { packages } from '@/data/content.js'
+import { useWishlist } from '@/composables/useWishlist.js'
 
 import NavBar             from '@/components/home/NavBar.vue'
 import DetailBreadcrumb   from '@/components/detail/DetailBreadcrumb.vue'
@@ -113,9 +114,17 @@ import BookingModal       from '@/components/home/BookingModal.vue'
 const route  = useRoute()
 const router = useRouter()
 
-const item = computed(() => packages.find(p => p.id === Number(route.params.id)))
-const saved = ref(false)
+const { isSaved, toggle } = useWishlist()
+
+const item       = computed(() => packages.find(p => p.id === Number(route.params.id)))
+const isSavedVal = computed(() => item.value ? isSaved.value('package', item.value.id) : false)
 const bookingOpen = ref(false)
+
+function handleToggleWishlist() {
+  if (!item.value) return
+  const wasAdded = toggle('package', item.value.id)
+  if (wasAdded) router.push('/wishlist')
+}
 
 const moreLike = computed(() =>
   packages.filter(p => p.id !== item.value?.id && p.type === item.value?.type).slice(0, 6)

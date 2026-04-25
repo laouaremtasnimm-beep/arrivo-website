@@ -48,26 +48,26 @@
         <div v-else class="wishlist-grid" :key="'grid-' + activeTab">
           <template v-if="activeTab === 'destinations'">
             <DestinationCard
-              v-for="item in currentItems" :key="item.id"
+              v-for="item in currentItems" :key="'dest-' + item.id"
               :item="item" :saved="true"
               @select="goToDetail"
-              @toggle-wishlist="handleToggle"
+              @toggle-wishlist="handleRemove('destination', item.id)"
             />
           </template>
           <template v-else-if="activeTab === 'packages'">
             <PackageCard
-              v-for="item in currentItems" :key="item.id"
+              v-for="item in currentItems" :key="'pkg-' + item.id"
               :item="item" :saved="true"
               @select="goToDetail" @book="openBooking"
-              @toggle-wishlist="handleToggle"
+              @toggle-wishlist="handleRemove('package', item.id)"
             />
           </template>
           <template v-else>
             <ServiceCard
-              v-for="item in currentItems" :key="item.id"
+              v-for="item in currentItems" :key="'svc-' + item.id"
               :item="item" :saved="true"
               @select="goToDetail" @book="openBooking"
-              @toggle-wishlist="handleToggle"
+              @toggle-wishlist="handleRemove('service', item.id)"
             />
           </template>
         </div>
@@ -119,11 +119,29 @@ import BookingModal    from '@/components/home/BookingModal.vue'
 const router = useRouter()
 
 // ── Shared wishlist state ──────────────────────────────────────────────────
-const { destIds, pkgIds, svcIds, toggleWishlist, clearCategory } = useWishlist()
+const { itemsOfType, toggle, clearType } = useWishlist()
 
-const savedDestItems = computed(() => destinations.filter(d => destIds.value.includes(d.id)))
-const savedPkgItems  = computed(() => packages.filter(p => pkgIds.value.includes(p.id)))
-const savedSvcItems  = computed(() => services.filter(s => svcIds.value.includes(s.id)))
+// Get the saved entries for each type
+const destEntries = itemsOfType('destination')  // [{type:'destination', id:N}, ...]
+const pkgEntries  = itemsOfType('package')
+const svcEntries  = itemsOfType('service')
+
+// Resolve entries → actual data objects, preserving wishlist order
+const savedDestItems = computed(() =>
+  destEntries.value
+    .map(e => destinations.find(d => d.id === e.id))
+    .filter(Boolean)
+)
+const savedPkgItems = computed(() =>
+  pkgEntries.value
+    .map(e => packages.find(p => p.id === e.id))
+    .filter(Boolean)
+)
+const savedSvcItems = computed(() =>
+  svcEntries.value
+    .map(e => services.find(s => s.id === e.id))
+    .filter(Boolean)
+)
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
 const activeTab = ref('destinations')
@@ -160,14 +178,16 @@ function showToast(msg) {
   toastTimer  = setTimeout(() => { toast.value = null }, 3000)
 }
 
-function handleToggle(id) {
-  toggleWishlist(id)
+/** Called when the heart on a wishlist card is clicked — always a removal here */
+function handleRemove(type, id) {
+  toggle(type, id)   // item is definitely saved, so this removes it
   showToast('Removed from wishlist')
 }
 
 function clearTab() {
   confirmClear.value = false
-  clearCategory(activeTab.value)
+  const typeMap = { destinations: 'destination', packages: 'package', services: 'service' }
+  clearType(typeMap[activeTab.value])
   showToast(`All ${activeTabLabel.value.toLowerCase()} cleared`)
 }
 

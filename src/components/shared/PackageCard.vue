@@ -54,8 +54,6 @@
 </template>
 
 <script setup>
-import { useWishlist } from '@/composables/useWishlist.js'
-const { wishlist, toggleWishlist } = useWishlist()
 defineProps({
   item:  { type: Object,  required: true },
   saved: { type: Boolean, default: false },

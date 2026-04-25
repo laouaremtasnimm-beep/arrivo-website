@@ -8,14 +8,18 @@
  *  - sorting
  *  - pagination
  *  - loading simulation
- *  - wishlist  ← now powered by useWishlist (shared, persisted)
+ *  - wishlist  ← powered by useWishlist (shared, persisted)
+ *
+ * @param {Ref<Array>} allItems  — the full data array for this page
+ * @param {string}     itemType  — 'destination' | 'package' | 'service'
+ * @param {object}     options   — { perPage: number }
  */
 
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useWishlist } from '@/composables/useWishlist.js'   // ← NEW
+import { useWishlist } from '@/composables/useWishlist.js'
 
-export function useListPage(allItems, { perPage = 12 } = {}) {
+export function useListPage(allItems, itemType, { perPage = 12 } = {}) {
   const route  = useRoute()
   const router = useRouter()
 
@@ -129,8 +133,25 @@ export function useListPage(allItems, { perPage = 12 } = {}) {
     if (page.value > totalPages.value) page.value = 1
   })
 
-  // ── Wishlist — shared & persisted via useWishlist ──────────────────────
-  const { wishlist, toggleWishlist } = useWishlist()   // ← REPLACES the old local ref
+  // ── Wishlist ───────────────────────────────────────────────────────────
+  const { isSaved, toggle } = useWishlist()
+
+  /**
+   * isItemSaved(item) — pass the full item object; returns true/false.
+   * Use as :saved="isItemSaved(item)" in templates.
+   */
+  function isItemSaved(item) {
+    return isSaved.value(itemType, item.id)
+  }
+
+  /**
+   * toggleWishlist(item) — pass the full item object.
+   * Navigates to /wishlist when an item is added.
+   */
+  function toggleWishlist(item) {
+    const wasAdded = toggle(itemType, item.id)
+    if (wasAdded) router.push('/wishlist')
+  }
 
   // ── Sync query to URL ──────────────────────────────────────────────────
   watch(query, (val) => {
@@ -144,7 +165,8 @@ export function useListPage(allItems, { perPage = 12 } = {}) {
     // computed
     activeFilterCount, allFiltered, totalPages, pagedResults,
     // methods
-    resetFilters, runSearch, toggleWishlist,
-    wishlist,
+    resetFilters, runSearch,
+    // wishlist
+    isItemSaved, toggleWishlist,
   }
 }

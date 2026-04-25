@@ -51,10 +51,10 @@
             v-for="item in pagedResults"
             :key="item.id"
             :item="item"
-            :saved="wishlist.includes(item.id)"
+            :saved="isItemSaved(item)"
             @select="goToDetail"
             @book="openBooking"
-            @toggle-wishlist="toggleWishlist"
+            @toggle-wishlist="toggleWishlist(item)"
           />
         </ItemGrid>
 
@@ -123,8 +123,8 @@ const categories = [
 const {
   query, activeCategory, sortBy, viewMode, loading, page,
   filters, activeFilterCount, allFiltered, totalPages, pagedResults,
-  resetFilters, runSearch, toggleWishlist, wishlist,
-} = useListPage(allItems, { perPage: 12 })
+  resetFilters, runSearch, isItemSaved, toggleWishlist,
+} = useListPage(allItems, 'service', { perPage: 12 })
 </script>
 
 <style scoped>
