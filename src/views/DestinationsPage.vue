@@ -23,6 +23,13 @@
       @open-filters="sidebarOpen = true"
     />
 
+    <!-- Breadcrumb: Home → Search → Destinations -->
+    <Breadcrumb :crumbs="[
+      { label: 'Home',         to: '/'           },
+      { label: 'Search',       to: '/search'     },
+      { label: 'Destinations'                    },
+    ]" />
+
     <div class="list-page__body">
 
       <SidebarFilters
@@ -73,21 +80,19 @@ import { useRouter } from 'vue-router'
 import { useListPage } from '@/composables/useListPage'
 import { destinations } from '@/data/content.js'
 
-// ── All imports use the correct paths ─────────────────────────────────────
-import NavBar          from '@/components/home/NavBar.vue'
-import PageHero        from '@/components/shared/PageHero.vue'
-import FilterBar       from '@/components/shared/FilterBar.vue'
-import ItemGrid        from '@/components/shared/ItemGrid.vue'
-import DestinationCard from '@/components/shared/DestinationCard.vue'
-import SidebarFilters  from '@/components/search/SidebarFilters.vue'
+import NavBar           from '@/components/home/NavBar.vue'
+import PageHero         from '@/components/shared/PageHero.vue'
+import Breadcrumb       from '@/components/shared/Breadcrumb.vue'
+import FilterBar        from '@/components/shared/FilterBar.vue'
+import ItemGrid         from '@/components/shared/ItemGrid.vue'
+import DestinationCard  from '@/components/shared/DestinationCard.vue'
+import SidebarFilters   from '@/components/search/SidebarFilters.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
-import BookingModal    from '@/components/home/BookingModal.vue'
 
 const router      = useRouter()
 const sidebarOpen = ref(false)
 const allItems    = ref(destinations)
 
-// Clicking anywhere on the card → go to detail page
 function goToDetail(item) {
   router.push(`/destinations/${item.id}`)
 }

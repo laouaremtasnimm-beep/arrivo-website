@@ -23,6 +23,13 @@
       @open-filters="sidebarOpen = true"
     />
 
+    <!-- Breadcrumb: Home → Search → Packages -->
+    <Breadcrumb :crumbs="[
+      { label: 'Home',     to: '/'       },
+      { label: 'Search',   to: '/search' },
+      { label: 'Packages'               },
+    ]" />
+
     <div class="list-page__body">
 
       <SidebarFilters
@@ -76,9 +83,9 @@ import { useRouter } from 'vue-router'
 import { useListPage } from '@/composables/useListPage'
 import { packages } from '@/data/content.js'
 
-// ── All imports use the correct paths ─────────────────────────────────────
 import NavBar           from '@/components/home/NavBar.vue'
 import PageHero         from '@/components/shared/PageHero.vue'
+import Breadcrumb       from '@/components/shared/Breadcrumb.vue'
 import FilterBar        from '@/components/shared/FilterBar.vue'
 import ItemGrid         from '@/components/shared/ItemGrid.vue'
 import PackageCard      from '@/components/shared/PackageCard.vue'
@@ -92,12 +99,10 @@ const bookingOpen  = ref(false)
 const selectedItem = ref(null)
 const allItems     = ref(packages)
 
-// Clicking the card body → go to detail page
 function goToDetail(item) {
   router.push(`/packages/${item.id}`)
 }
 
-// Clicking "Book now" button → open booking modal (button uses @click.stop so won't also navigate)
 function openBooking(item) {
   selectedItem.value = item
   bookingOpen.value  = true

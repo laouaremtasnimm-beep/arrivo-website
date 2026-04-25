@@ -1,11 +1,39 @@
 <template>
   <div class="search-page">
 
-    <SearchHeader
+    <!-- ── Navbar (same as all other pages) ──────────────────────────────── -->
+    <NavBar />
+
+    <!-- ── Hero (same pattern as Destinations / Packages / Services) ──────── -->
+    <PageHero
+      title="Search Everything"
+      subtitle="Find destinations, packages and services all in one place. Use the filters to narrow down your perfect trip."
+      tagline="Explore Voyago"
+      icon="🔍"
+      color="teal"
+      search-placeholder="Destinations, packages, services…"
+      :stats="heroStats"
       v-model="query"
-      v-model:activeCategory="activeCategory"
       @search="runSearch"
     />
+
+    <!-- ── Category pills (replaces the ones that were in SearchHeader) ───── -->
+    <div class="search-categories-bar">
+      <div class="search-categories">
+        <button
+          v-for="c in categories"
+          :key="c.key"
+          class="category-pill"
+          :class="{ active: activeCategory === c.key }"
+          @click="activeCategory = c.key"
+        >
+          <span>{{ c.icon }}</span> {{ c.label }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Breadcrumb ─────────────────────────────────────────────────────── -->
+    <Breadcrumb :crumbs="breadcrumbs" />
 
     <div class="search-body">
 
@@ -37,12 +65,10 @@
           @open-filters="mobileSidebarOpen = true"
         />
 
-        <!-- ✦ Advanced Filters bar ─────────────────────────────────────── -->
         <AdvancedFilters
           v-model="advancedFilters"
           class="advanced-filters-bar"
         />
-        <!-- ──────────────────────────────────────────────────────────────── -->
 
         <!-- Loading skeletons -->
         <div v-if="loading" :class="viewMode === 'grid' ? 'results-grid' : 'results-list'">
@@ -113,17 +139,56 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { allForSearch } from '@/data/content.js'
 
-import SearchHeader     from '@/components/search/SearchHeader.vue'
+import NavBar           from '@/components/home/NavBar.vue'
+import PageHero         from '@/components/shared/PageHero.vue'
+import Breadcrumb       from '@/components/shared/Breadcrumb.vue'
 import SidebarFilters   from '@/components/search/SidebarFilters.vue'
 import ResultsToolbar   from '@/components/search/ResultsToolbar.vue'
 import ResultCard       from '@/components/search/ResultCard.vue'
 import ResultListCard   from '@/components/search/ResultListCard.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal     from '@/components/search/BookingModal.vue'
-import AdvancedFilters  from '@/components/search/AdvancedFilters.vue'   // ← new
+import AdvancedFilters  from '@/components/search/AdvancedFilters.vue'
 
 const route  = useRoute()
 const router = useRouter()
+
+// ── Category → route map ───────────────────────────────────────────────────
+const CATEGORY_ROUTES = {
+  dest:    '/destinations',
+  package: '/packages',
+  service: '/services',
+}
+
+const categories = [
+  { key: 'all',     icon: '🌐', label: 'All'          },
+  { key: 'dest',    icon: '📍', label: 'Destinations'  },
+  { key: 'package', icon: '✈️', label: 'Packages'      },
+  { key: 'service', icon: '🛎️', label: 'Services'      },
+]
+
+const heroStats = [
+  { icon: '🌍', value: '2,000+', label: 'listings'      },
+  { icon: '📍', value: '1,200+', label: 'destinations'  },
+  { icon: '⭐', value: '4.8',    label: 'avg rating'    },
+]
+
+// ── Breadcrumb — dynamic based on active category ──────────────────────────
+const breadcrumbs = computed(() => {
+  const base = [
+    { label: 'Home',   to: '/' },
+    { label: 'Search', to: '/search' },
+  ]
+  if (activeCategory.value !== 'all') {
+    const cat = categories.find(c => c.key === activeCategory.value)
+    if (cat) base.push({ label: cat.label })
+  }
+  // When activeCategory is 'all' the last crumb IS Search — make it current
+  if (activeCategory.value === 'all') {
+    base[1] = { label: 'Search' } // no `to`, renders as current
+  }
+  return base
+})
 
 // ── UI state ───────────────────────────────────────────────────────────────
 const query             = ref(route.query.q || '')
@@ -147,7 +212,7 @@ const filters = ref({
   minRating: null,
 })
 
-// ── Advanced filters (new) ─────────────────────────────────────────────────
+// ── Advanced filters ───────────────────────────────────────────────────────
 const advancedFilters = ref({
   languages:           [],
   groupSizes:          [],
@@ -159,6 +224,24 @@ const advancedFilters = ref({
   instantConfirmation: false,
 })
 
+// ── Redirect to dedicated page when a specific category is selected ────────
+watch(activeCategory, (cat) => {
+  const targetPath = CATEGORY_ROUTES[cat]
+  if (!targetPath) return // 'all' — stay here
+
+  const q = {}
+  if (query.value?.trim())             q.q         = query.value.trim()
+  if (sortBy.value !== 'recommended')  q.sortBy    = sortBy.value
+  if (filters.value.priceMin != null)  q.priceMin  = filters.value.priceMin
+  if (filters.value.priceMax != null)  q.priceMax  = filters.value.priceMax
+  if (filters.value.minRating)         q.minRating = filters.value.minRating
+  if (filters.value.durations?.length) q.durations = filters.value.durations.join(',')
+  if (filters.value.types?.length)     q.types     = filters.value.types.join(',')
+
+  router.push({ path: targetPath, query: q })
+})
+
+// ── Filter count ───────────────────────────────────────────────────────────
 const activeFilterCount = computed(() => {
   let c = 0
   if (filters.value.priceMin)         c++
@@ -166,15 +249,14 @@ const activeFilterCount = computed(() => {
   if (filters.value.durations.length) c += filters.value.durations.length
   if (filters.value.types.length)     c += filters.value.types.length
   if (filters.value.minRating)        c++
-  // also count advanced
-  if (advancedFilters.value.languages.length)      c += advancedFilters.value.languages.length
-  if (advancedFilters.value.groupSizes.length)      c += advancedFilters.value.groupSizes.length
-  if (advancedFilters.value.months.length)          c += advancedFilters.value.months.length
-  if (advancedFilters.value.difficulty)             c++
-  if (advancedFilters.value.accommodations.length)  c += advancedFilters.value.accommodations.length
-  if (advancedFilters.value.perks.length)           c += advancedFilters.value.perks.length
-  if (advancedFilters.value.minReviews > 0)         c++
-  if (advancedFilters.value.instantConfirmation)    c++
+  if (advancedFilters.value.languages.length)     c += advancedFilters.value.languages.length
+  if (advancedFilters.value.groupSizes.length)    c += advancedFilters.value.groupSizes.length
+  if (advancedFilters.value.months.length)        c += advancedFilters.value.months.length
+  if (advancedFilters.value.difficulty)           c++
+  if (advancedFilters.value.accommodations.length)c += advancedFilters.value.accommodations.length
+  if (advancedFilters.value.perks.length)         c += advancedFilters.value.perks.length
+  if (advancedFilters.value.minReviews > 0)       c++
+  if (advancedFilters.value.instantConfirmation)  c++
   return c
 })
 
@@ -234,38 +316,21 @@ function matchesDuration(item) {
 
 function matchesAdvanced(item) {
   const af = advancedFilters.value
-
-  // Language – item.languages is string[] on your data, skip if absent
   if (af.languages.length && item.languages?.length)
     if (!af.languages.some(l => item.languages.includes(l))) return false
-
-  // Group size
   if (af.groupSizes.length && item.groupSize)
     if (!af.groupSizes.includes(item.groupSize)) return false
-
-  // Departure months
   if (af.months.length && item.departureMonths?.length)
     if (!af.months.some(m => item.departureMonths.includes(m))) return false
-
-  // Difficulty
   if (af.difficulty && item.difficulty)
     if (item.difficulty !== af.difficulty) return false
-
-  // Accommodation
   if (af.accommodations.length && item.accommodation)
     if (!af.accommodations.includes(item.accommodation)) return false
-
-  // Perks / inclusions
   if (af.perks.length && item.perks?.length)
     if (!af.perks.every(p => item.perks.includes(p))) return false
-
-  // Min reviews
   if (af.minReviews > 0 && item.reviewCount != null)
     if (item.reviewCount < af.minReviews) return false
-
-  // Instant confirmation
   if (af.instantConfirmation && !item.instantConfirmation) return false
-
   return true
 }
 
@@ -289,8 +354,6 @@ const allFiltered = computed(() => {
   if (filters.value.minRating)        r = r.filter(i => i.rating >= filters.value.minRating)
   if (filters.value.types.length)     r = r.filter(i => filters.value.types.includes(i.type))
   r = r.filter(matchesDuration)
-
-  // ✦ Apply advanced filters
   r = r.filter(matchesAdvanced)
 
   if (sortBy.value === 'price_asc')  r.sort((a, b) => a.price - b.price)
@@ -311,20 +374,55 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
 
 <style scoped>
 .search-page {
-  min-height: 100vh; display: flex; flex-direction: column;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--gray-50);
 }
-.search-body {
-  display: grid; grid-template-columns: 280px 1fr;
-  flex: 1; align-items: flex-start;
+
+/* ── Category pills bar — sits between hero and breadcrumb ──────────────── */
+.search-categories-bar {
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-100);
+  padding: 0 5%;
 }
+
+.search-categories {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 14px 0;
+  scrollbar-width: none;
+}
+.search-categories::-webkit-scrollbar { display: none; }
+
+.category-pill {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 18px; border-radius: 50px;
+  border: 1.5px solid var(--gray-200); background: var(--white);
+  font-family: 'DM Sans', sans-serif; font-size: .86rem; font-weight: 600;
+  color: var(--gray-600); cursor: pointer; white-space: nowrap;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+.category-pill:hover  { border-color: var(--coral); color: var(--coral); }
+.category-pill.active { background: var(--coral); border-color: var(--coral); color: #fff; }
+
+/* ── Body: sidebar + results ────────────────────────────────────────────── */
+.search-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  flex: 1;
+  align-items: flex-start;
+}
+
 .results-area  { padding: 28px 32px; min-height: 80vh; }
 .results-grid  { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
 .results-list  { display: flex; flex-direction: column; gap: 18px; }
 
-/* ── Advanced filters sits between toolbar and results ─────────────────── */
 .advanced-filters-bar { margin-bottom: 20px; }
 
+/* ── Skeletons ───────────────────────────────────────────────────────────── */
 .skeleton-card { background: var(--white); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
 .skeleton-img  { height: 200px; background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
 .skeleton-body { padding: 20px; }
@@ -333,15 +431,18 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
 .skeleton-line--med   { width: 65%; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
+/* ── Empty state ─────────────────────────────────────────────────────────── */
 .empty-state        { text-align: center; padding: 80px 20px; }
 .empty-state__icon  { font-size: 3.5rem; margin-bottom: 16px; }
 .empty-state__title { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; }
 .empty-state__sub   { font-size: .95rem; color: var(--gray-400); margin-bottom: 28px; }
 
+/* ── Mobile sidebar backdrop ─────────────────────────────────────────────── */
 .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 60; }
 .backdrop-fade-enter-active, .backdrop-fade-leave-active { transition: opacity .25s ease; }
 .backdrop-fade-enter-from, .backdrop-fade-leave-to       { opacity: 0; }
 
+/* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .results-area { padding: 24px 20px; }
   .results-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
@@ -350,5 +451,6 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
   .search-body      { grid-template-columns: 1fr; }
   .sidebar-backdrop { display: block; }
   .results-area     { padding: 18px 4%; }
+  .search-categories-bar { padding: 0 4%; }
 }
 </style>

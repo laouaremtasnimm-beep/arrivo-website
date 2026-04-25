@@ -2,13 +2,22 @@
  * useListPage — shared composable for Destinations, Packages, Services pages.
  *
  * Handles:
- *  - text search query (synced with ?q= route param)
+ *  - text search query  (synced with ?q= route param)
  *  - active category tab
- *  - sidebar filters (price, rating, type, duration)
- *  - sorting
+ *  - sidebar filters    (price, rating, type, duration) — pre-filled from URL params
+ *  - sorting            (pre-filled from ?sortBy=)
  *  - pagination
  *  - loading simulation
- *  - wishlist  ← powered by useWishlist (shared, persisted)
+ *  - wishlist           ← powered by useWishlist (shared, persisted)
+ *
+ * URL params recognised on mount (all optional):
+ *   ?q=        text query
+ *   ?sortBy=   recommended | price_asc | price_desc | rating | popular
+ *   ?priceMin= number
+ *   ?priceMax= number
+ *   ?minRating= number
+ *   ?durations= comma-separated  e.g. "1-3,4-7"
+ *   ?types=     comma-separated  e.g. "Beach,Adventure"
  *
  * @param {Ref<Array>} allItems  — the full data array for this page
  * @param {string}     itemType  — 'destination' | 'package' | 'service'
@@ -19,72 +28,109 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWishlist } from '@/composables/useWishlist.js'
 
-export function useListPage(allItems, itemType, { perPage = 12 } = {}) {
-  const route  = useRoute()
+export function useListPage(allItems, itemType, opts = {}) {
+  const route = useRoute()
   const router = useRouter()
 
-  // ── Search & category ──────────────────────────────────────────────────
-  const query          = ref(route.query.q || '')
-  const activeCategory = ref('all')
-  const sortBy         = ref('recommended')
-  const viewMode       = ref('grid')
-  const loading        = ref(false)
-  const page           = ref(1)
+  const perPage = opts.perPage ?? 9
 
-  // ── Sidebar filters ────────────────────────────────────────────────────
+  // ── Helpers to parse URL params ──────────────────────────────────────────
+  function qNum(key) {
+    const v = route.query[key]
+    return v != null && v !== '' ? +v : null
+  }
+  function qStr(key, fallback = '') {
+    return route.query[key] ?? fallback
+  }
+  function qArr(key) {
+    const v = route.query[key]
+    if (!v) return []
+    return String(v).split(',').map(s => s.trim()).filter(Boolean)
+  }
+
+  // ── State — initialised from URL params ───────────────────────────────────
+  const query = ref(qStr('q'))
+  const sortBy = ref(qStr('sortBy', 'recommended'))
+  const activeCategory = ref('all')
+  const viewMode = ref('grid')
+  const loading = ref(false)
+  const page = ref(1)
+
   const filters = ref({
-    priceMin:  null,
-    priceMax:  null,
-    durations: [],
-    types:     [],
-    minRating: null,
+    priceMin: qNum('priceMin'),
+    priceMax: qNum('priceMax'),
+    minRating: qNum('minRating'),
+    durations: qArr('durations'),
+    types: qArr('types'),
   })
 
+  // ── Sync state → URL (replace so back-button still works cleanly) ─────────
+  function syncURL() {
+    const q = {}
+    if (query.value?.trim()) q.q = query.value.trim()
+    if (sortBy.value !== 'recommended') q.sortBy = sortBy.value
+    if (filters.value.priceMin != null) q.priceMin = filters.value.priceMin
+    if (filters.value.priceMax != null) q.priceMax = filters.value.priceMax
+    if (filters.value.minRating) q.minRating = filters.value.minRating
+    if (filters.value.durations?.length) q.durations = filters.value.durations.join(',')
+    if (filters.value.types?.length) q.types = filters.value.types.join(',')
+
+    router.replace({ query: Object.keys(q).length ? q : undefined })
+  }
+
+  watch([query, sortBy], syncURL)
+  watch(filters, syncURL, { deep: true })
+
+  // ── Filter count ─────────────────────────────────────────────────────────
   const activeFilterCount = computed(() => {
     let c = 0
-    if (filters.value.priceMin)         c++
-    if (filters.value.priceMax)         c++
+    if (filters.value.priceMin) c++
+    if (filters.value.priceMax) c++
     if (filters.value.durations.length) c += filters.value.durations.length
-    if (filters.value.types.length)     c += filters.value.types.length
-    if (filters.value.minRating)        c++
+    if (filters.value.types.length) c += filters.value.types.length
+    if (filters.value.minRating) c++
     return c
   })
 
   function resetFilters() {
-    filters.value        = { priceMin: null, priceMax: null, durations: [], types: [], minRating: null }
+    filters.value = { priceMin: null, priceMax: null, durations: [], types: [], minRating: null }
     activeCategory.value = 'all'
-    query.value          = ''
-    page.value           = 1
+    query.value = ''
+    page.value = 1
   }
 
-  // ── Loading simulation ─────────────────────────────────────────────────
+  // ── Loading simulation ────────────────────────────────────────────────────
   function runSearch() {
     loading.value = true
-    page.value    = 1
+    page.value = 1
     setTimeout(() => { loading.value = false }, 700)
   }
 
-  onMounted(() => { if (query.value) runSearch() })
+  // Auto-trigger search if page was opened with a query (e.g. from SearchPage redirect)
+  onMounted(() => {
+    if (query.value || activeFilterCount.value > 0) runSearch()
+  })
+
   watch(activeCategory, () => { page.value = 1 })
   watch(filters, () => { page.value = 1 }, { deep: true })
 
-  // ── Duration helper ────────────────────────────────────────────────────
+  // ── Duration helper ───────────────────────────────────────────────────────
   function matchesDuration(item) {
     if (!filters.value.durations.length || !item.duration) return true
     return filters.value.durations.some(d => {
-      if (d === '1-3')  return item.duration >= 1  && item.duration <= 3
-      if (d === '4-7')  return item.duration >= 4  && item.duration <= 7
-      if (d === '8-14') return item.duration >= 8  && item.duration <= 14
-      if (d === '15+')  return item.duration >= 15
+      if (d === '1-3') return item.duration >= 1 && item.duration <= 3
+      if (d === '4-7') return item.duration >= 4 && item.duration <= 7
+      if (d === '8-14') return item.duration >= 8 && item.duration <= 14
+      if (d === '15+') return item.duration >= 15
       return true
     })
   }
 
-  // ── Filtered + sorted results ──────────────────────────────────────────
+  // ── Filtered + sorted results ─────────────────────────────────────────────
   const allFiltered = computed(() => {
     let r = [...allItems.value]
 
-    // Category
+    // Category tab (e.g. "Beach", "Adventure" on the list pages)
     if (activeCategory.value !== 'all')
       r = r.filter(i => i.type?.toLowerCase() === activeCategory.value.toLowerCase())
 
@@ -93,18 +139,21 @@ export function useListPage(allItems, itemType, { perPage = 12 } = {}) {
       const q = query.value.toLowerCase()
       r = r.filter(i =>
         i.title?.toLowerCase().includes(q) ||
-        i.name?.toLowerCase().includes(q)  ||
-        i.desc?.toLowerCase().includes(q)  ||
+        i.name?.toLowerCase().includes(q) ||
+        i.desc?.toLowerCase().includes(q) ||
         i.description?.toLowerCase().includes(q)
       )
     }
 
     // Price
-    if (filters.value.priceMin != null) r = r.filter(i => (i.price ?? i.from) >= filters.value.priceMin)
-    if (filters.value.priceMax != null) r = r.filter(i => (i.price ?? i.from) <= filters.value.priceMax)
+    if (filters.value.priceMin != null)
+      r = r.filter(i => (i.price ?? i.from ?? 0) >= filters.value.priceMin)
+    if (filters.value.priceMax != null)
+      r = r.filter(i => (i.price ?? i.from ?? 0) <= filters.value.priceMax)
 
     // Rating
-    if (filters.value.minRating) r = r.filter(i => i.rating >= filters.value.minRating)
+    if (filters.value.minRating)
+      r = r.filter(i => i.rating >= filters.value.minRating)
 
     // Types
     if (filters.value.types.length)
@@ -114,15 +163,21 @@ export function useListPage(allItems, itemType, { perPage = 12 } = {}) {
     r = r.filter(matchesDuration)
 
     // Sort
-    if (sortBy.value === 'price_asc')  r.sort((a, b) => (a.price ?? a.from ?? 0) - (b.price ?? b.from ?? 0))
-    if (sortBy.value === 'price_desc') r.sort((a, b) => (b.price ?? b.from ?? 0) - (a.price ?? a.from ?? 0))
-    if (sortBy.value === 'rating')     r.sort((a, b) => b.rating - a.rating)
-    if (sortBy.value === 'popular')    r.sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0))
+    if (sortBy.value === 'price_asc')
+      r.sort((a, b) => (a.price ?? a.from ?? 0) - (b.price ?? b.from ?? 0))
+    if (sortBy.value === 'price_desc')
+      r.sort((a, b) => (b.price ?? b.from ?? 0) - (a.price ?? a.from ?? 0))
+    if (sortBy.value === 'rating')
+      r.sort((a, b) => b.rating - a.rating)
+    if (sortBy.value === 'popular')
+      r.sort((a, b) => (b.reviews ?? 0) - (a.reviews ?? 0))
 
     return r
   })
 
-  const totalPages = computed(() => Math.max(1, Math.ceil(allFiltered.value.length / perPage)))
+  const totalPages = computed(() =>
+    Math.max(1, Math.ceil(allFiltered.value.length / perPage))
+  )
 
   const pagedResults = computed(() => {
     const start = (page.value - 1) * perPage
@@ -133,30 +188,17 @@ export function useListPage(allItems, itemType, { perPage = 12 } = {}) {
     if (page.value > totalPages.value) page.value = 1
   })
 
-  // ── Wishlist ───────────────────────────────────────────────────────────
+  // ── Wishlist ──────────────────────────────────────────────────────────────
   const { isSaved, toggle } = useWishlist()
 
-  /**
-   * isItemSaved(item) — pass the full item object; returns true/false.
-   * Use as :saved="isItemSaved(item)" in templates.
-   */
   function isItemSaved(item) {
     return isSaved.value(itemType, item.id)
   }
 
-  /**
-   * toggleWishlist(item) — pass the full item object.
-   * Navigates to /wishlist when an item is added.
-   */
   function toggleWishlist(item) {
     const wasAdded = toggle(itemType, item.id)
     if (wasAdded) router.push('/wishlist')
   }
-
-  // ── Sync query to URL ──────────────────────────────────────────────────
-  watch(query, (val) => {
-    router.replace({ query: val ? { q: val } : {} })
-  })
 
   return {
     // state
