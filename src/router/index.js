@@ -15,6 +15,7 @@ import DashboardPage    from '@/views/DashboardPage.vue'
 import ProfilePage      from '@/views/ProfilePage.vue'  
 import SettingsPage     from '@/views/SettingsPage.vue'
 import DealsPage        from '@/views/DealsPage.vue'
+import TripPlannerPage  from '@/views/TripPlannerPage.vue'
 
 const routes = [
   { path: '/',                  component: Home },
@@ -53,7 +54,8 @@ const routes = [
     else next()
   }
 },
-{ path: '/deals', component: DealsPage }
+{ path: '/deals', component: DealsPage },
+{ path: '/search', component: TripPlannerPage }
 ]
 
 const router = createRouter({
