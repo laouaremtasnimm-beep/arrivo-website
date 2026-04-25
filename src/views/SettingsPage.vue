@@ -1,6 +1,6 @@
 <template>
   <div class="settings-page">
-    <SettingsTopBar v-model="activeSection" :role="user?.role" />
+    <NavBar />   <!-- ← added -->
     <div class="settings-container">
 
       <!-- ── Sidebar ── -->
@@ -69,7 +69,7 @@ import SettingsBilling      from '@/components/settings/SettingsBilling.vue'
 import SettingsIntegrations from '@/components/settings/SettingsIntegrations.vue'
 import SettingsBooking      from '@/components/settings/SettingsBooking.vue'
 import SettingsListings     from '@/components/settings/SettingsListings.vue'
-import SettingsTopBar       from '@/components/settings/SettingsTopBar.vue'
+import NavBar               from '@/components/home/NavBar.vue'
 
 const { user } = useAuth()
 
