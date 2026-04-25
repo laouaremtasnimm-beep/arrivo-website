@@ -1,4 +1,5 @@
 <script setup>
+import { useOffers } from '@/composables/useOffers'
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardHeader from '@/components/dashboard/DashboardHeader.vue'
 import StatsGrid from '@/components/dashboard/StatsGrid.vue'
@@ -6,6 +7,7 @@ import ServicesTable from '@/components/dashboard/ServicesTable.vue'
 import BookingsTable from '@/components/dashboard/BookingsTable.vue'
 import MessagesPanel from '@/components/dashboard/MessagesPanel.vue'
 import ReviewsPanel from '@/components/dashboard/ReviewsPanel.vue'
+const { saveOffer, deleteOffer } = useOffers()
 </script>
 
 <template>

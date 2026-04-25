@@ -104,14 +104,12 @@
             @delete="handleDeleteReview"
           />
 
-          <!-- OFFERS — fully reactive, add + edit open the form modal -->
+          <!-- OFFERS — reads from useOffers composable, no :offers prop needed -->
           <OffersPanel
             v-else-if="activeSection === 'offers' && isAgency"
             key="offers"
-            :offers="specialOffers"
             @add="openOfferForm(null)"
             @edit="openOfferForm($event)"
-            @delete="handleDeleteOffer"
           />
 
           <!-- COLLABORATIONS -->
@@ -142,10 +140,11 @@
       @save="handleSaveService"
     />
 
+    <!-- OfferFormModal calls saveOffer from the composable on @save -->
     <OfferFormModal
       v-model="offerFormOpen"
       :offer="editingOffer"
-      @save="handleSaveOffer"
+      @save="saveOffer"
     />
 
     <CollabFormModal
@@ -160,6 +159,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
+import { useOffers } from '@/composables/useOffers'   // ← single source of truth
 
 import DashboardSidebar    from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardHeader     from '@/components/dashboard/DashboardHeader.vue'
@@ -179,20 +179,23 @@ import CollabFormModal     from '@/components/dashboard/CollabFormModal.vue'
 const router = useRouter()
 const { user, isAgency, isProvider, logout } = useAuth()
 
+// ── Offers — composable is the ONLY source of truth ──────────────────────
+const { saveOffer, deleteOffer, addOffer } = useOffers()
+
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
 const mobileSidebarOpen = ref(false)
 const activeSection     = ref('overview')
 
 const sectionMap = {
-  overview:       { title: 'Overview',        meta: 'Your dashboard at a glance'               },
-  bookings:       { title: 'Bookings',         meta: 'Manage and track all reservations'        },
-  packages:       { title: 'Travel Packages',  meta: 'Create and manage your packages'          },
-  services:       { title: 'My Services',      meta: 'Create and manage your service listings'  },
-  messages:       { title: 'Messages',         meta: 'Communicate with your customers'          },
-  reviews:        { title: 'Reviews',          meta: 'See what customers are saying'            },
-  offers:         { title: 'Special Offers',   meta: 'Run promotions and discount campaigns'    },
-  collaborations: { title: 'Collaborations',   meta: 'Co-create joint offers with partners'     },
+  overview:       { title: 'Overview',        meta: 'Your dashboard at a glance'              },
+  bookings:       { title: 'Bookings',         meta: 'Manage and track all reservations'       },
+  packages:       { title: 'Travel Packages',  meta: 'Create and manage your packages'         },
+  services:       { title: 'My Services',      meta: 'Create and manage your service listings' },
+  messages:       { title: 'Messages',         meta: 'Communicate with your customers'         },
+  reviews:        { title: 'Reviews',          meta: 'See what customers are saying'           },
+  offers:         { title: 'Special Offers',   meta: 'Run promotions and discount campaigns'   },
+  collaborations: { title: 'Collaborations',   meta: 'Co-create joint offers with partners'    },
 }
 const sectionTitle = computed(() => sectionMap[activeSection.value]?.title || '')
 const sectionMeta  = computed(() => sectionMap[activeSection.value]?.meta  || '')
@@ -279,48 +282,22 @@ function handleDeleteReview(r) {
   reviews.value = reviews.value.filter(x => x.reviewID !== r.reviewID)
 }
 
-// ── Offer handlers ────────────────────────────────────────────────────────
+// ── Offer handlers — delegate to composable ───────────────────────────────
 const offerFormOpen = ref(false)
 const editingOffer  = ref(null)
 
 function openOfferForm(offer) {
-  // Collab offers are not editable via the form
-  if (offer?.source === 'collab') return
+  if (offer?.source === 'collab') return   // collab offers are not editable
   editingOffer.value  = offer ?? null
   offerFormOpen.value = true
 }
-
-function handleSaveOffer(payload) {
-  const idx = specialOffers.value.findIndex(o => o.offerID === payload.offerID)
-  if (idx !== -1) {
-    specialOffers.value[idx] = { ...specialOffers.value[idx], ...payload }
-  } else {
-    specialOffers.value.unshift(payload)
-  }
-}
-
-function handleDeleteOffer(offer) {
-  const label = offer.source === 'collab'
-    ? `End the joint offer "${offer.title}"?`
-    : `Delete "${offer.title}"? This cannot be undone.`
-  if (!confirm(label)) return
-
-  specialOffers.value = specialOffers.value.filter(o => o.offerID !== offer.offerID)
-
-  // If it was a collab offer, also mark the collaboration itself as ended
-  if (offer.source === 'collab' && offer.collabID) {
-    collaborations.value = collaborations.value.map(c =>
-      c.collabID === offer.collabID ? { ...c, status: 'ended' } : c
-    )
-  }
-}
+// @save on OfferFormModal goes straight to saveOffer (wired in template above)
 
 // ── Collaboration handlers ────────────────────────────────────────────────
 const collabFormOpen = ref(false)
 
 function handleSendCollab(payload) {
   collaborations.value.unshift({ ...payload, direction: 'outgoing', status: 'pending' })
-  // Simulate the partner receiving it after 1.5s (demo only)
   setTimeout(() => {
     collaborations.value.push({
       ...payload,
@@ -334,37 +311,30 @@ function handleSendCollab(payload) {
 }
 
 function handleAcceptCollab(collab) {
-  // 1. Mark incoming request accepted
   const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
   if (idx !== -1) collaborations.value[idx].status = 'accepted'
 
-  // 2. Match and accept the outgoing side too
   const outIdx = collaborations.value.findIndex(
     c => c.direction === 'outgoing' && c.title === collab.title && c.status === 'pending'
   )
   if (outIdx !== -1) collaborations.value[outIdx].status = 'accepted'
 
-  // 3. Create a joint offer in specialOffers (agencies see the Offers panel)
+  // Create a joint offer via the composable
   if (isAgency.value) {
-    const alreadyExists = specialOffers.value.some(
-      o => o.source === 'collab' && o.collabID === collab.collabID
-    )
-    if (!alreadyExists) {
-      specialOffers.value.unshift({
-        offerID:      Date.now(),
-        collabID:     collab.collabID,
-        source:       'collab',
-        title:        collab.title,
-        discount:     collab.discount,
-        type:         collab.type || 'Bundle',
-        startDate:    collab.startDate || '',
-        endDate:      collab.endDate   || '',
-        description:  collab.description,
-        partnerName:  collab.initiator?.name || collab.partner?.name,
-        partnerColor: collab.partner?.color  || '#2EC4B6',
-        active:       true,
-      })
-    }
+    addOffer({
+      offerID:      Date.now(),
+      collabID:     collab.collabID,
+      source:       'collab',
+      title:        collab.title,
+      discount:     collab.discount,
+      type:         collab.type || 'Bundle',
+      startDate:    collab.startDate || '',
+      endDate:      collab.endDate   || '',
+      description:  collab.description,
+      partnerName:  collab.initiator?.name || collab.partner?.name,
+      partnerColor: collab.partner?.color  || '#2EC4B6',
+      active:       true,
+    })
   }
 }
 
@@ -378,28 +348,34 @@ function handleEndCollab(collab) {
   collaborations.value = collaborations.value.map(c =>
     c.title === collab.title ? { ...c, status: 'ended' } : c
   )
-  // Remove the associated joint offer
-  specialOffers.value = specialOffers.value.filter(
-    o => !(o.source === 'collab' && o.collabID === collab.collabID)
+  // Remove the associated joint offer via composable
+  deleteOffer(
+    collab.collabID
+      ? undefined   // handled by filter below
+      : collab.offerID
   )
+  // deleteOffer by collabID (collab offers use collabID, not offerID directly)
+  const { allOffers } = useOffers()
+  const match = allOffers.value.find(o => o.source === 'collab' && o.collabID === collab.collabID)
+  if (match) deleteOffer(match.offerID)
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// DATA
+// LOCAL DATA  (offers removed — now live in useOffers composable)
 // ─────────────────────────────────────────────────────────────────────────
 const bookings = ref([
-  { reservationID: 1041, guestName: 'Amelia Rhodes',  itemName: 'Swiss Alps Winter Retreat', date: 'Jun 12, 2025', totalPrice: 4980, status: 'confirmed' },
-  { reservationID: 1040, guestName: 'Carlos Mendez',  itemName: 'Greek Island Odyssey',      date: 'Jun 10, 2025', totalPrice: 3100, status: 'pending'   },
-  { reservationID: 1039, guestName: 'Yuki Tanaka',    itemName: 'Bali Spiritual Journey',    date: 'Jun 8, 2025',  totalPrice: 1650, status: 'confirmed' },
-  { reservationID: 1038, guestName: 'Lena Müller',    itemName: 'Amalfi Coast Drive',        date: 'Jun 6, 2025',  totalPrice: 3780, status: 'confirmed' },
-  { reservationID: 1037, guestName: "James O'Brien",  itemName: 'Sahara Desert Adventure',   date: 'Jun 3, 2025',  totalPrice: 980,  status: 'cancelled' },
+  { reservationID: 1041, guestName: 'Amelia Rhodes', itemName: 'Swiss Alps Winter Retreat', date: 'Jun 12, 2025', totalPrice: 4980, status: 'confirmed' },
+  { reservationID: 1040, guestName: 'Carlos Mendez', itemName: 'Greek Island Odyssey',      date: 'Jun 10, 2025', totalPrice: 3100, status: 'pending'   },
+  { reservationID: 1039, guestName: 'Yuki Tanaka',   itemName: 'Bali Spiritual Journey',    date: 'Jun 8, 2025',  totalPrice: 1650, status: 'confirmed' },
+  { reservationID: 1038, guestName: 'Lena Müller',   itemName: 'Amalfi Coast Drive',        date: 'Jun 6, 2025',  totalPrice: 3780, status: 'confirmed' },
+  { reservationID: 1037, guestName: "James O'Brien", itemName: 'Sahara Desert Adventure',   date: 'Jun 3, 2025',  totalPrice: 980,  status: 'cancelled' },
 ])
 
 const packages = ref([
-  { packageID: 1, title: 'Swiss Alps Winter Retreat', destination: 'Switzerland', img: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=200&q=70', type: 'Adventure', duration: 8,  price: 2490, rating: 4.9, bookings: 48, spots: 4  },
-  { packageID: 2, title: 'Bali Spiritual Journey',    destination: 'Indonesia',   img: 'https://images.unsplash.com/photo-1604999565976-8913ad2ddb7c?w=200&q=70', type: 'Cultural',  duration: 10, price: 1650, rating: 4.8, bookings: 36, spots: 8  },
-  { packageID: 3, title: 'Greek Island Odyssey',      destination: 'Greece',      img: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=200&q=70', type: 'Beach',     duration: 14, price: 3100, rating: 4.9, bookings: 22, spots: 2  },
-  { packageID: 4, title: 'Amalfi Coast Drive',        destination: 'Italy',       img: 'https://images.unsplash.com/photo-1533606688076-b6683a5f59f1?w=200&q=70', type: 'Beach',     duration: 7,  price: 1890, rating: 4.9, bookings: 31, spots: 5  },
+  { packageID: 1, title: 'Swiss Alps Winter Retreat', destination: 'Switzerland', img: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=200&q=70', type: 'Adventure', duration: 8,  price: 2490, rating: 4.9, bookings: 48, spots: 4 },
+  { packageID: 2, title: 'Bali Spiritual Journey',    destination: 'Indonesia',   img: 'https://images.unsplash.com/photo-1604999565976-8913ad2ddb7c?w=200&q=70', type: 'Cultural',  duration: 10, price: 1650, rating: 4.8, bookings: 36, spots: 8 },
+  { packageID: 3, title: 'Greek Island Odyssey',      destination: 'Greece',      img: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=200&q=70', type: 'Beach',     duration: 14, price: 3100, rating: 4.9, bookings: 22, spots: 2 },
+  { packageID: 4, title: 'Amalfi Coast Drive',        destination: 'Italy',       img: 'https://images.unsplash.com/photo-1533606688076-b6683a5f59f1?w=200&q=70', type: 'Beach',     duration: 7,  price: 1890, rating: 4.9, bookings: 31, spots: 5 },
 ])
 
 const services = ref([
@@ -410,23 +386,16 @@ const services = ref([
 ])
 
 const messages = ref([
-  { messageID: 1, from: 'Amelia Rhodes', title: 'Question about Alpine package',  content: 'Hi, I had a question about the ski equipment rental included…', date: 'Today, 10:24', read: false },
-  { messageID: 2, from: 'Carlos Mendez', title: 'Booking confirmation request',   content: 'Could you please confirm my reservation for June 10th?',        date: 'Today, 09:12', read: false },
-  { messageID: 3, from: 'Yuki Tanaka',   title: 'Special dietary requirements',    content: 'I wanted to let you know that I have a vegetarian diet…',        date: 'Yesterday',    read: true  },
-  { messageID: 4, from: 'Lena Müller',   title: 'Airport pickup details',          content: 'Can you send me the driver contact details for my arrival?',     date: 'Jun 10',       read: true  },
+  { messageID: 1, from: 'Amelia Rhodes', title: 'Question about Alpine package', content: 'Hi, I had a question about the ski equipment rental included…',  date: 'Today, 10:24', read: false },
+  { messageID: 2, from: 'Carlos Mendez', title: 'Booking confirmation request',  content: 'Could you please confirm my reservation for June 10th?',         date: 'Today, 09:12', read: false },
+  { messageID: 3, from: 'Yuki Tanaka',   title: 'Special dietary requirements',  content: 'I wanted to let you know that I have a vegetarian diet…',         date: 'Yesterday',    read: true  },
+  { messageID: 4, from: 'Lena Müller',   title: 'Airport pickup details',        content: 'Can you send me the driver contact details for my arrival?',      date: 'Jun 10',       read: true  },
 ])
 
 const reviews = ref([
-  { reviewID: 1, touristName: 'Amelia Rhodes', itemName: 'Swiss Alps Winter Retreat', rating: 5, comment: 'Absolutely magical experience. The team was professional and attentive throughout.', date: 'Jun 9, 2025'  },
-  { reviewID: 2, touristName: 'Yuki Tanaka',   itemName: 'Bali Spiritual Journey',    rating: 5, comment: 'Life-changing trip. The spiritual experiences were authentic.',                       date: 'Jun 5, 2025'  },
+  { reviewID: 1, touristName: 'Amelia Rhodes', itemName: 'Swiss Alps Winter Retreat', rating: 5, comment: 'Absolutely magical experience. The team was professional and attentive throughout.',    date: 'Jun 9, 2025' },
+  { reviewID: 2, touristName: 'Yuki Tanaka',   itemName: 'Bali Spiritual Journey',    rating: 5, comment: 'Life-changing trip. The spiritual experiences were authentic.',                         date: 'Jun 5, 2025' },
   { reviewID: 3, touristName: 'Lena Müller',   itemName: 'Amalfi Coast Drive',        rating: 4, comment: 'Beautiful scenery and great organisation. A few minor hiccups but wonderful overall.', date: 'Jun 3, 2025' },
-])
-
-// source: 'manual' | 'collab'
-const specialOffers = ref([
-  { offerID: 1, source: 'manual', discount: 25, title: 'Early Bird Summer',   startDate: 'Jun 1',  endDate: 'Jun 30', active: true,  description: 'Book any summer package before June 30 and get 25% off.' },
-  { offerID: 2, source: 'manual', discount: 15, title: 'Returning Traveller', startDate: 'Jul 1',  endDate: 'Jul 31', active: true,  description: 'Exclusive discount for customers who have booked with us before.' },
-  { offerID: 3, source: 'manual', discount: 30, title: 'Last Minute Alps',    startDate: 'Jun 15', endDate: 'Jun 20', active: false, description: 'Limited spots available for the Swiss Alps Retreat at a special rate.' },
 ])
 
 const collaborations = ref([
