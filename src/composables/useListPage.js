@@ -8,11 +8,12 @@
  *  - sorting
  *  - pagination
  *  - loading simulation
- *  - wishlist
+ *  - wishlist  ← now powered by useWishlist (shared, persisted)
  */
 
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useWishlist } from '@/composables/useWishlist.js'   // ← NEW
 
 export function useListPage(allItems, { perPage = 12 } = {}) {
   const route  = useRoute()
@@ -128,12 +129,8 @@ export function useListPage(allItems, { perPage = 12 } = {}) {
     if (page.value > totalPages.value) page.value = 1
   })
 
-  // ── Wishlist ───────────────────────────────────────────────────────────
-  const wishlist = ref([])
-  function toggleWishlist(id) {
-    const idx = wishlist.value.indexOf(id)
-    idx === -1 ? wishlist.value.push(id) : wishlist.value.splice(idx, 1)
-  }
+  // ── Wishlist — shared & persisted via useWishlist ──────────────────────
+  const { wishlist, toggleWishlist } = useWishlist()   // ← REPLACES the old local ref
 
   // ── Sync query to URL ──────────────────────────────────────────────────
   watch(query, (val) => {

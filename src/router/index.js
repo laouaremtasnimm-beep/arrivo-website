@@ -59,7 +59,9 @@ const routes = [
 { path: '/visa-info', component: () => import('@/views/VisaInfoPage.vue') },
 { path: '/travel-insurance', component: () => import('@/views/TravelInsurancePage.vue') },
 { path: '/partners/agencies', component: () => import('@/views/AgenciesPage.vue') },
-{ path: '/partners/providers', component: () => import('@/views/ProvidersPage.vue') }
+{ path: '/partners/providers', component: () => import('@/views/ProvidersPage.vue') },
+{ path: '/partners/affiliates',component: () => import('@/views/AffiliatesPage.vue')  },
+{ path: '/wishlist', component: () => import('@/views/WishlistPage.vue') }
 
 ]
 

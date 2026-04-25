@@ -7,6 +7,7 @@ import ServicesTable from '@/components/dashboard/ServicesTable.vue'
 import BookingsTable from '@/components/dashboard/BookingsTable.vue'
 import MessagesPanel from '@/components/dashboard/MessagesPanel.vue'
 import ReviewsPanel from '@/components/dashboard/ReviewsPanel.vue'
+import OffersPanel from '@/components/dashboard/OffersPanel.vue'
 const { saveOffer, deleteOffer } = useOffers()
 </script>
 
@@ -21,6 +22,7 @@ const { saveOffer, deleteOffer } = useOffers()
       <StatsGrid />
 
       <ServicesTable />
+      <OffersPanel />
 
       <BookingsTable />
       <MessagesPanel />

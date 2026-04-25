@@ -87,8 +87,8 @@
               <div class="mega-promo__badge">✨ New</div>
               <p class="mega-promo__title">Grow your travel business</p>
               <p class="mega-promo__sub">Join 2,000+ agencies already using Voyago to reach more travelers worldwide.</p>
-              <RouterLink to="/partners/apply" class="btn btn-coral mega-promo__btn" @click="closeAll">
-                Apply now →
+              <RouterLink to="/auth?mode=register" class="btn btn-coral mega-promo__btn" @click="closeAll">
+                Join now →
               </RouterLink>
             </div>
           </div>
@@ -155,10 +155,6 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 My Profile
               </RouterLink>
-              <RouterLink to="/bookings"  class="dropdown-item" @click="menuOpen = false">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                My Bookings
-              </RouterLink>
               <RouterLink to="/wishlist"  class="dropdown-item" @click="menuOpen = false">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                 Wishlist
@@ -220,7 +216,6 @@
           </template>
           <template v-else>
             <RouterLink to="/profile"  class="btn btn-outline" @click="mobileOpen = false">My Profile</RouterLink>
-            <RouterLink to="/bookings" class="btn btn-outline" @click="mobileOpen = false">My Bookings</RouterLink>
             <RouterLink v-if="canAccessDashboard" to="/dashboard" class="btn btn-outline" @click="mobileOpen = false">Dashboard</RouterLink>
             <button class="btn btn-coral" @click="handleLogout; mobileOpen = false">Log out</button>
           </template>
@@ -269,7 +264,6 @@ const toolLinks = [
 const partnerLinks = [
   { to: '/partners/agencies',   icon: '🏢', title: 'For Travel Agencies', sub: 'List packages, manage bookings'      },
   { to: '/partners/providers',  icon: '🤝', title: 'For Service Providers', sub: 'Offer guides, transfers, tours'    },
-  { to: '/partners/apply',      icon: '🚀', title: 'List Your Service',   sub: 'Start reaching more travelers'       },
   { to: '/partners/affiliates', icon: '💰', title: 'Affiliate Program',   sub: 'Earn by recommending Voyago'         },
 ]
 
