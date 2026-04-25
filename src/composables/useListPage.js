@@ -5,16 +5,17 @@
  *  - text search query  (synced with ?q= route param)
  *  - active category tab
  *  - sidebar filters    (price, rating, type, duration) — pre-filled from URL params
+ *  - advanced filters   (language, group size, months, accommodation, perks, reviews, instant)
  *  - sorting            (pre-filled from ?sortBy=)
  *  - pagination
  *  - loading simulation
  *  - wishlist           ← powered by useWishlist (shared, persisted)
  *
  * URL params recognised on mount (all optional):
- *   ?q=        text query
- *   ?sortBy=   recommended | price_asc | price_desc | rating | popular
- *   ?priceMin= number
- *   ?priceMax= number
+ *   ?q=         text query
+ *   ?sortBy=    recommended | price_asc | price_desc | rating | popular
+ *   ?priceMin=  number
+ *   ?priceMax=  number
  *   ?minRating= number
  *   ?durations= comma-separated  e.g. "1-3,4-7"
  *   ?types=     comma-separated  e.g. "Beach,Adventure"
@@ -34,7 +35,7 @@ export function useListPage(allItems, itemType, opts = {}) {
 
   const perPage = opts.perPage ?? 9
 
-  // ── Helpers to parse URL params ──────────────────────────────────────────
+  // ── Helpers to parse URL params ────────────────────────────────────────
   function qNum(key) {
     const v = route.query[key]
     return v != null && v !== '' ? +v : null
@@ -48,7 +49,7 @@ export function useListPage(allItems, itemType, opts = {}) {
     return String(v).split(',').map(s => s.trim()).filter(Boolean)
   }
 
-  // ── State — initialised from URL params ───────────────────────────────────
+  // ── State — initialised from URL params ────────────────────────────────
   const query = ref(qStr('q'))
   const sortBy = ref(qStr('sortBy', 'recommended'))
   const activeCategory = ref('all')
@@ -64,7 +65,19 @@ export function useListPage(allItems, itemType, opts = {}) {
     types: qArr('types'),
   })
 
-  // ── Sync state → URL (replace so back-button still works cleanly) ─────────
+  // ── Advanced filters ───────────────────────────────────────────────────
+  const advancedFilters = ref({
+    languages: [],
+    groupSizes: [],
+    months: [],
+    difficulty: null,
+    accommodations: [],
+    perks: [],
+    minReviews: 0,
+    instantConfirmation: false,
+  })
+
+  // ── Sync state → URL (replace so back-button still works cleanly) ──────
   function syncURL() {
     const q = {}
     if (query.value?.trim()) q.q = query.value.trim()
@@ -81,7 +94,7 @@ export function useListPage(allItems, itemType, opts = {}) {
   watch([query, sortBy], syncURL)
   watch(filters, syncURL, { deep: true })
 
-  // ── Filter count ─────────────────────────────────────────────────────────
+  // ── Filter counts ──────────────────────────────────────────────────────
   const activeFilterCount = computed(() => {
     let c = 0
     if (filters.value.priceMin) c++
@@ -92,29 +105,49 @@ export function useListPage(allItems, itemType, opts = {}) {
     return c
   })
 
+  // Count of active advanced filters — used for the badge on the trigger button
+  const advancedFilterCount = computed(() => {
+    const af = advancedFilters.value
+    return (
+      af.languages.length +
+      af.groupSizes.length +
+      af.months.length +
+      af.accommodations.length +
+      af.perks.length +
+      (af.difficulty ? 1 : 0) +
+      (af.minReviews > 0 ? 1 : 0) +
+      (af.instantConfirmation ? 1 : 0)
+    )
+  })
+
   function resetFilters() {
     filters.value = { priceMin: null, priceMax: null, durations: [], types: [], minRating: null }
+    advancedFilters.value = {
+      languages: [], groupSizes: [], months: [], difficulty: null,
+      accommodations: [], perks: [], minReviews: 0, instantConfirmation: false,
+    }
     activeCategory.value = 'all'
     query.value = ''
     page.value = 1
   }
 
-  // ── Loading simulation ────────────────────────────────────────────────────
+  // ── Loading simulation ─────────────────────────────────────────────────
   function runSearch() {
     loading.value = true
     page.value = 1
     setTimeout(() => { loading.value = false }, 700)
   }
 
-  // Auto-trigger search if page was opened with a query (e.g. from SearchPage redirect)
+  // Auto-trigger search if page was opened with a query/filters (e.g. from SearchPage redirect)
   onMounted(() => {
     if (query.value || activeFilterCount.value > 0) runSearch()
   })
 
   watch(activeCategory, () => { page.value = 1 })
   watch(filters, () => { page.value = 1 }, { deep: true })
+  watch(advancedFilters, () => { page.value = 1 }, { deep: true })
 
-  // ── Duration helper ───────────────────────────────────────────────────────
+  // ── Duration helper ────────────────────────────────────────────────────
   function matchesDuration(item) {
     if (!filters.value.durations.length || !item.duration) return true
     return filters.value.durations.some(d => {
@@ -126,7 +159,37 @@ export function useListPage(allItems, itemType, opts = {}) {
     })
   }
 
-  // ── Filtered + sorted results ─────────────────────────────────────────────
+  // ── Advanced filter helper ─────────────────────────────────────────────
+  function matchesAdvanced(item) {
+    const af = advancedFilters.value
+
+    if (af.languages.length && item.languages?.length)
+      if (!af.languages.some(l => item.languages.includes(l))) return false
+
+    if (af.groupSizes.length && item.groupSize)
+      if (!af.groupSizes.includes(item.groupSize)) return false
+
+    if (af.months.length && item.departureMonths?.length)
+      if (!af.months.some(m => item.departureMonths.includes(m))) return false
+
+    if (af.difficulty && item.difficulty)
+      if (item.difficulty !== af.difficulty) return false
+
+    if (af.accommodations.length && item.accommodation)
+      if (!af.accommodations.includes(item.accommodation)) return false
+
+    if (af.perks.length && item.perks?.length)
+      if (!af.perks.every(p => item.perks.includes(p))) return false
+
+    if (af.minReviews > 0 && item.reviewCount != null)
+      if (item.reviewCount < af.minReviews) return false
+
+    if (af.instantConfirmation && !item.instantConfirmation) return false
+
+    return true
+  }
+
+  // ── Filtered + sorted results ──────────────────────────────────────────
   const allFiltered = computed(() => {
     let r = [...allItems.value]
 
@@ -159,8 +222,11 @@ export function useListPage(allItems, itemType, opts = {}) {
     if (filters.value.types.length)
       r = r.filter(i => filters.value.types.includes(i.type))
 
-    // Duration (packages only)
+    // Duration
     r = r.filter(matchesDuration)
+
+    // Advanced filters
+    r = r.filter(matchesAdvanced)
 
     // Sort
     if (sortBy.value === 'price_asc')
@@ -188,7 +254,7 @@ export function useListPage(allItems, itemType, opts = {}) {
     if (page.value > totalPages.value) page.value = 1
   })
 
-  // ── Wishlist ──────────────────────────────────────────────────────────────
+  // ── Wishlist ───────────────────────────────────────────────────────────
   const { isSaved, toggle } = useWishlist()
 
   function isItemSaved(item) {
@@ -203,9 +269,9 @@ export function useListPage(allItems, itemType, opts = {}) {
   return {
     // state
     query, activeCategory, sortBy, viewMode,
-    loading, page, filters,
+    loading, page, filters, advancedFilters,
     // computed
-    activeFilterCount, allFiltered, totalPages, pagedResults,
+    activeFilterCount, advancedFilterCount, allFiltered, totalPages, pagedResults,
     // methods
     resetFilters, runSearch,
     // wishlist

@@ -12,16 +12,7 @@
 
     <div class="toolbar-right">
 
-      <select
-        class="sort-select"
-        :value="sortBy"
-        @change="$emit('update:sortBy', $event.target.value)"
-      >
-        <option value="recommended">Recommended</option>
-        <option value="price_asc">Price: Low → High</option>
-        <option value="price_desc">Price: High → Low</option>
-        <option value="rating">Top rated</option>
-      </select>
+
 
       <div class="view-toggle">
         <button

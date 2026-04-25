@@ -19,11 +19,10 @@
       v-model="activeCategory"
       v-model:sortBy="sortBy"
       v-model:viewMode="viewMode"
-      :active-filter-count="activeFilterCount"
-      @open-filters="sidebarOpen = true"
+      :active-filter-count="activeFilterCount + advancedFilterCount"
+      v-model:advancedFilters="advancedFilters"
     />
 
-    <!-- Breadcrumb: Home → Search → Packages -->
     <Breadcrumb :crumbs="[
       { label: 'Home',     to: '/'       },
       { label: 'Search',   to: '/search' },
@@ -44,6 +43,8 @@
       </Transition>
 
       <main class="list-page__main">
+
+
         <ItemGrid
           :items="pagedResults"
           :total="allFiltered.length"
@@ -90,6 +91,7 @@ import FilterBar        from '@/components/shared/FilterBar.vue'
 import ItemGrid         from '@/components/shared/ItemGrid.vue'
 import PackageCard      from '@/components/shared/PackageCard.vue'
 import SidebarFilters   from '@/components/search/SidebarFilters.vue'
+import ResultsToolbar   from '@/components/search/ResultsToolbar.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal     from '@/components/home/BookingModal.vue'
 
@@ -99,14 +101,8 @@ const bookingOpen  = ref(false)
 const selectedItem = ref(null)
 const allItems     = ref(packages)
 
-function goToDetail(item) {
-  router.push(`/packages/${item.id}`)
-}
-
-function openBooking(item) {
-  selectedItem.value = item
-  bookingOpen.value  = true
-}
+function goToDetail(item) { router.push(`/packages/${item.id}`) }
+function openBooking(item) { selectedItem.value = item; bookingOpen.value = true }
 function handleBooking(payload) { console.log('Booked:', payload) }
 
 const heroStats = [
@@ -126,7 +122,9 @@ const categories = [
 
 const {
   query, activeCategory, sortBy, viewMode, loading, page,
-  filters, activeFilterCount, allFiltered, totalPages, pagedResults,
+  filters, advancedFilters,
+  activeFilterCount, advancedFilterCount,
+  allFiltered, totalPages, pagedResults,
   resetFilters, runSearch, isItemSaved, toggleWishlist,
 } = useListPage(allItems, 'package')
 </script>

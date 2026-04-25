@@ -1,10 +1,8 @@
 <template>
   <div class="search-page">
 
-    <!-- ── Navbar (same as all other pages) ──────────────────────────────── -->
     <NavBar />
 
-    <!-- ── Hero (same pattern as Destinations / Packages / Services) ──────── -->
     <PageHero
       title="Search Everything"
       subtitle="Find destinations, packages and services all in one place. Use the filters to narrow down your perfect trip."
@@ -17,22 +15,15 @@
       @search="runSearch"
     />
 
-    <!-- ── Category pills (replaces the ones that were in SearchHeader) ───── -->
-    <div class="search-categories-bar">
-      <div class="search-categories">
-        <button
-          v-for="c in categories"
-          :key="c.key"
-          class="category-pill"
-          :class="{ active: activeCategory === c.key }"
-          @click="activeCategory = c.key"
-        >
-          <span>{{ c.icon }}</span> {{ c.label }}
-        </button>
-      </div>
-    </div>
+    <FilterBar
+      :categories="categories"
+      v-model="activeCategory"
+      v-model:sortBy="sortBy"
+      v-model:viewMode="viewMode"
+      :active-filter-count="activeFilterCount"
+      v-model:advancedFilters="advancedFilters"
+    />
 
-    <!-- ── Breadcrumb ─────────────────────────────────────────────────────── -->
     <Breadcrumb :crumbs="breadcrumbs" />
 
     <div class="search-body">
@@ -63,11 +54,6 @@
           v-model:viewMode="viewMode"
           :active-filter-count="activeFilterCount"
           @open-filters="mobileSidebarOpen = true"
-        />
-
-        <AdvancedFilters
-          v-model="advancedFilters"
-          class="advanced-filters-bar"
         />
 
         <!-- Loading skeletons -->
@@ -142,55 +128,53 @@ import { allForSearch } from '@/data/content.js'
 import NavBar           from '@/components/home/NavBar.vue'
 import PageHero         from '@/components/shared/PageHero.vue'
 import Breadcrumb       from '@/components/shared/Breadcrumb.vue'
+import FilterBar        from '@/components/shared/FilterBar.vue'
 import SidebarFilters   from '@/components/search/SidebarFilters.vue'
-import ResultsToolbar   from '@/components/search/ResultsToolbar.vue'
+
 import ResultCard       from '@/components/search/ResultCard.vue'
 import ResultListCard   from '@/components/search/ResultListCard.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal     from '@/components/search/BookingModal.vue'
-import AdvancedFilters  from '@/components/search/AdvancedFilters.vue'
 
 const route  = useRoute()
 const router = useRouter()
 
-// ── Category → route map ───────────────────────────────────────────────────
+// ── Category → route map ──────────────────────────────────────────────────
 const CATEGORY_ROUTES = {
   dest:    '/destinations',
   package: '/packages',
   service: '/services',
 }
 
+// Note: FilterBar uses `value` not `key` for its modelValue
 const categories = [
-  { key: 'all',     icon: '🌐', label: 'All'          },
-  { key: 'dest',    icon: '📍', label: 'Destinations'  },
-  { key: 'package', icon: '✈️', label: 'Packages'      },
-  { key: 'service', icon: '🛎️', label: 'Services'      },
+  { value: 'all',     label: 'All',          icon: '🌐' },
+  { value: 'dest',    label: 'Destinations', icon: '📍' },
+  { value: 'package', label: 'Packages',     icon: '✈️' },
+  { value: 'service', label: 'Services',     icon: '🛎️' },
 ]
 
 const heroStats = [
-  { icon: '🌍', value: '2,000+', label: 'listings'      },
-  { icon: '📍', value: '1,200+', label: 'destinations'  },
-  { icon: '⭐', value: '4.8',    label: 'avg rating'    },
+  { icon: '🌍', value: '2,000+', label: 'listings'     },
+  { icon: '📍', value: '1,200+', label: 'destinations' },
+  { icon: '⭐', value: '4.8',    label: 'avg rating'   },
 ]
 
-// ── Breadcrumb — dynamic based on active category ──────────────────────────
 const breadcrumbs = computed(() => {
   const base = [
     { label: 'Home',   to: '/' },
     { label: 'Search', to: '/search' },
   ]
   if (activeCategory.value !== 'all') {
-    const cat = categories.find(c => c.key === activeCategory.value)
+    const cat = categories.find(c => c.value === activeCategory.value)
     if (cat) base.push({ label: cat.label })
-  }
-  // When activeCategory is 'all' the last crumb IS Search — make it current
-  if (activeCategory.value === 'all') {
-    base[1] = { label: 'Search' } // no `to`, renders as current
+  } else {
+    base[1] = { label: 'Search' }
   }
   return base
 })
 
-// ── UI state ───────────────────────────────────────────────────────────────
+// ── UI state ──────────────────────────────────────────────────────────────
 const query             = ref(route.query.q || '')
 const activeCategory    = ref('all')
 const sortBy            = ref('recommended')
@@ -203,7 +187,7 @@ const wishlist          = ref([])
 const bookingOpen       = ref(false)
 const selectedItem      = ref(null)
 
-// ── Basic filters ──────────────────────────────────────────────────────────
+// ── Basic filters ─────────────────────────────────────────────────────────
 const filters = ref({
   priceMin:  null,
   priceMax:  null,
@@ -212,7 +196,7 @@ const filters = ref({
   minRating: null,
 })
 
-// ── Advanced filters ───────────────────────────────────────────────────────
+// ── Advanced filters ──────────────────────────────────────────────────────
 const advancedFilters = ref({
   languages:           [],
   groupSizes:          [],
@@ -224,10 +208,10 @@ const advancedFilters = ref({
   instantConfirmation: false,
 })
 
-// ── Redirect to dedicated page when a specific category is selected ────────
+// ── Redirect when a specific category is selected ─────────────────────────
 watch(activeCategory, (cat) => {
   const targetPath = CATEGORY_ROUTES[cat]
-  if (!targetPath) return // 'all' — stay here
+  if (!targetPath) return
 
   const q = {}
   if (query.value?.trim())             q.q         = query.value.trim()
@@ -241,7 +225,7 @@ watch(activeCategory, (cat) => {
   router.push({ path: targetPath, query: q })
 })
 
-// ── Filter count ───────────────────────────────────────────────────────────
+// ── Filter count ──────────────────────────────────────────────────────────
 const activeFilterCount = computed(() => {
   let c = 0
   if (filters.value.priceMin)         c++
@@ -249,14 +233,15 @@ const activeFilterCount = computed(() => {
   if (filters.value.durations.length) c += filters.value.durations.length
   if (filters.value.types.length)     c += filters.value.types.length
   if (filters.value.minRating)        c++
-  if (advancedFilters.value.languages.length)     c += advancedFilters.value.languages.length
-  if (advancedFilters.value.groupSizes.length)    c += advancedFilters.value.groupSizes.length
-  if (advancedFilters.value.months.length)        c += advancedFilters.value.months.length
-  if (advancedFilters.value.difficulty)           c++
-  if (advancedFilters.value.accommodations.length)c += advancedFilters.value.accommodations.length
-  if (advancedFilters.value.perks.length)         c += advancedFilters.value.perks.length
-  if (advancedFilters.value.minReviews > 0)       c++
-  if (advancedFilters.value.instantConfirmation)  c++
+  const af = advancedFilters.value
+  if (af.languages.length)      c += af.languages.length
+  if (af.groupSizes.length)     c += af.groupSizes.length
+  if (af.months.length)         c += af.months.length
+  if (af.difficulty)            c++
+  if (af.accommodations.length) c += af.accommodations.length
+  if (af.perks.length)          c += af.perks.length
+  if (af.minReviews > 0)        c++
+  if (af.instantConfirmation)   c++
   return c
 })
 
@@ -299,10 +284,9 @@ function handleBookingSubmit(payload) {
   console.log('Booking submitted:', payload)
 }
 
-// ── Data ───────────────────────────────────────────────────────────────────
+// ── Data ──────────────────────────────────────────────────────────────────
 const allResults = ref(allForSearch)
 
-// ── Filtering helpers ──────────────────────────────────────────────────────
 function matchesDuration(item) {
   if (!filters.value.durations.length || !item.duration) return true
   return filters.value.durations.some(d => {
@@ -334,7 +318,6 @@ function matchesAdvanced(item) {
   return true
 }
 
-// ── Filtering & Sorting ────────────────────────────────────────────────────
 const allFiltered = computed(() => {
   let r = [...allResults.value]
 
@@ -380,35 +363,6 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
   background: var(--gray-50);
 }
 
-/* ── Category pills bar — sits between hero and breadcrumb ──────────────── */
-.search-categories-bar {
-  background: var(--white);
-  border-bottom: 1px solid var(--gray-100);
-  padding: 0 5%;
-}
-
-.search-categories {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 14px 0;
-  scrollbar-width: none;
-}
-.search-categories::-webkit-scrollbar { display: none; }
-
-.category-pill {
-  display: flex; align-items: center; gap: 7px;
-  padding: 8px 18px; border-radius: 50px;
-  border: 1.5px solid var(--gray-200); background: var(--white);
-  font-family: 'DM Sans', sans-serif; font-size: .86rem; font-weight: 600;
-  color: var(--gray-600); cursor: pointer; white-space: nowrap;
-  transition: all var(--transition);
-  flex-shrink: 0;
-}
-.category-pill:hover  { border-color: var(--coral); color: var(--coral); }
-.category-pill.active { background: var(--coral); border-color: var(--coral); color: #fff; }
-
-/* ── Body: sidebar + results ────────────────────────────────────────────── */
 .search-body {
   display: grid;
   grid-template-columns: 280px 1fr;
@@ -416,13 +370,11 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
   align-items: flex-start;
 }
 
-.results-area  { padding: 28px 32px; min-height: 80vh; }
-.results-grid  { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
-.results-list  { display: flex; flex-direction: column; gap: 18px; }
+.results-area { padding: 28px 32px; min-height: 80vh; }
+.results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 24px; }
+.results-list { display: flex; flex-direction: column; gap: 18px; }
 
-.advanced-filters-bar { margin-bottom: 20px; }
-
-/* ── Skeletons ───────────────────────────────────────────────────────────── */
+/* Skeletons */
 .skeleton-card { background: var(--white); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow); }
 .skeleton-img  { height: 200px; background: linear-gradient(90deg, var(--gray-100) 25%, var(--gray-200) 50%, var(--gray-100) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
 .skeleton-body { padding: 20px; }
@@ -431,18 +383,17 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
 .skeleton-line--med   { width: 65%; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
-/* ── Empty state ─────────────────────────────────────────────────────────── */
+/* Empty state */
 .empty-state        { text-align: center; padding: 80px 20px; }
 .empty-state__icon  { font-size: 3.5rem; margin-bottom: 16px; }
 .empty-state__title { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; }
 .empty-state__sub   { font-size: .95rem; color: var(--gray-400); margin-bottom: 28px; }
 
-/* ── Mobile sidebar backdrop ─────────────────────────────────────────────── */
+/* Sidebar backdrop */
 .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 60; }
 .backdrop-fade-enter-active, .backdrop-fade-leave-active { transition: opacity .25s ease; }
 .backdrop-fade-enter-from, .backdrop-fade-leave-to       { opacity: 0; }
 
-/* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 1024px) {
   .results-area { padding: 24px 20px; }
   .results-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
@@ -451,6 +402,5 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
   .search-body      { grid-template-columns: 1fr; }
   .sidebar-backdrop { display: block; }
   .results-area     { padding: 18px 4%; }
-  .search-categories-bar { padding: 0 4%; }
 }
 </style>

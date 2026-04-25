@@ -19,15 +19,14 @@
       v-model="activeCategory"
       v-model:sortBy="sortBy"
       v-model:viewMode="viewMode"
-      :active-filter-count="activeFilterCount"
-      @open-filters="sidebarOpen = true"
+      :active-filter-count="activeFilterCount + advancedFilterCount"
+      v-model:advancedFilters="advancedFilters"
     />
 
-    <!-- Breadcrumb: Home → Search → Destinations -->
     <Breadcrumb :crumbs="[
-      { label: 'Home',         to: '/'           },
-      { label: 'Search',       to: '/search'     },
-      { label: 'Destinations'                    },
+      { label: 'Home',         to: '/'       },
+      { label: 'Search',       to: '/search' },
+      { label: 'Destinations'               },
     ]" />
 
     <div class="list-page__body">
@@ -44,6 +43,9 @@
       </Transition>
 
       <main class="list-page__main">
+
+        
+
         <ItemGrid
           :items="pagedResults"
           :total="allFiltered.length"
@@ -87,6 +89,7 @@ import FilterBar        from '@/components/shared/FilterBar.vue'
 import ItemGrid         from '@/components/shared/ItemGrid.vue'
 import DestinationCard  from '@/components/shared/DestinationCard.vue'
 import SidebarFilters   from '@/components/search/SidebarFilters.vue'
+import ResultsToolbar   from '@/components/search/ResultsToolbar.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
 
 const router      = useRouter()
@@ -104,17 +107,19 @@ const heroStats = [
 ]
 
 const categories = [
-  { value: 'all',       label: 'All',       icon: '🌐' },
-  { value: 'Beach',     label: 'Beach',     icon: '🏖️' },
-  { value: 'Cultural',  label: 'Cultural',  icon: '🏛️' },
-  { value: 'Adventure', label: 'Adventure', icon: '🧗' },
-  { value: 'City',      label: 'City Break',icon: '🌆' },
-  { value: 'Nature',    label: 'Nature',    icon: '🌿' },
+  { value: 'all',       label: 'All',        icon: '🌐' },
+  { value: 'Beach',     label: 'Beach',      icon: '🏖️' },
+  { value: 'Cultural',  label: 'Cultural',   icon: '🏛️' },
+  { value: 'Adventure', label: 'Adventure',  icon: '🧗' },
+  { value: 'City',      label: 'City Break', icon: '🌆' },
+  { value: 'Nature',    label: 'Nature',     icon: '🌿' },
 ]
 
 const {
   query, activeCategory, sortBy, viewMode, loading, page,
-  filters, activeFilterCount, allFiltered, totalPages, pagedResults,
+  filters, advancedFilters,
+  activeFilterCount, advancedFilterCount,
+  allFiltered, totalPages, pagedResults,
   resetFilters, runSearch, isItemSaved, toggleWishlist,
 } = useListPage(allItems, 'destination')
 </script>
