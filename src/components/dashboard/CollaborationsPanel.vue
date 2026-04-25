@@ -1,7 +1,7 @@
 <template>
   <div class="collab-panel">
 
-    <!-- Top bar -->
+    <!-- Topbar -->
     <div class="collab-topbar">
       <div class="collab-tabs">
         <button
@@ -15,12 +15,10 @@
           <span v-if="tab.count" class="tab-count">{{ tab.count }}</span>
         </button>
       </div>
-      <button class="btn-new" @click="$emit('open-form')">
-        + New Collaboration
-      </button>
+      <button class="btn-new" @click="$emit('open-form')">+ New Collaboration</button>
     </div>
 
-    <!-- ── INCOMING REQUESTS tab ────────────── -->
+    <!-- INCOMING REQUESTS -->
     <div v-if="activeTab === 'requests'">
       <div v-if="incomingRequests.length" class="card-list">
         <CollabRequestCard
@@ -29,6 +27,7 @@
           :collab="req"
           @accept="$emit('accept', req)"
           @decline="$emit('decline', req)"
+          @counter="payload => $emit('counter', payload)"
         />
       </div>
       <div v-else class="empty-state">
@@ -38,7 +37,7 @@
       </div>
     </div>
 
-    <!-- ── SENT REQUESTS tab ────────────────── -->
+    <!-- SENT REQUESTS -->
     <div v-else-if="activeTab === 'sent'">
       <div v-if="sentRequests.length" class="card-list">
         <CollabRequestCard
@@ -47,6 +46,7 @@
           :collab="req"
           @accept="() => {}"
           @decline="() => {}"
+          @counter="() => {}"
         />
       </div>
       <div v-else class="empty-state">
@@ -56,7 +56,7 @@
       </div>
     </div>
 
-    <!-- ── ACTIVE COLLABORATIONS tab ────────── -->
+    <!-- ACTIVE COLLABORATIONS -->
     <div v-else-if="activeTab === 'active'">
       <div v-if="activeCollabs.length" class="offer-grid">
         <CollabOfferCard
@@ -76,7 +76,7 @@
       </div>
     </div>
 
-    <!-- ── ARCHIVE tab ──────────────────────── -->
+    <!-- ARCHIVE -->
     <div v-else-if="activeTab === 'archive'">
       <div v-if="archivedCollabs.length" class="card-list">
         <CollabRequestCard
@@ -85,6 +85,7 @@
           :collab="req"
           @accept="() => {}"
           @decline="() => {}"
+          @counter="() => {}"
         />
       </div>
       <div v-else class="empty-state">
@@ -105,12 +106,10 @@ import CollabOfferCard   from '@/components/dashboard/CollabOfferCard.vue'
 const props = defineProps({
   collaborations: { type: Array, default: () => [] },
 })
-
-defineEmits(['open-form', 'accept', 'decline', 'end'])
+defineEmits(['open-form', 'accept', 'decline', 'counter', 'end'])
 
 const activeTab = ref('requests')
 
-// Derived lists
 const incomingRequests = computed(() =>
   props.collaborations.filter(c => c.direction === 'incoming' && c.status === 'pending')
 )
@@ -121,21 +120,20 @@ const activeCollabs = computed(() =>
   props.collaborations.filter(c => c.status === 'accepted')
 )
 const archivedCollabs = computed(() =>
-  props.collaborations.filter(c => c.status === 'declined' || c.status === 'ended')
+  props.collaborations.filter(c => c.status === 'declined' || c.status === 'ended' || c.status === 'countered')
 )
 
 const tabs = computed(() => [
-  { id: 'requests', label: 'Incoming',   count: incomingRequests.value.length || null },
-  { id: 'sent',     label: 'Sent',       count: null },
-  { id: 'active',   label: 'Active',     count: activeCollabs.value.length || null },
-  { id: 'archive',  label: 'Archive',    count: null },
+  { id: 'requests', label: 'Incoming', count: incomingRequests.value.length || null },
+  { id: 'sent',     label: 'Sent',     count: null },
+  { id: 'active',   label: 'Active',   count: activeCollabs.value.length || null },
+  { id: 'archive',  label: 'Archive',  count: null },
 ])
 </script>
 
 <style scoped>
 .collab-panel { display: flex; flex-direction: column; gap: 20px; }
 
-/* Topbar */
 .collab-topbar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; flex-wrap: wrap;
@@ -162,17 +160,9 @@ const tabs = computed(() => [
 .btn-new:hover { background: #3d4460; }
 .btn-new--center { margin-top: 12px; }
 
-/* Card list */
-.card-list { display: flex; flex-direction: column; gap: 16px; }
+.card-list  { display: flex; flex-direction: column; gap: 16px; }
+.offer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
 
-/* Offer grid */
-.offer-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-}
-
-/* Empty state */
 .empty-state {
   text-align: center; padding: 60px 20px;
   display: flex; flex-direction: column; align-items: center; gap: 8px;

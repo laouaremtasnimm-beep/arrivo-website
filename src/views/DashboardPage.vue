@@ -113,15 +113,16 @@
           />
 
           <!-- COLLABORATIONS -->
-          <CollaborationsPanel
-            v-else-if="activeSection === 'collaborations'"
-            key="collaborations"
-            :collaborations="collaborations"
-            @open-form="collabFormOpen = true"
-            @accept="handleAcceptCollab"
-            @decline="handleDeclineCollab"
-            @end="handleEndCollab"
-          />
+         <CollaborationsPanel
+  v-else-if="activeSection === 'collaborations'"
+  key="collaborations"
+  :collaborations="collaborations"
+  @open-form="collabFormOpen = true"
+  @accept="handleAcceptCollab"
+  @decline="handleDeclineCollab"
+  @counter="handleCounterCollab"   
+  @end="handleEndCollab"
+/>
 
         </Transition>
       </div>
@@ -199,6 +200,38 @@ const sectionMap = {
 }
 const sectionTitle = computed(() => sectionMap[activeSection.value]?.title || '')
 const sectionMeta  = computed(() => sectionMap[activeSection.value]?.meta  || '')
+
+function handleCounterCollab({ original, counter }) {
+  // Mark the original incoming request as countered
+  const idx = collaborations.value.findIndex(c => c.collabID === original.collabID)
+  if (idx !== -1) collaborations.value[idx].status = 'countered'
+
+  // Add the counter as a new outgoing request
+  collaborations.value.unshift({
+    ...counter,
+    collabID:  Date.now(),
+    direction: 'outgoing',
+    status:    'pending',
+    sentDate:  new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+    initiator: { name: user.value?.name || 'You', role: user.value?.role },
+    partner:   original.partner,
+    isCounter: true,
+  })
+
+  // Simulate: after 1.5s the partner receives it as a new incoming
+  setTimeout(() => {
+    collaborations.value.push({
+      ...counter,
+      collabID:  Date.now() + 0.5,
+      direction: 'incoming',
+      status:    'pending',
+      sentDate:  'Just now',
+      initiator: { name: original.partner?.name, role: original.partner?.role },
+      partner:   { id: 'self', name: user.value?.name || 'You', role: user.value?.role, color: '#FF5A5F' },
+      isCounter: true,
+    })
+  }, 1500)
+}
 
 function setSection(s) {
   activeSection.value = s
