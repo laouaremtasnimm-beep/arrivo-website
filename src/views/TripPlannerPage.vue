@@ -2,7 +2,7 @@
   <div class="planner-page">
     <NavBar />
 
-    <!-- ── Page header ──────────────────────────────────────────────────── -->
+    <!-- ── Hero ──────────────────────────────────────────────────────────── -->
     <header class="planner-hero">
       <div class="planner-hero__left">
         <div class="planner-hero__eyebrow">🗺️ Trip Planner</div>
@@ -15,25 +15,14 @@
       </div>
       <div class="planner-hero__right">
         <div class="planner-meta-card">
-          <!-- Trip name -->
           <div class="meta-row">
             <label class="meta-label">Trip name</label>
-            <input
-              class="meta-input meta-input--title"
-              v-model="trip.name"
-              placeholder="My Dream Trip"
-            />
+            <input class="meta-input meta-input--title" v-model="trip.name" placeholder="My Dream Trip" />
           </div>
-          <!-- Destination -->
           <div class="meta-row">
             <label class="meta-label">Destination</label>
-            <input
-              class="meta-input"
-              v-model="trip.destination"
-              placeholder="e.g. Kyoto, Japan"
-            />
+            <input class="meta-input" v-model="trip.destination" placeholder="e.g. Kyoto, Japan" />
           </div>
-          <!-- Dates -->
           <div class="meta-two-col">
             <div class="meta-row">
               <label class="meta-label">From</label>
@@ -44,7 +33,6 @@
               <input class="meta-input" type="date" v-model="trip.endDate" />
             </div>
           </div>
-          <!-- Travelers -->
           <div class="meta-row">
             <label class="meta-label">Travelers</label>
             <div class="traveler-counter">
@@ -54,46 +42,39 @@
               <span class="counter-unit">{{ trip.travelers === 1 ? 'person' : 'people' }}</span>
             </div>
           </div>
-          <!-- Budget -->
           <div class="meta-row">
             <label class="meta-label">Total budget</label>
             <div class="budget-input-wrap">
               <span class="budget-currency">$</span>
-              <input
-                class="meta-input meta-input--budget"
-                type="number" min="0"
-                v-model.number="trip.budget"
-                placeholder="0"
-              />
+              <input class="meta-input meta-input--budget" type="number" min="0" v-model.number="trip.budget" placeholder="0" />
             </div>
           </div>
         </div>
       </div>
     </header>
 
-    <!-- ── Main planner area ────────────────────────────────────────────── -->
+    <!-- ── Main ──────────────────────────────────────────────────────────── -->
     <div class="planner-body">
 
-      <!-- Left: day-by-day itinerary -->
+      <!-- Left: itinerary -->
       <div class="planner-itinerary">
 
         <div class="itinerary-toolbar">
           <h2 class="itinerary-heading">Itinerary</h2>
           <div class="itinerary-toolbar__actions">
-            <button class="btn-ghost-sm" @click="collapseAll = !collapseAll">
-              {{ collapseAll ? '↕ Expand all' : '↕ Collapse all' }}
+            <button class="btn-ghost-sm" @click="toggleCollapseAll">
+              {{ allCollapsed ? '↕ Expand all' : '↕ Collapse all' }}
             </button>
             <button class="btn btn-coral btn-sm" @click="addDay">+ Add day</button>
           </div>
         </div>
 
-        <!-- Days list -->
+        <!-- FIX 1: TransitionGroup wraps only the day-block divs, nothing else -->
         <TransitionGroup name="day-list" tag="div" class="days-list">
           <div
             v-for="(day, di) in trip.days"
             :key="day.id"
             class="day-block"
-            :class="{ 'day-block--collapsed': collapseAll }"
           >
             <!-- Day header -->
             <div class="day-header" @click="toggleDay(day.id)">
@@ -109,17 +90,18 @@
               </div>
               <div class="day-header__right">
                 <span class="day-cost">${{ dayTotal(day).toLocaleString() }}</span>
-                <button class="day-move-btn" :disabled="di === 0"               @click.stop="moveDay(di, -1)" title="Move up">↑</button>
-                <button class="day-move-btn" :disabled="di === trip.days.length - 1" @click.stop="moveDay(di, 1)"  title="Move down">↓</button>
+                <button class="day-move-btn" :disabled="di === 0" @click.stop="moveDay(di, -1)" title="Move up">↑</button>
+                <button class="day-move-btn" :disabled="di === trip.days.length - 1" @click.stop="moveDay(di, 1)" title="Move down">↓</button>
                 <button class="day-delete-btn" @click.stop="deleteDay(day.id)" title="Remove day">✕</button>
                 <span class="day-chevron" :class="{ open: openDays.includes(day.id) }">›</span>
               </div>
             </div>
 
-            <!-- Activities -->
+            <!-- Day body -->
             <Transition name="day-expand">
               <div v-if="openDays.includes(day.id)" class="day-body">
 
+                <!-- FIX 2: TransitionGroup for activities — each child must have :key, no v-if siblings -->
                 <TransitionGroup name="activity-list" tag="div" class="activities-list">
                   <div
                     v-for="act in day.activities"
@@ -127,11 +109,7 @@
                     class="activity-row"
                   >
                     <div class="activity-time">
-                      <input
-                        class="time-input"
-                        type="time"
-                        v-model="act.time"
-                      />
+                      <input class="time-input" type="time" v-model="act.time" />
                     </div>
 
                     <div class="activity-icon-wrap">
@@ -142,46 +120,25 @@
                     </div>
 
                     <div class="activity-main">
-                      <input
-                        class="activity-title-input"
-                        v-model="act.title"
-                        placeholder="Activity name"
-                      />
-                      <input
-                        class="activity-note-input"
-                        v-model="act.note"
-                        placeholder="Add a note…"
-                      />
+                      <input class="activity-title-input" v-model="act.title" placeholder="Activity name" />
+                      <input class="activity-note-input" v-model="act.note" placeholder="Add a note…" />
                     </div>
 
                     <div class="activity-cost-wrap">
                       <span class="cost-prefix">$</span>
-                      <input
-                        class="activity-cost-input"
-                        type="number" min="0"
-                        v-model.number="act.cost"
-                        placeholder="0"
-                      />
+                      <input class="activity-cost-input" type="number" min="0" v-model.number="act.cost" placeholder="0" />
                     </div>
 
                     <button class="activity-del" @click="deleteActivity(day.id, act.id)" title="Remove">✕</button>
                   </div>
                 </TransitionGroup>
 
-                <!-- Add activity -->
                 <button class="add-activity-btn" @click="addActivity(day.id)">
-                  <span class="add-activity-btn__plus">+</span>
-                  Add activity
+                  <span class="add-activity-btn__plus">+</span> Add activity
                 </button>
 
-                <!-- Day note -->
                 <div class="day-note-row">
-                  <textarea
-                    class="day-note"
-                    v-model="day.note"
-                    placeholder="Day notes, tips, reminders…"
-                    rows="2"
-                  />
+                  <textarea class="day-note" v-model="day.note" placeholder="Day notes, tips, reminders…" rows="2" />
                 </div>
 
               </div>
@@ -195,16 +152,15 @@
 
       </div>
 
-      <!-- Right: summary panel -->
+      <!-- Right: summary -->
       <aside class="planner-summary">
 
-        <!-- Budget tracker -->
+        <!-- Budget -->
         <div class="summary-card">
           <div class="summary-card__header">
             <h3 class="summary-card__title">💰 Budget</h3>
             <span class="budget-status" :class="budgetStatus">{{ budgetStatusLabel }}</span>
           </div>
-
           <div class="budget-bar-wrap">
             <div class="budget-bar">
               <div
@@ -222,17 +178,19 @@
               </span>
             </div>
           </div>
-
+          <!-- FIX 3: v-if and v-for on same element → wrap in template -->
           <div class="budget-breakdown">
-            <div class="budget-row" v-for="t in activityTypes" :key="t.value" v-if="costByType(t.value) > 0">
-              <span class="budget-row__icon">{{ t.icon }}</span>
-              <span class="budget-row__label">{{ t.label }}</span>
-              <span class="budget-row__val">${{ costByType(t.value).toLocaleString() }}</span>
-            </div>
+            <template v-for="t in activityTypes" :key="t.value">
+              <div v-if="costByType(t.value) > 0" class="budget-row">
+                <span class="budget-row__icon">{{ t.icon }}</span>
+                <span class="budget-row__label">{{ t.label }}</span>
+                <span class="budget-row__val">${{ costByType(t.value).toLocaleString() }}</span>
+              </div>
+            </template>
           </div>
         </div>
 
-        <!-- Trip stats -->
+        <!-- Stats -->
         <div class="summary-card">
           <h3 class="summary-card__title">📊 Overview</h3>
           <div class="stats-grid">
@@ -259,31 +217,29 @@
         <div class="summary-card">
           <h3 class="summary-card__title">🏷️ Activity types</h3>
           <div class="type-bars">
-            <div v-for="t in activityTypes" :key="t.value" v-if="countByType(t.value) > 0" class="type-bar-row">
-              <span class="type-bar-label">{{ t.icon }} {{ t.label }}</span>
-              <div class="type-bar-track">
-                <div
-                  class="type-bar-fill"
-                  :style="{ width: (countByType(t.value) / totalActivities * 100) + '%', background: t.color }"
-                />
+            <!-- FIX 4: same v-if + v-for fix here too -->
+            <template v-for="t in activityTypes" :key="t.value">
+              <div v-if="countByType(t.value) > 0" class="type-bar-row">
+                <span class="type-bar-label">{{ t.icon }} {{ t.label }}</span>
+                <div class="type-bar-track">
+                  <div
+                    class="type-bar-fill"
+                    :style="{ width: (countByType(t.value) / totalActivities * 100) + '%', background: t.color }"
+                  />
+                </div>
+                <span class="type-bar-count">{{ countByType(t.value) }}</span>
               </div>
-              <span class="type-bar-count">{{ countByType(t.value) }}</span>
-            </div>
+            </template>
           </div>
         </div>
 
         <!-- Actions -->
         <div class="summary-actions">
-          <button class="btn btn-coral summary-btn" @click="printPlan">
-            🖨️ Print / Export
-          </button>
-          <button class="btn btn-outline summary-btn" @click="resetPlan">
-            ↺ Start over
-          </button>
+          <button class="btn btn-coral summary-btn" @click="printPlan">🖨️ Print / Export</button>
+          <button class="btn btn-outline summary-btn" @click="resetPlan">↺ Start over</button>
         </div>
 
-        <!-- Search link -->
-        <RouterLink to="/search" class="summary-search-cta">
+        <RouterLink :to="{ path: '/search', query: { q: trip.destination || '' } }" class="summary-search-cta">
           <span class="summary-search-cta__icon">✈️</span>
           <span>
             <strong>Find packages for {{ trip.destination || 'your destination' }}</strong>
@@ -294,8 +250,8 @@
       </aside>
     </div>
 
-    <!-- ── Print view (hidden, shown on print) ─────────────────────────── -->
-    <div class="print-view" id="print-view">
+    <!-- Print view -->
+    <div class="print-view">
       <h1>{{ trip.name || 'My Trip' }}</h1>
       <p class="print-meta">{{ trip.destination }} · {{ trip.startDate }} – {{ trip.endDate }} · {{ trip.travelers }} traveler{{ trip.travelers !== 1 ? 's' : '' }}</p>
       <div v-for="(day, di) in trip.days" :key="day.id" class="print-day">
@@ -312,7 +268,7 @@
         <p class="print-day-note" v-if="day.note">📝 {{ day.note }}</p>
         <p class="print-day-total">Day total: ${{ dayTotal(day).toLocaleString() }}</p>
       </div>
-      <p class="print-total">Total trip cost: ${{ totalSpent.toLocaleString() }} · Per person: ${{ perPersonCost.toLocaleString() }}</p>
+      <p class="print-total">Total: ${{ totalSpent.toLocaleString() }} · Per person: ${{ perPersonCost.toLocaleString() }}</p>
     </div>
 
     <SiteFooter />
@@ -321,13 +277,10 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
 import NavBar     from '@/components/home/NavBar.vue'
 import SiteFooter from '@/components/home/SiteFooter.vue'
 
-const router = useRouter()
-
-// ── Activity type definitions ─────────────────────────────────────────────
+// ── Activity types ────────────────────────────────────────────────────────
 const activityTypes = [
   { value: 'transport', label: 'Transport',    icon: '🚌', color: '#6366f1' },
   { value: 'hotel',     label: 'Hotel',        icon: '🏨', color: '#0ea5e9' },
@@ -338,13 +291,14 @@ const activityTypes = [
   { value: 'nature',    label: 'Nature',       icon: '🌿', color: '#22c55e' },
   { value: 'other',     label: 'Other',        icon: '📌', color: '#94a3b8' },
 ]
+
 function activityIcon(type) {
   return activityTypes.find(t => t.value === type)?.icon ?? '📌'
 }
 
-// ── ID generators ─────────────────────────────────────────────────────────
-let _dayId  = 10
-let _actId  = 100
+// ── ID helpers ────────────────────────────────────────────────────────────
+let _dayId = 10
+let _actId = 100
 const uid = () => ++_dayId
 const aid = () => ++_actId
 
@@ -357,30 +311,35 @@ function makeDay(overrides = {}) {
 
 // ── Trip state ────────────────────────────────────────────────────────────
 const trip = ref({
-  name:        '',
-  destination: '',
-  startDate:   '',
-  endDate:     '',
-  travelers:   2,
-  budget:      3000,
+  name: '', destination: '', startDate: '', endDate: '',
+  travelers: 2, budget: 3000,
   days: [
-    makeDay({ title: 'Arrival',    activities: [makeActivity({ type: 'transport', title: 'Airport transfer', cost: 45 }), makeActivity({ type: 'hotel', title: 'Check in', cost: 180 })] }),
-    makeDay({ title: 'Explore',    activities: [makeActivity({ type: 'food', title: 'Breakfast', cost: 20 }), makeActivity({ type: 'sight', title: 'Old Town tour', cost: 35 }), makeActivity({ type: 'food', title: 'Dinner', cost: 60 })] }),
-    makeDay({ title: 'Day trip',   activities: [makeActivity({ type: 'transport', title: 'Rental car', cost: 80 }), makeActivity({ type: 'nature', title: 'Coastal hike', cost: 0 })] }),
-    makeDay({ title: 'Departure',  activities: [makeActivity({ type: 'food', title: 'Last breakfast', cost: 25 }), makeActivity({ type: 'transport', title: 'Return transfer', cost: 45 })] }),
+    makeDay({ title: 'Arrival',   activities: [makeActivity({ type: 'transport', title: 'Airport transfer', cost: 45 }), makeActivity({ type: 'hotel', title: 'Check in', cost: 180 })] }),
+    makeDay({ title: 'Explore',   activities: [makeActivity({ type: 'food', title: 'Breakfast', cost: 20 }), makeActivity({ type: 'sight', title: 'Old Town tour', cost: 35 }), makeActivity({ type: 'food', title: 'Dinner', cost: 60 })] }),
+    makeDay({ title: 'Day trip',  activities: [makeActivity({ type: 'transport', title: 'Rental car', cost: 80 }), makeActivity({ type: 'nature', title: 'Coastal hike', cost: 0 })] }),
+    makeDay({ title: 'Departure', activities: [makeActivity({ type: 'food', title: 'Last breakfast', cost: 25 }), makeActivity({ type: 'transport', title: 'Return transfer', cost: 45 })] }),
   ],
 })
 
-// ── Open/collapse state ───────────────────────────────────────────────────
-const openDays   = ref([trip.value.days[0].id])
-const collapseAll = ref(false)
+// ── Open / collapse ───────────────────────────────────────────────────────
+const openDays    = ref([trip.value.days[0].id])
+const allCollapsed = ref(false)
+
+function toggleCollapseAll() {
+  allCollapsed.value = !allCollapsed.value
+  if (allCollapsed.value) {
+    openDays.value = []
+  } else {
+    openDays.value = trip.value.days.map(d => d.id)
+  }
+}
 
 function toggleDay(id) {
   const idx = openDays.value.indexOf(id)
   idx === -1 ? openDays.value.push(id) : openDays.value.splice(idx, 1)
 }
 
-// ── Day helpers ───────────────────────────────────────────────────────────
+// ── Day operations ────────────────────────────────────────────────────────
 function dayDate(di) {
   if (!trip.value.startDate) return ''
   const d = new Date(trip.value.startDate)
@@ -401,10 +360,9 @@ function deleteDay(id) {
 }
 
 function moveDay(idx, dir) {
-  const days = trip.value.days
   const newIdx = idx + dir
-  if (newIdx < 0 || newIdx >= days.length) return
-  const copy = [...days]
+  if (newIdx < 0 || newIdx >= trip.value.days.length) return
+  const copy = [...trip.value.days]
   ;[copy[idx], copy[newIdx]] = [copy[newIdx], copy[idx]]
   trip.value.days = copy
 }
@@ -413,7 +371,7 @@ function dayTotal(day) {
   return day.activities.reduce((s, a) => s + (Number(a.cost) || 0), 0)
 }
 
-// ── Activity helpers ──────────────────────────────────────────────────────
+// ── Activity operations ───────────────────────────────────────────────────
 function addActivity(dayId) {
   const day = trip.value.days.find(d => d.id === dayId)
   if (day) day.activities.push(makeActivity())
@@ -424,7 +382,7 @@ function deleteActivity(dayId, actId) {
   if (day) day.activities = day.activities.filter(a => a.id !== actId)
 }
 
-// ── Computed totals ───────────────────────────────────────────────────────
+// ── Computed ──────────────────────────────────────────────────────────────
 const totalSpent = computed(() =>
   trip.value.days.reduce((s, d) => s + dayTotal(d), 0)
 )
@@ -432,10 +390,14 @@ const totalActivities = computed(() =>
   trip.value.days.reduce((s, d) => s + d.activities.length, 0)
 )
 const perPersonCost = computed(() =>
-  trip.value.travelers > 0 ? Math.round(totalSpent.value / trip.value.travelers) : totalSpent.value
+  trip.value.travelers > 0
+    ? Math.round(totalSpent.value / trip.value.travelers)
+    : totalSpent.value
 )
 const budgetPct = computed(() =>
-  trip.value.budget > 0 ? Math.min(100, Math.round(totalSpent.value / trip.value.budget * 100)) : 0
+  trip.value.budget > 0
+    ? Math.min(100, Math.round(totalSpent.value / trip.value.budget * 100))
+    : 0
 )
 const budgetStatus = computed(() => {
   if (!trip.value.budget) return 'status--none'
@@ -453,7 +415,9 @@ const budgetStatusLabel = computed(() => ({
 
 function costByType(type) {
   return trip.value.days.reduce((s, d) =>
-    s + d.activities.filter(a => a.type === type).reduce((ss, a) => ss + (Number(a.cost) || 0), 0), 0)
+    s + d.activities
+      .filter(a => a.type === type)
+      .reduce((ss, a) => ss + (Number(a.cost) || 0), 0), 0)
 }
 function countByType(type) {
   return trip.value.days.reduce((s, d) =>
@@ -475,58 +439,38 @@ function resetPlan() {
 </script>
 
 <style scoped>
-/* ── Page shell ──────────────────────────────────────────────────────────── */
-.planner-page {
-  min-height: 100vh;
-  background: var(--sand);
-  padding-top: 68px;
-}
+.planner-page { min-height: 100vh; background: var(--sand); padding-top: 68px; }
 
-/* ── Hero / trip setup ───────────────────────────────────────────────────── */
+/* ── Hero ────────────────────────────────────────────────────────────────── */
 .planner-hero {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 48px;
-  align-items: center;
-  padding: 52px 5% 44px;
-  background: var(--indigo);
-  position: relative;
-  overflow: hidden;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 48px;
+  align-items: center; padding: 52px 5% 60px;
+  background: var(--indigo); position: relative; overflow: hidden;
 }
 .planner-hero::after {
-  content: '';
-  position: absolute; bottom: -1px; left: 0; right: 0;
-  height: 40px;
-  background: var(--sand);
+  content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+  height: 40px; background: var(--sand);
   clip-path: ellipse(55% 100% at 50% 100%);
 }
 
 .planner-hero__eyebrow {
   font-size: .78rem; font-weight: 700; letter-spacing: .1em;
-  text-transform: uppercase; color: var(--coral);
-  margin-bottom: 14px;
+  text-transform: uppercase; color: var(--coral); margin-bottom: 14px;
 }
 .planner-hero__title {
   font-family: 'Fraunces', serif;
   font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 700; color: #fff; line-height: 1.1;
-  margin-bottom: 14px;
+  font-weight: 700; color: #fff; line-height: 1.1; margin-bottom: 14px;
 }
 .planner-hero__title em { color: var(--coral); font-style: italic; }
-.planner-hero__sub {
-  font-size: .95rem; color: rgba(255,255,255,.6); line-height: 1.65;
-}
+.planner-hero__sub { font-size: .95rem; color: rgba(255,255,255,.6); line-height: 1.65; }
 
-/* Meta card */
 .planner-meta-card {
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: var(--radius);
-  padding: 24px 28px;
+  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12);
+  border-radius: var(--radius); padding: 24px 28px;
   display: flex; flex-direction: column; gap: 16px;
   backdrop-filter: blur(10px);
 }
-
 .meta-row   { display: flex; flex-direction: column; gap: 5px; }
 .meta-label {
   font-size: .72rem; font-weight: 700; letter-spacing: .07em;
@@ -536,22 +480,18 @@ function resetPlan() {
   background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
   border-radius: var(--radius-sm); padding: 9px 13px;
   font-family: 'DM Sans', sans-serif; font-size: .92rem; color: #fff;
-  outline: none; transition: border-color var(--transition);
-  width: 100%;
+  outline: none; transition: border-color var(--transition); width: 100%;
 }
 .meta-input::placeholder { color: rgba(255,255,255,.35); }
 .meta-input:focus { border-color: var(--coral); }
 .meta-input--title { font-weight: 600; font-size: 1rem; }
-
 .meta-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-.traveler-counter {
-  display: flex; align-items: center; gap: 10px;
-}
+.traveler-counter { display: flex; align-items: center; gap: 10px; }
 .counter-btn {
   width: 30px; height: 30px; border-radius: 50%;
   border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.1);
-  color: #fff; font-size: 1.1rem; cursor: pointer; line-height: 1;
+  color: #fff; font-size: 1.1rem; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all var(--transition);
 }
@@ -566,61 +506,48 @@ function resetPlan() {
 }
 .meta-input--budget { padding-left: 26px; }
 
-/* ── Body (two-column) ───────────────────────────────────────────────────── */
+/* ── Body ────────────────────────────────────────────────────────────────── */
 .planner-body {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 28px;
-  padding: 36px 5% 64px;
-  align-items: flex-start;
+  display: grid; grid-template-columns: 1fr 340px; gap: 28px;
+  padding: 36px 5% 64px; align-items: flex-start;
 }
 
-/* ── Itinerary column ────────────────────────────────────────────────────── */
-.planner-itinerary { display: flex; flex-direction: column; gap: 0; }
+/* ── Itinerary ───────────────────────────────────────────────────────────── */
+.planner-itinerary { display: flex; flex-direction: column; }
 
 .itinerary-toolbar {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 20px;
 }
 .itinerary-heading {
-  font-family: 'Fraunces', serif; font-size: 1.4rem; font-weight: 700;
-  color: var(--indigo);
+  font-family: 'Fraunces', serif; font-size: 1.4rem; font-weight: 700; color: var(--indigo);
 }
 .itinerary-toolbar__actions { display: flex; gap: 10px; align-items: center; }
 
 .btn-ghost-sm {
-  background: none; border: 1.5px solid var(--gray-200);
-  border-radius: 8px; padding: 7px 13px;
+  background: none; border: 1.5px solid var(--gray-200); border-radius: 8px; padding: 7px 13px;
   font-family: 'DM Sans', sans-serif; font-size: .8rem; font-weight: 600;
   color: var(--gray-600); cursor: pointer; transition: all var(--transition);
 }
 .btn-ghost-sm:hover { border-color: var(--indigo); color: var(--indigo); }
-
 .btn-sm { padding: 8px 18px !important; font-size: .84rem !important; }
 
-/* Day list transitions */
-.day-list-enter-active,
-.day-list-leave-active { transition: all .28s ease; }
-.day-list-enter-from   { opacity: 0; transform: translateY(12px); }
-.day-list-leave-to     { opacity: 0; transform: translateX(-10px); }
+.day-list-enter-active, .day-list-leave-active { transition: all .28s ease; }
+.day-list-enter-from  { opacity: 0; transform: translateY(12px); }
+.day-list-leave-to    { opacity: 0; transform: translateX(-10px); }
 
-/* Day block */
+.days-list { display: flex; flex-direction: column; }
+
 .day-block {
-  background: var(--white);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  margin-bottom: 16px;
-  overflow: hidden;
-  border-left: 4px solid var(--coral);
+  background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow);
+  margin-bottom: 16px; overflow: hidden; border-left: 4px solid var(--coral);
   transition: box-shadow var(--transition);
 }
 .day-block:hover { box-shadow: var(--shadow-md); }
 
 .day-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 16px 20px; cursor: pointer;
-  user-select: none;
-  gap: 12px;
+  padding: 16px 20px; cursor: pointer; user-select: none; gap: 12px;
 }
 .day-header__left  { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .day-header__right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
@@ -629,16 +556,13 @@ function resetPlan() {
   font-family: 'Fraunces', serif; font-size: .95rem; font-weight: 700;
   color: var(--coral); white-space: nowrap; flex-shrink: 0;
 }
-.day-date {
-  font-size: .75rem; color: var(--gray-400); white-space: nowrap; flex-shrink: 0;
-}
+.day-date { font-size: .75rem; color: var(--gray-400); white-space: nowrap; flex-shrink: 0; }
 .day-title-input {
   border: none; outline: none; background: transparent;
   font-family: 'DM Sans', sans-serif; font-size: .92rem; font-weight: 600;
   color: var(--indigo); min-width: 0; flex: 1;
 }
 .day-title-input::placeholder { color: var(--gray-400); font-weight: 400; }
-
 .day-cost {
   font-size: .82rem; font-weight: 700; color: var(--indigo);
   background: var(--gray-100); padding: 3px 10px; border-radius: 50px;
@@ -660,56 +584,44 @@ function resetPlan() {
   transition: all var(--transition);
 }
 .day-delete-btn:hover { background: #fee2e2; border-color: #ef4444; color: #ef4444; }
-
 .day-chevron {
   font-size: 1.2rem; color: var(--gray-400);
   transition: transform .22s ease; display: inline-block;
 }
 .day-chevron.open { transform: rotate(90deg); }
 
-/* Day body expand */
-.day-expand-enter-active,
-.day-expand-leave-active { transition: all .24s ease; }
-.day-expand-enter-from,
-.day-expand-leave-to     { opacity: 0; transform: translateY(-6px); }
+.day-expand-enter-active, .day-expand-leave-active { transition: all .24s ease; }
+.day-expand-enter-from, .day-expand-leave-to { opacity: 0; transform: translateY(-6px); }
 
 .day-body { padding: 0 20px 16px; border-top: 1px solid var(--gray-100); }
 
-/* Activities */
-.activity-list-enter-active,
-.activity-list-leave-active { transition: all .2s ease; }
-.activity-list-enter-from   { opacity: 0; transform: translateX(-8px); }
-.activity-list-leave-to     { opacity: 0; transform: translateX(8px); }
+.activity-list-enter-active, .activity-list-leave-active { transition: all .2s ease; }
+.activity-list-enter-from { opacity: 0; transform: translateX(-8px); }
+.activity-list-leave-to   { opacity: 0; transform: translateX(8px); }
 
-.activities-list { display: flex; flex-direction: column; gap: 0; margin-top: 12px; }
+.activities-list { display: flex; flex-direction: column; margin-top: 12px; }
 
 .activity-row {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--gray-100);
+  padding: 8px 0; border-bottom: 1px solid var(--gray-100);
 }
 .activity-row:last-child { border-bottom: none; }
 
-.activity-time {
-  flex-shrink: 0;
-}
 .time-input {
-  border: 1px solid var(--gray-200); border-radius: 7px;
-  padding: 5px 8px; font-family: 'DM Sans', sans-serif;
-  font-size: .78rem; color: var(--indigo);
-  outline: none; width: 82px; transition: border-color var(--transition);
+  border: 1px solid var(--gray-200); border-radius: 7px; padding: 5px 8px;
+  font-family: 'DM Sans', sans-serif; font-size: .78rem; color: var(--indigo);
+  outline: none; width: 82px; flex-shrink: 0; transition: border-color var(--transition);
 }
 .time-input:focus { border-color: var(--coral); }
 
-.activity-icon-wrap { position: relative; flex-shrink: 0; }
+.activity-icon-wrap { position: relative; flex-shrink: 0; width: 32px; height: 32px; }
 .activity-icon-select {
-  opacity: 0; position: absolute; inset: 0; cursor: pointer;
-  width: 100%; height: 100%;
+  opacity: 0; position: absolute; inset: 0; cursor: pointer; width: 100%; height: 100%;
 }
 .activity-icon-display {
-  width: 32px; height: 32px; border-radius: 8px;
-  background: var(--gray-100); display: flex; align-items: center;
-  justify-content: center; font-size: 1rem; cursor: pointer;
+  width: 32px; height: 32px; border-radius: 8px; background: var(--gray-100);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; cursor: pointer; pointer-events: none;
   transition: background var(--transition);
 }
 .activity-icon-wrap:hover .activity-icon-display { background: var(--gray-200); }
@@ -723,8 +635,7 @@ function resetPlan() {
 .activity-title-input::placeholder { color: var(--gray-400); font-weight: 400; }
 .activity-note-input {
   border: none; outline: none; background: transparent;
-  font-family: 'DM Sans', sans-serif; font-size: .76rem;
-  color: var(--gray-400); width: 100%;
+  font-family: 'DM Sans', sans-serif; font-size: .76rem; color: var(--gray-400); width: 100%;
 }
 .activity-note-input::placeholder { color: var(--gray-200); }
 
@@ -742,9 +653,9 @@ function resetPlan() {
 
 .activity-del {
   width: 24px; height: 24px; border-radius: 6px; border: none; background: none;
-  font-size: .72rem; cursor: pointer; color: var(--gray-400);
+  font-size: .72rem; cursor: pointer; color: var(--gray-400); flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  transition: all var(--transition); flex-shrink: 0;
+  transition: all var(--transition);
 }
 .activity-del:hover { background: #fee2e2; color: #ef4444; }
 
@@ -767,64 +678,36 @@ function resetPlan() {
 }
 .day-note:focus { border-color: var(--coral); background: var(--white); }
 
-/* Add day button */
 .add-day-btn {
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  width: 100%; padding: 14px;
-  border: 2px dashed var(--gray-200); border-radius: var(--radius);
-  background: none; cursor: pointer;
+  width: 100%; padding: 14px; border: 2px dashed var(--gray-200);
+  border-radius: var(--radius); background: none; cursor: pointer;
   font-family: 'DM Sans', sans-serif; font-size: .9rem; font-weight: 600;
-  color: var(--gray-400); transition: all var(--transition);
-  margin-top: 8px;
+  color: var(--gray-400); transition: all var(--transition); margin-top: 8px;
 }
 .add-day-btn span { font-size: 1.3rem; line-height: 1; }
 .add-day-btn:hover { border-color: var(--coral); color: var(--coral); background: var(--coral-lt); }
 
-/* ── Summary panel ───────────────────────────────────────────────────────── */
-.planner-summary {
-  position: sticky; top: 84px;
-  display: flex; flex-direction: column; gap: 16px;
-}
+/* ── Summary ─────────────────────────────────────────────────────────────── */
+.planner-summary { position: sticky; top: 84px; display: flex; flex-direction: column; gap: 16px; }
 
-.summary-card {
-  background: var(--white);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 20px 22px;
-}
-.summary-card__header {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 14px;
-}
-.summary-card__title {
-  font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 700;
-  color: var(--indigo); margin: 0 0 14px;
-}
+.summary-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
+.summary-card__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.summary-card__title { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 700; color: var(--indigo); margin: 0 0 14px; }
 .summary-card__header .summary-card__title { margin: 0; }
 
-/* Budget status chip */
-.budget-status {
-  font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 50px;
-}
+.budget-status { font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 50px; }
 .status--ok   { background: rgba(39,174,96,.1);  color: #27ae60; }
 .status--warn { background: rgba(245,158,11,.1); color: #d97706; }
 .status--over { background: rgba(239,68,68,.1);  color: #ef4444; }
 .status--none { background: var(--gray-100);     color: var(--gray-400); }
 
-/* Budget bar */
 .budget-bar-wrap { margin-bottom: 12px; }
-.budget-bar {
-  height: 8px; border-radius: 4px; background: var(--gray-100);
-  overflow: hidden; margin-bottom: 6px;
-}
-.budget-bar__fill {
-  height: 100%; border-radius: 4px;
-  background: linear-gradient(90deg, #27ae60, #2ec4b6);
-  transition: width .4s ease;
-}
-.budget-bar__fill--over { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+.budget-bar { height: 8px; border-radius: 4px; background: var(--gray-100); overflow: hidden; margin-bottom: 6px; }
+.budget-bar__fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg,#27ae60,#2ec4b6); transition: width .4s ease; }
+.budget-bar__fill--over { background: linear-gradient(90deg,#f59e0b,#ef4444); }
 .budget-bar-labels { display: flex; justify-content: space-between; font-size: .76rem; }
-.budget-spent { color: var(--gray-600); font-weight: 600; }
+.budget-spent     { color: var(--gray-600); font-weight: 600; }
 .budget-remaining { color: #27ae60; font-weight: 700; }
 .budget-remaining.negative { color: #ef4444; }
 
@@ -834,19 +717,11 @@ function resetPlan() {
 .budget-row__label { flex: 1; color: var(--gray-600); }
 .budget-row__val   { font-weight: 700; color: var(--indigo); }
 
-/* Stats grid */
-.stats-grid {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-}
-.stat-cell {
-  background: var(--gray-50); border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  display: flex; flex-direction: column; gap: 3px;
-}
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stat-cell { background: var(--gray-50); border-radius: var(--radius-sm); padding: 12px 14px; display: flex; flex-direction: column; gap: 3px; }
 .stat-val   { font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 700; color: var(--coral); line-height: 1; }
 .stat-label { font-size: .72rem; color: var(--gray-400); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
 
-/* Type bars */
 .type-bars { display: flex; flex-direction: column; gap: 9px; }
 .type-bar-row { display: flex; align-items: center; gap: 8px; }
 .type-bar-label { font-size: .78rem; color: var(--gray-600); min-width: 110px; }
@@ -854,15 +729,12 @@ function resetPlan() {
 .type-bar-fill  { height: 100%; border-radius: 3px; transition: width .4s ease; }
 .type-bar-count { font-size: .76rem; font-weight: 700; color: var(--indigo); min-width: 16px; text-align: right; }
 
-/* Actions */
 .summary-actions { display: flex; flex-direction: column; gap: 10px; }
 .summary-btn { width: 100%; justify-content: center; padding: 11px; }
 
-/* Search CTA */
 .summary-search-cta {
-  display: flex; align-items: center; gap: 12px;
-  padding: 14px 16px; border-radius: var(--radius);
-  background: var(--indigo); text-decoration: none;
+  display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+  border-radius: var(--radius); background: var(--indigo); text-decoration: none;
   transition: opacity var(--transition);
 }
 .summary-search-cta:hover { opacity: .88; }
@@ -870,29 +742,25 @@ function resetPlan() {
 .summary-search-cta strong { display: block; font-size: .88rem; color: #fff; font-weight: 700; line-height: 1.2; }
 .summary-search-cta__sub   { font-size: .76rem; color: var(--coral); font-weight: 600; }
 
-/* ── Print styles ────────────────────────────────────────────────────────── */
+/* ── Print ───────────────────────────────────────────────────────────────── */
 .print-view { display: none; }
-
 @media print {
   .planner-page > *:not(.print-view) { display: none !important; }
-  .print-view {
-    display: block; padding: 20px;
-    font-family: 'DM Sans', sans-serif; color: #000;
-  }
+  .print-view { display: block; padding: 20px; font-family: 'DM Sans', sans-serif; color: #000; }
   .print-view h1 { font-size: 1.8rem; margin-bottom: 4px; }
   .print-meta    { color: #666; margin-bottom: 20px; font-size: .9rem; }
   .print-day     { margin-bottom: 24px; page-break-inside: avoid; }
   .print-day h2  { font-size: 1.1rem; border-bottom: 2px solid #000; padding-bottom: 4px; margin-bottom: 8px; }
   .print-table   { width: 100%; border-collapse: collapse; font-size: .85rem; }
   .print-table td { padding: 4px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
-  .print-time    { color: #888; width: 60px; white-space: nowrap; }
-  .print-icon    { width: 24px; }
-  .print-title   { font-weight: 600; }
-  .print-note    { color: #666; font-size: .8rem; }
-  .print-cost    { text-align: right; font-weight: 600; width: 60px; }
+  .print-time  { color: #888; width: 60px; white-space: nowrap; }
+  .print-icon  { width: 24px; }
+  .print-title { font-weight: 600; }
+  .print-note  { color: #666; font-size: .8rem; }
+  .print-cost  { text-align: right; font-weight: 600; width: 60px; }
   .print-day-note  { margin-top: 6px; font-size: .82rem; color: #555; }
   .print-day-total { font-weight: 700; text-align: right; margin-top: 6px; }
-  .print-total   { font-size: 1.1rem; font-weight: 700; border-top: 2px solid #000; padding-top: 10px; margin-top: 20px; }
+  .print-total { font-size: 1.1rem; font-weight: 700; border-top: 2px solid #000; padding-top: 10px; margin-top: 20px; }
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
@@ -902,14 +770,10 @@ function resetPlan() {
   .planner-summary { position: static; }
 }
 @media (max-width: 640px) {
-  .planner-hero { padding: 40px 4% 36px; }
+  .planner-hero { padding: 40px 4% 52px; }
   .planner-body { padding: 24px 4% 40px; }
-  .activity-row { flex-wrap: wrap; }
-  .activity-time { order: 1; }
-  .activity-icon-wrap { order: 2; }
-  .activity-del { order: 3; margin-left: auto; }
-  .activity-main { order: 4; width: 100%; }
-  .activity-cost-wrap { order: 5; }
   .meta-two-col { grid-template-columns: 1fr; }
+  .activity-row { flex-wrap: wrap; }
+  .activity-main { order: 4; width: 100%; }
 }
 </style>

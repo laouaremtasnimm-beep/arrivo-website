@@ -53,7 +53,7 @@
         </div>
 
         <!-- Right: sidebar -->
-        <DetailSidebar
+      <DetailSidebar
   :price="item.from"
   price-label="Packages from"
   :rating="item.rating"
@@ -61,7 +61,7 @@
   :facts="item.facts?.slice(0, 4)"
   cta-label="Find packages here"
   entity-label="Find services here"
-  note="Browse services available at this destination."
+  note="Browse packages and services for this destination."
   @book="goToPackages"
   @message="goToServices"
 />

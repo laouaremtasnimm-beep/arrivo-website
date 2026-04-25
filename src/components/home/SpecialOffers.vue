@@ -6,7 +6,7 @@
         <h2 class="section-title">Hot <em>offers</em></h2>
         <p class="section-sub">Don't miss exclusive deals from our partner agencies.</p>
       </div>
-      <a href="#" class="see-all">View all →</a>
+      <RouterLink to="/packages" class="see-all">View all →</RouterLink>
     </div>
 
     <div class="offers-strip">
@@ -14,23 +14,45 @@
         class="offer-card"
         v-for="offer in offers"
         :key="offer.offerID"
-        @click="$emit('select', offer)"
+        @click="openOffer(offer)"
       >
         <div class="offer-discount">{{ offer.discount }}% OFF</div>
         <div class="offer-title">{{ offer.title }}</div>
         <div class="offer-dates">{{ offer.startDate }} → {{ offer.endDate }}</div>
         <p class="offer-desc">{{ offer.description }}</p>
-        <button class="btn btn-teal offer-btn">Grab deal</button>
+        <button
+          class="btn btn-teal offer-btn"
+          @click.stop="openOffer(offer)"
+        >
+          Grab deal
+        </button>
       </div>
     </div>
+
+    <!-- Offer detail modal -->
+    <OfferDetailModal
+      v-model="modalOpen"
+      :offer="selectedOffer"
+    />
   </section>
 </template>
 
 <script setup>
+import { ref } from 'vue'
+import OfferDetailModal from '@/components/home/OfferDetailModal.vue'
+
 defineProps({
   offers: { type: Array, default: () => [] },
 })
 defineEmits(['select'])
+
+const modalOpen    = ref(false)
+const selectedOffer = ref(null)
+
+function openOffer(offer) {
+  selectedOffer.value = offer
+  modalOpen.value     = true
+}
 </script>
 
 <style scoped>
@@ -55,10 +77,7 @@ defineEmits(['select'])
   font-family: 'Fraunces', serif;
   font-size: 1.7rem; font-weight: 700; color: var(--coral);
 }
-.offer-title {
-  font-weight: 600; font-size: .97rem; margin: 6px 0 4px;
-  color: var(--indigo);
-}
+.offer-title  { font-weight: 600; font-size: .97rem; margin: 6px 0 4px; color: var(--indigo); }
 .offer-dates  { font-size: .78rem; color: var(--gray-400); }
 .offer-desc   { font-size: .82rem; color: var(--gray-600); margin-top: 10px; line-height: 1.5; }
 .offer-btn    { margin-top: 18px; padding: 8px 20px; font-size: .82rem; }

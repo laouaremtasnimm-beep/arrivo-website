@@ -15,7 +15,6 @@ import DashboardPage    from '@/views/DashboardPage.vue'
 import ProfilePage      from '@/views/ProfilePage.vue'  
 import SettingsPage     from '@/views/SettingsPage.vue'
 import DealsPage        from '@/views/DealsPage.vue'
-import TripPlannerPage  from '@/views/TripPlannerPage.vue'
 
 const routes = [
   { path: '/',                  component: Home },
@@ -55,7 +54,11 @@ const routes = [
   }
 },
 { path: '/deals', component: DealsPage },
-{ path: '/search', component: TripPlannerPage }
+{ path: '/planner', component: () => import('@/views/TripPlannerPage.vue') },
+{ path: '/guides', component: () => import('@/views/TravelGuidesPage.vue') },
+{ path: '/visa-info', component: () => import('@/views/VisaInfoPage.vue') },
+{ path: '/travel-insurance', component: () => import('@/views/TravelInsurancePage.vue') },
+
 ]
 
 const router = createRouter({
@@ -64,4 +67,4 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-export default router
+export default router 
