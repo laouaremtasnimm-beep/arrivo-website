@@ -182,7 +182,9 @@ const router = useRouter()
 const { user, isAgency, isProvider, logout } = useAuth()
 
 // ── Offers — composable is the ONLY source of truth ──────────────────────
+// At the top of <script setup> in DashboardMain.vue
 const { saveOffer, deleteOffer, addOffer } = useOffers()
+// Add this — either from a composable or directly mutate the local `services` ref
 
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
@@ -354,7 +356,7 @@ function handleAcceptCollab(collab) {
   if (outIdx !== -1) collaborations.value[outIdx].status = 'accepted'
 
   // Create a joint offer via the composable
-  if (isAgency.value) {
+  
     addOffer({
       offerID:      Date.now(),
       collabID:     collab.collabID,
@@ -370,7 +372,6 @@ function handleAcceptCollab(collab) {
       active:       true,
     })
   }
-}
 
 function handleDeclineCollab(collab) {
   const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
