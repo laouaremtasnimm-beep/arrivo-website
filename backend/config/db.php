@@ -1,6 +1,6 @@
 <?php
 $host = 'localhost';
-$db   = 'arrivo_db';
+$db   = 'voyago_db';
 $user = 'root';
 $pass = '';
 $charset = 'utf8mb4';
