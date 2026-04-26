@@ -9,8 +9,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 try {
     if ($method === 'GET') {
         if (isset($_GET['id'])) {
-            // Fetch a single listing by ID
-            $stmt = $pdo->prepare('SELECT * FROM listings WHERE id = ?');
+            // Fetch a single listing by ID (using destinations table)
+            $stmt = $pdo->prepare('SELECT id, name, price_from AS price, img_url AS image FROM destinations WHERE id = ?');
             $stmt->execute([$_GET['id']]);
             $listing = $stmt->fetch();
             
@@ -21,8 +21,8 @@ try {
                 echo json_encode(["error" => "Listing not found"]);
             }
         } else {
-            // Fetch all listings
-            $stmt = $pdo->query('SELECT * FROM listings');
+            // Fetch all listings (using destinations table)
+            $stmt = $pdo->query('SELECT id, name, price_from AS price, img_url AS image FROM destinations');
             $listings = $stmt->fetchAll();
             echo json_encode(["listings" => $listings]);
         }

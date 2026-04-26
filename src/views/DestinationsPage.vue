@@ -77,10 +77,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useListPage } from '@/composables/useListPage'
-import { destinations } from '@/data/content.js'
 
 import NavBar           from '@/components/home/NavBar.vue'
 import PageHero         from '@/components/shared/PageHero.vue'
@@ -94,7 +93,24 @@ import SearchPagination from '@/components/search/SearchPagination.vue'
 
 const router      = useRouter()
 const sidebarOpen = ref(false)
-const allItems    = ref(destinations)
+const allItems    = ref([])
+
+onMounted(async () => {
+  try {
+    const response = await fetch('http://localhost/arrivo-website/backend/api/v1/listings.php')
+    const data = await response.json()
+    if (data.listings) {
+      allItems.value = data.listings.map(dest => ({
+        ...dest,
+        title: dest.name,
+        price: dest.price,
+        image: dest.image
+      }))
+    }
+  } catch (error) {
+    console.error('Failed to load destinations:', error)
+  }
+})
 
 function goToDetail(item) {
   router.push(`/destinations/${item.id}`)
