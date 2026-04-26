@@ -105,12 +105,13 @@
           />
 
           <!-- OFFERS — reads from useOffers composable, no :offers prop needed -->
-          <OffersPanel
-            v-else-if="activeSection === 'offers' && isAgency"
-            key="offers"
-            @add="openOfferForm(null)"
-            @edit="openOfferForm($event)"
-          />
+         <OffersPanel
+  v-else-if="activeSection === 'offers'"
+  key="offers"
+  :role="user.role"
+  @add="openOfferForm(null)"
+  @edit="openOfferForm($event)"
+/>
 
           <!-- COLLABORATIONS -->
          <CollaborationsPanel

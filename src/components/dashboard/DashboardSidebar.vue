@@ -85,7 +85,7 @@ const allLinks = [
   { section: 'services',       icon: '🛎️', label: 'My Services',      roles: ['provider'] },
   { section: 'messages',       icon: '💬', label: 'Messages',          roles: ['agency', 'provider'], get badge() { return props.unreadMessages || null } },
   { section: 'reviews',        icon: '⭐', label: 'Reviews',           roles: ['agency', 'provider'] },
-  { section: 'offers',         icon: '🏷️', label: 'Special Offers',    roles: ['agency'] },
+  { section: 'offers',         icon: '🏷️', label: 'Special Offers',    roles: ['agency', 'provider']  },
   { section: 'collaborations', icon: '🤝', label: 'Collaborations',    roles: ['agency', 'provider'], get badge() { return props.pendingCollabs || null } },
 ]
 
