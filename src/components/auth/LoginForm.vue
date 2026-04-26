@@ -38,6 +38,8 @@
       <span class="checkbox-label">Keep me signed in</span>
     </label>
 
+    <div v-if="generalError" class="general-error">{{ generalError }}</div>
+
     <button type="submit" class="btn btn-coral submit-btn" :disabled="loading">
       <span class="spinner" v-if="loading" />
       <span v-else>Sign in</span>
@@ -67,6 +69,7 @@ const { user } = useAuth()
 const loading = ref(false)
 const form    = ref({ email: '', password: '', remember: false })
 const errors  = ref({ email: '', password: '' })
+const generalError = ref('')
 
 function validateEmail() {
   errors.value.email = form.value.email.includes('@') ? '' : 'Please enter a valid email.'
@@ -79,26 +82,38 @@ function handleSocialLogin(provider) {
 
 async function submit() {
   errors.value = { email: '', password: '' }
+  generalError.value = ''
   if (!form.value.email.includes('@')) { errors.value.email    = 'Please enter a valid email.'; return }
   if (form.value.password.length < 6)  { errors.value.password = 'Password is too short.';     return }
 
   loading.value = true
-  await new Promise(r => setTimeout(r, 1200)) // simulate API call
+  
+  try {
+    const response = await fetch('http://localhost/arrivo-website/backend/api/v1/login.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: form.value.email, password: form.value.password })
+    })
 
-  // TODO: replace with real API — set user in useAuth() after response
-  loading.value = false
+    const data = await response.json()
 
-  // If there's a ?redirect= param (e.g. came from dashboard guard), go there
-  const redirectTo = route.query.redirect || null
+    if (response.ok && data.status === 'success') {
+      // Save token and user details to localStorage
+      if (data.token) localStorage.setItem('token', data.token)
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user))
+        if (user) user.value = data.user
+      }
 
-  if (redirectTo) {
-    router.push(redirectTo)
-  } else if (user.value?.role === 'agency' || user.value?.role === 'provider') {
-    // Agencies and providers go to their dashboard
-    router.push('/dashboard')
-  } else {
-    // Tourists go home
-    router.push('/')
+      router.push('/dashboard')
+    } else {
+      generalError.value = data.message || 'Invalid email or password'
+    }
+  } catch (error) {
+    generalError.value = 'Invalid email or password'
+    console.error('Login error:', error)
+  } finally {
+    loading.value = false
   }
 }
 </script>
@@ -114,6 +129,17 @@ async function submit() {
 .checkbox-row   { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; cursor: pointer; }
 .checkbox       { width: 18px; height: 18px; border-radius: 5px; accent-color: var(--coral); cursor: pointer; flex-shrink: 0; }
 .checkbox-label { font-size: .88rem; color: var(--gray-600); }
+
+.general-error {
+  color: #dc2626;
+  background-color: #fef2f2;
+  border: 1px solid #f87171;
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 0.88rem;
+  text-align: center;
+}
 
 .submit-btn { width: 100%; padding: 15px; font-size: 1rem; margin-top: 4px; margin-bottom: 20px; }
 .submit-btn:disabled { opacity: .7; cursor: not-allowed; transform: none !important; }
