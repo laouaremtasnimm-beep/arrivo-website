@@ -11,14 +11,14 @@ export function useAuth() {
   const isProvider = computed(() => _user.value?.role === 'provider')
   const canAccessDashboard = computed(() => isAgency.value || isProvider.value)
 
-  function login(role) {
+  function login(userData) {
     _user.value = {
-      userID: Date.now(),
-      name: 'User',
-      email: 'user@example.com',
-      role: role,
-      company: null,
-      avatar: null
+      userID: userData.id,
+      name: `${userData.first_name} ${userData.last_name}`,
+      email: userData.email,
+      role: userData.role,
+      company: userData.company ?? null,
+      avatar: userData.avatar ?? null,
     }
   }
 
