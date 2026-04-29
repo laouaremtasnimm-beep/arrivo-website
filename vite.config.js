@@ -1,15 +1,20 @@
+import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import path from 'path'
-// https://vite.dev/config/
+
 export default defineConfig({
-   plugins: [vue()],
+  server: {
+    proxy: {
+      '/arrivo-website/backend/api/v1': {
+        target: 'http://localhost',
+        changeOrigin: true,
+      }
+    }
+  },
+  plugins: [vue()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src')
+      '@': fileURLToPath(new URL('./src', import.meta.url))
     }
   }
 })
-
-
-

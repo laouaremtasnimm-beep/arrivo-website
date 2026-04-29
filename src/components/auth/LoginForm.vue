@@ -83,13 +83,15 @@ function handleSocialLogin(provider) {
 
 async function submit() {
   errors.value = { email: '', password: '' }
+  generalError.value = ''
+  
   if (!form.value.email.includes('@')) { errors.value.email    = 'Please enter a valid email.'; return }
   if (form.value.password.length < 6)  { errors.value.password = 'Password is too short.';     return }
 
   loading.value = true
 
   try {
-    const res = await fetch('/api/auth/login.php', {
+    const res = await fetch('/arrivo-website/backend/api/v1/login.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: form.value.email, password: form.value.password })
@@ -98,32 +100,33 @@ async function submit() {
     const data = await res.json()
 
     if (!res.ok) {
-      errors.value.password = data.error || 'Invalid email or password.'
-      return
+      generalError.value = data.error || 'Invalid email or password.'
+      return  // ← stop here, do NOT redirect
     }
 
-    // Store token if you want to persist it
     if (form.value.remember) {
       localStorage.setItem('token', data.token)
     } else {
       sessionStorage.setItem('token', data.token)
     }
 
-    login(data.user)   // ← call login() with the real user object
+    login(data.user)  // ← sets _user.value
+
+    // ✅ Read the role directly from data.user, not from user.value
+    //    (avoids any reactivity timing issue)
+    const redirectTo = route.query.redirect || null
+    if (redirectTo) {
+      router.push(redirectTo)
+    } else if (data.user.role === 'agency' || data.user.role === 'provider') {
+      router.push('/dashboard')
+    } else {
+      router.push('/')
+    }
 
   } catch (e) {
-    errors.value.password = 'Network error. Please try again.'
+    generalError.value = 'Network error. Please try again.'
   } finally {
     loading.value = false
-  }
-
-  const redirectTo = route.query.redirect || null
-  if (redirectTo) {
-    router.push(redirectTo)
-  } else if (user.value?.role === 'agency' || user.value?.role === 'provider') {
-    router.push('/dashboard')
-  } else {
-    router.push('/')
   }
 }
 </script>

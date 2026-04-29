@@ -1,7 +1,8 @@
 import { ref, computed } from 'vue'
 
-// Start as guest
-const _user = ref(null)
+// Rehydrate from localStorage on startup
+const stored = localStorage.getItem('user')
+const _user = ref(stored ? JSON.parse(stored) : null)
 
 export function useAuth() {
 
@@ -12,7 +13,7 @@ export function useAuth() {
   const canAccessDashboard = computed(() => isAgency.value || isProvider.value)
 
   function login(userData) {
-    _user.value = {
+    const u = {
       userID: userData.id,
       name: `${userData.first_name} ${userData.last_name}`,
       email: userData.email,
@@ -20,31 +21,26 @@ export function useAuth() {
       company: userData.company ?? null,
       avatar: userData.avatar ?? null,
     }
+    _user.value = u
+    localStorage.setItem('user', JSON.stringify(u))  // ← persist
   }
 
   function switchRole(role) {
-    _user.value = {
-      userID: Date.now(),
-      name: 'New User',
-      email: 'new@example.com',
-      role: role,
-      company: null,
-      avatar: null
+    if (_user.value) {
+      _user.value = { ..._user.value, role }
+      localStorage.setItem('user', JSON.stringify(_user.value))
     }
   }
 
   function logout() {
     _user.value = null
+    localStorage.removeItem('user')
+    localStorage.removeItem('token')
+    sessionStorage.removeItem('token')
   }
 
   return {
-    user,
-    isLoggedIn,
-    isAgency,
-    isProvider,
-    canAccessDashboard,
-    login,
-    switchRole,
-    logout
+    user, isLoggedIn, isAgency, isProvider, canAccessDashboard,
+    login, switchRole, logout
   }
 }

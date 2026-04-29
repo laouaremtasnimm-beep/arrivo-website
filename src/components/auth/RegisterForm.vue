@@ -82,8 +82,6 @@ import AccountTypeSelector from './AccountTypeSelector.vue'
 import PasswordStrengthBar from './PasswordStrengthBar.vue'
 
 const props = defineProps({
-  // When arriving from a partner page, pre-select the role.
-  // AccountTypeSelector still renders so the user can change it if they want.
   defaultRole: {
     type: String,
     default: 'tourist',
@@ -94,11 +92,12 @@ const props = defineProps({
 defineEmits(['switch-mode'])
 
 const router = useRouter()
-const { switchRole } = useAuth()
+// 1. Get login from useAuth
+const { login } = useAuth() 
 
 const loading = ref(false)
 const form    = ref({
-  role: props.defaultRole,   // ← seeded from prop
+  role: props.defaultRole,
   firstName: '', lastName: '',
   email: '', password: '', terms: false,
 })
@@ -108,18 +107,19 @@ async function submit() {
   errors.value = {}
   let valid = true
 
-  if (!form.value.firstName)           { errors.value.firstName = 'Required.';                   valid = false }
-  if (!form.value.lastName)            { errors.value.lastName  = 'Required.';                   valid = false }
-  if (!form.value.email.includes('@')) { errors.value.email     = 'Enter a valid email.';         valid = false }
-  if (form.value.password.length < 8)  { errors.value.password  = 'Min. 8 characters required.'; valid = false }
-  if (!form.value.terms)               { errors.value.terms     = 'You must accept the terms.';   valid = false }
+  // Validation logic...
+  if (!form.value.firstName) { errors.value.firstName = 'Required.'; valid = false }
+  if (!form.value.lastName)  { errors.value.lastName  = 'Required.'; valid = false }
+  if (!form.value.email.includes('@')) { errors.value.email = 'Enter a valid email.'; valid = false }
+  if (form.value.password.length < 8)  { errors.value.password = 'Min. 8 characters required.'; valid = false }
+  if (!form.value.terms) { errors.value.terms = 'You must accept the terms.'; valid = false }
 
   if (!valid) return
 
   loading.value = true
   
   try {
-    const response = await fetch('http://localhost/arrivo-website/backend/api/v1/register.php', {
+    const response = await fetch('/arrivo-website/backend/api/v1/register.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -134,15 +134,10 @@ async function submit() {
     const data = await response.json()
 
     if (response.ok) {
-      // Assuming switchRole sets some local state, let's keep it or set the user
-      switchRole(form.value.role)
-      
-      // Auto-login or store the basic user object
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user))
-      }
+      // 2. Use the login function here, inside the success block
+      login(data.user)
 
-      if (form.value.role === 'agency' || form.value.role === 'provider') {
+      if (data.user.role === 'agency' || data.user.role === 'provider') {
         router.push('/dashboard')
       } else {
         router.push('/')

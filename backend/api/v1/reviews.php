@@ -19,7 +19,7 @@ try {
             SELECT r.*, u.first_name, u.last_name 
             FROM reviews r 
             JOIN users u ON r.user_id = u.id 
-            WHERE r.listing_id = ? 
+            WHERE r.package_id = ? OR r.service_id = ? OR r.destination_id = ?
             ORDER BY r.created_at DESC
         ');
         $stmt->execute([$_GET['listing_id']]);
