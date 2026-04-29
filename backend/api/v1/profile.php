@@ -14,7 +14,7 @@ try {
             exit();
         }
         
-        $stmt = $pdo->prepare('SELECT id, first_name, last_name, email, role FROM users WHERE id = ?');
+        $stmt = $pdo->prepare('SELECT id, first_name, last_name, email, role, company_name, avatar_url, is_verified, created_at FROM users WHERE id = ?');
         $stmt->execute([$_GET['user_id']]);
         $user = $stmt->fetch();
         
@@ -45,6 +45,11 @@ try {
         if (isset($data['last_name'])) {
             $updates[] = "last_name = ?";
             $params[] = $data['last_name'];
+        }
+
+        if (isset($data['company_name'])) {
+            $updates[] = "company_name = ?";
+            $params[] = $data['company_name'];
         }
         
         if (empty($updates)) {

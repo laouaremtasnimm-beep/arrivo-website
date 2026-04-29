@@ -128,7 +128,45 @@ function goToDestination(dest) {
 function goToServices() {
   router.push({ path: '/services', query: { q: item.value?.name } })
 }
-function handleBooking(payload) { console.log('Booked:', payload) }
+async function handleBooking(payload) {
+  const localUserStr = localStorage.getItem('user')
+  let userId = null
+  if (localUserStr) {
+    const localUser = JSON.parse(localUserStr)
+    userId = localUser.id
+  }
+
+  if (!userId) {
+    alert('Please log in to book.')
+    return
+  }
+
+  try {
+    const res = await fetch('http://localhost/arrivo-website/backend/api/v1/bookings.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        destination_id: item.value.id,
+        check_in: payload.checkin,
+        guests: parseInt(payload.guests) || 1,
+        total_price: item.value.from || item.value.price || 0,
+        notes: payload.notes
+      })
+    })
+
+    const data = await res.json()
+    if (res.ok) {
+      alert('Booking created successfully!')
+      router.push('/dashboard')
+    } else {
+      alert('Failed to book: ' + (data.error || 'Unknown error'))
+    }
+  } catch (e) {
+    console.error('Booking error:', e)
+    alert('An error occurred while booking.')
+  }
+}
 
 // Mock reviews — replace with real API data
 const mockReviews = [

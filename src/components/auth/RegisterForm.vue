@@ -117,18 +117,44 @@ async function submit() {
   if (!valid) return
 
   loading.value = true
-  await new Promise(r => setTimeout(r, 1400)) // simulate API call
+  
+  try {
+    const response = await fetch('http://localhost/arrivo-website/backend/api/v1/register.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firstName: form.value.firstName,
+        lastName: form.value.lastName,
+        email: form.value.email,
+        password: form.value.password,
+        role: form.value.role
+      })
+    })
 
-  // TODO: replace with real API call
-  switchRole(form.value.role)
+    const data = await response.json()
 
-  loading.value = false
+    if (response.ok) {
+      // Assuming switchRole sets some local state, let's keep it or set the user
+      switchRole(form.value.role)
+      
+      // Auto-login or store the basic user object
+      if (data.user) {
+        localStorage.setItem('user', JSON.stringify(data.user))
+      }
 
-  // Agencies and providers land on the dashboard; tourists go home
-  if (form.value.role === 'agency' || form.value.role === 'provider') {
-    router.push('/dashboard')
-  } else {
-    router.push('/')
+      if (form.value.role === 'agency' || form.value.role === 'provider') {
+        router.push('/dashboard')
+      } else {
+        router.push('/')
+      }
+    } else {
+      errors.value.email = data.error || 'Registration failed'
+    }
+  } catch (error) {
+    console.error('Registration error:', error)
+    errors.value.email = 'An error occurred during registration'
+  } finally {
+    loading.value = false
   }
 }
 </script>

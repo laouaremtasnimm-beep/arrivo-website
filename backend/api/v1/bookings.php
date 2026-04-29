@@ -17,9 +17,9 @@ try {
         }
         
         $stmt = $pdo->prepare('
-            SELECT b.*, l.title, l.location 
+            SELECT b.*, d.name as destination_name
             FROM bookings b 
-            JOIN listings l ON b.listing_id = l.id 
+            LEFT JOIN destinations d ON b.destination_id = d.id 
             WHERE b.user_id = ? 
             ORDER BY b.created_at DESC
         ');
@@ -32,18 +32,21 @@ try {
         // Create a new booking
         $data = json_decode(file_get_contents('php://input'), true);
         
-        if (!isset($data['user_id']) || !isset($data['listing_id']) || !isset($data['start_date']) || !isset($data['end_date'])) {
+        if (!isset($data['user_id']) || !isset($data['destination_id']) || !isset($data['check_in'])) {
             http_response_code(400);
             echo json_encode(["error" => "Missing required booking fields."]);
             exit();
         }
         
-        $stmt = $pdo->prepare('INSERT INTO bookings (user_id, listing_id, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)');
+        $stmt = $pdo->prepare('INSERT INTO bookings (user_id, destination_id, booking_type, check_in, check_out, guests, total_price, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
         $stmt->execute([
             $data['user_id'], 
-            $data['listing_id'], 
-            $data['start_date'], 
-            $data['end_date'],
+            $data['destination_id'],
+            'destination',
+            $data['check_in'], 
+            $data['check_out'] ?? null,
+            $data['guests'] ?? 1,
+            $data['total_price'] ?? 0.00,
             'confirmed' // Default status
         ]);
         

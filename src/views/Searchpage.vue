@@ -261,13 +261,31 @@ function goToDetail(item) {
   if (item.category === 'service') return router.push(`/services/${item.id}`)
 }
 
-function runSearch() {
+async function runSearch() {
   loading.value = true
   page.value    = 1
-  setTimeout(() => { loading.value = false }, 700)
+  
+  try {
+    const url = new URL('http://localhost/arrivo-website/backend/api/v1/search.php')
+    if (query.value.trim()) {
+      url.searchParams.append('q', query.value.trim())
+    }
+    const res = await fetch(url)
+    const data = await res.json()
+    if (data.results) {
+      allResults.value = data.results
+    } else {
+      allResults.value = []
+    }
+  } catch (err) {
+    console.error('Search error:', err)
+    allResults.value = []
+  } finally {
+    loading.value = false
+  }
 }
 
-onMounted(() => { if (query.value) runSearch() })
+onMounted(() => { runSearch() })
 watch(activeCategory, () => { page.value = 1 })
 
 function toggleWishlist(id) {
@@ -285,7 +303,7 @@ function handleBookingSubmit(payload) {
 }
 
 // ── Data ──────────────────────────────────────────────────────────────────
-const allResults = ref(allForSearch)
+const allResults = ref([])
 
 function matchesDuration(item) {
   if (!filters.value.durations.length || !item.duration) return true

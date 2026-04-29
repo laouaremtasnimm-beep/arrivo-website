@@ -10,26 +10,17 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     exit();
 }
 
-$location = $_GET['location'] ?? null;
-$price_max = $_GET['price_max'] ?? null;
-$category = $_GET['category'] ?? null;
+$q = $_GET['q'] ?? null;
 
-$query = "SELECT * FROM listings WHERE 1=1";
+$query = "SELECT * FROM destinations WHERE 1=1";
 $params = [];
 
-if ($location) {
-    $query .= " AND location LIKE ?";
-    $params[] = "%$location%";
-}
-
-if ($price_max) {
-    $query .= " AND price <= ?";
-    $params[] = $price_max;
-}
-
-if ($category) {
-    $query .= " AND category = ?";
-    $params[] = $category;
+if ($q) {
+    $query .= " AND (name LIKE ? OR country LIKE ? OR region LIKE ? OR description LIKE ?)";
+    $params[] = "%$q%";
+    $params[] = "%$q%";
+    $params[] = "%$q%";
+    $params[] = "%$q%";
 }
 
 try {
@@ -37,7 +28,17 @@ try {
     $stmt->execute($params);
     $results = $stmt->fetchAll();
     
-    echo json_encode(["results" => $results]);
+    // Add a 'category' field so frontend knows it's a destination
+    $formattedResults = array_map(function($row) {
+        $row['category'] = 'dest';
+        // Map database fields to frontend fields if necessary
+        $row['price'] = $row['price_from'];
+        $row['img'] = $row['img_url'];
+        $row['desc'] = $row['description'];
+        return $row;
+    }, $results);
+
+    echo json_encode(["results" => $formattedResults]);
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode(["error" => "Database error: " . $e->getMessage()]);

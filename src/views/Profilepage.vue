@@ -401,11 +401,11 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
 
-import NavBar        from '@/components/home/NavBar.vue'   // ← added
+import NavBar        from '@/components/home/NavBar.vue'
 
 const router = useRouter()
 const { user: authUser, logout } = useAuth()
@@ -425,6 +425,28 @@ const user = reactive({
   verified: authUser.value?.role === 'agency',
   twoFA: false,
   joinDate: 'March 2023',
+})
+
+onMounted(async () => {
+  const localUserStr = localStorage.getItem('user')
+  if (localUserStr) {
+    try {
+      const localUser = JSON.parse(localUserStr)
+      if (localUser && localUser.id) {
+        const response = await fetch(`http://localhost/arrivo-website/backend/api/v1/profile.php?user_id=${localUser.id}`)
+        const data = await response.json()
+        if (data.profile) {
+          user.name = `${data.profile.first_name} ${data.profile.last_name}`
+          user.email = data.profile.email
+          user.role = data.profile.role
+          user.company = data.profile.company_name || ''
+          user.verified = data.profile.is_verified == 1
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching profile:', e)
+    }
+  }
 })
 
 const avatarPreview = ref(null)
@@ -482,14 +504,46 @@ function cancelEdit(section) {
 }
 function saveEdit(section) {
   saving.value = true
-  setTimeout(() => {
+  
+  const localUserStr = localStorage.getItem('user')
+  let userId = null
+  if (localUserStr) {
+    const localUser = JSON.parse(localUserStr)
+    userId = localUser.id
+  }
+
+  if (!userId) {
+    saving.value = false
+    return
+  }
+
+  const nameParts = (draft.name || '').split(' ')
+  const firstName = nameParts[0] || ''
+  const lastName = nameParts.slice(1).join(' ') || ''
+
+  fetch('http://localhost/arrivo-website/backend/api/v1/profile.php', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      user_id: userId,
+      first_name: firstName,
+      last_name: lastName,
+      company_name: draft.company || ''
+    })
+  })
+  .then(res => res.json())
+  .then(() => {
     Object.assign(user, { ...draft })
     saving.value = false
     if (section === 'personal') editingPersonal.value = false
     else editingCompany.value = false
     savedMessage.value = section
     setTimeout(() => savedMessage.value = null, 3000)
-  }, 900)
+  })
+  .catch(err => {
+    console.error('Error saving profile:', err)
+    saving.value = false
+  })
 }
 
 const userPrefs = reactive({ emailMarketing: true, showProfile: true, activityStatus: false, dataSaving: false, currency: 'USD', language: 'en' })
