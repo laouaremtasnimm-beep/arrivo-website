@@ -64,7 +64,7 @@ defineEmits(['switch-mode'])
 
 const router = useRouter()
 const route  = useRoute()
-const { user } = useAuth()
+const { user, login } = useAuth()   // add login here
 
 const loading = ref(false)
 const form    = ref({ email: '', password: '', remember: false })
@@ -80,40 +80,50 @@ function handleSocialLogin(provider) {
   // TODO: wire to your OAuth flow
 }
 
+
 async function submit() {
   errors.value = { email: '', password: '' }
-  generalError.value = ''
   if (!form.value.email.includes('@')) { errors.value.email    = 'Please enter a valid email.'; return }
   if (form.value.password.length < 6)  { errors.value.password = 'Password is too short.';     return }
 
   loading.value = true
-  
+
   try {
-    const response = await fetch('http://localhost/arrivo-website/backend/api/v1/login.php', {
+    const res = await fetch('/api/auth/login.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: form.value.email, password: form.value.password })
     })
 
-    const data = await response.json()
+    const data = await res.json()
 
-    if (response.ok && data.status === 'success') {
-      // Save token and user details to localStorage
-      if (data.token) localStorage.setItem('token', data.token)
-      if (data.user) {
-        localStorage.setItem('user', JSON.stringify(data.user))
-        if (user) user.value = data.user
-      }
-
-      router.push('/dashboard')
-    } else {
-      generalError.value = data.message || 'Invalid email or password'
+    if (!res.ok) {
+      errors.value.password = data.error || 'Invalid email or password.'
+      return
     }
-  } catch (error) {
-    generalError.value = 'Invalid email or password'
-    console.error('Login error:', error)
+
+    // Store token if you want to persist it
+    if (form.value.remember) {
+      localStorage.setItem('token', data.token)
+    } else {
+      sessionStorage.setItem('token', data.token)
+    }
+
+    login(data.user)   // ← call login() with the real user object
+
+  } catch (e) {
+    errors.value.password = 'Network error. Please try again.'
   } finally {
     loading.value = false
+  }
+
+  const redirectTo = route.query.redirect || null
+  if (redirectTo) {
+    router.push(redirectTo)
+  } else if (user.value?.role === 'agency' || user.value?.role === 'provider') {
+    router.push('/dashboard')
+  } else {
+    router.push('/')
   }
 }
 </script>
