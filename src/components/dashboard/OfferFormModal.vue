@@ -41,6 +41,19 @@
               <p class="field-error" v-if="errors.description">{{ errors.description }}</p>
             </div>
 
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select class="form-input form-select" v-model="form.type">
+                <option value="General">✨ General</option>
+                <option value="Adventure">🧗 Adventure</option>
+                <option value="Beach">🏖️ Beach</option>
+                <option value="Cultural">🏛️ Cultural</option>
+                <option value="Family">👨‍👩‍👧 Family</option>
+                <option value="Wellness">🧘 Wellness</option>
+                <option value="Bundle">📦 Bundle</option>
+              </select>
+            </div>
+
           </div>
 
           <div class="modal__footer">
@@ -67,7 +80,7 @@ const emit = defineEmits(['update:modelValue', 'save'])
 
 const isEdit = computed(() => !!props.offer)
 
-const blankForm = () => ({ title: '', discount: null, startDate: '', endDate: '', description: '' })
+const blankForm = () => ({ title: '', discount: null, startDate: '', endDate: '', description: '', type: 'General' })
 const form   = ref(blankForm())
 const errors = ref({})
 
@@ -95,8 +108,8 @@ function submit() {
   if (!validate()) return
   emit('save', {
     ...form.value,
-    source:  'Solo',
-    offerID: props.offer?.offerID ?? Date.now(),
+    source:  'manual',
+    offerID: props.offer?.offerID ?? null,   // null = new offer → DB assigns real id
     active:  true,
   })
   close()
@@ -144,6 +157,7 @@ function close() { emit('update:modelValue', false) }
 }
 .form-input:focus { border-color: var(--coral); }
 .form-textarea { resize: vertical; min-height: 90px; }
+.form-select   { cursor: pointer; }
 .field-error { font-size: .78rem; color: var(--coral); margin: 0; }
 
 .btn {

@@ -67,6 +67,7 @@
             v-else-if="activeSection === 'messages'"
             key="messages"
             :messages="messages"
+            :current-user-id="user.userID ? parseInt(user.userID) : null"
             @open="handleOpenMessage"
             @compose="handleCompose"
           />
@@ -84,6 +85,7 @@
             v-else-if="activeSection === 'offers'"
             key="offers"
             :role="user.role"
+            :user-id="user.userID"
             @add="openOfferForm(null)"
             @edit="openOfferForm($event)"
           />
@@ -113,7 +115,7 @@
     <OfferFormModal
       v-model="offerFormOpen"
       :offer="editingOffer"
-      @save="saveOffer"
+      @save="handleSaveOffer"
     />
 
     <CollabFormModal
@@ -147,7 +149,7 @@ const API = '/arrivo-website/backend/api/v1'
 
 const router = useRouter()
 const { user, logout } = useAuth()
-const { saveOffer, deleteOffer, addOffer, allOffers } = useOffers()
+const { saveOffer, deleteOffer, addOffer, allOffers, saveOfferToDB, deleteOfferFromDB } = useOffers()
 
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
@@ -219,15 +221,32 @@ async function fetchPackages() {
   } catch (e) { loadError.value = e.message }
 }
 
+// Normalize raw DB row → shape expected by MessagesPanel / MessageThread
+function normalizeMessage(m) {
+  return {
+    messageID: m.id,
+    id:        m.id,
+    sender_id: parseInt(m.sender_id) || null,
+    from:      (`${m.sender_first ?? ''} ${m.sender_last ?? ''}`).trim() || 'Unknown',
+    title:     m.subject  ?? '(no subject)',
+    content:   m.content  ?? '',
+    date:      m.created_at ?? '',
+    read:      !!parseInt(m.is_read),
+    sent:      false,
+    replies:   [],
+  }
+}
+
 async function fetchMessages() {
   try {
     const res  = await fetch(`${API}/messages.php?user_id=${user.value.userID}`)
     const data = await res.json()
+    console.log('raw messages from DB:', JSON.stringify(data.messages))  // ← add this
     if (!res.ok) throw new Error(data.error || 'Failed to load messages')
-    messages.value = data.messages ?? []
+    messages.value = (data.messages ?? []).map(normalizeMessage)
+    console.log('normalized messages:', JSON.stringify(messages.value))  // ← and this
   } catch (e) { loadError.value = e.message }
 }
-
 // Reviews are per-package — fetch for each package the agency owns
 async function fetchReviews() {
   try {
@@ -360,6 +379,11 @@ function openOfferForm(offer) {
   offerFormOpen.value = true
 }
 
+// Persist to DB and update the in-memory store
+async function handleSaveOffer(payload) {
+  await saveOfferToDB({ ...payload, owner_id: user.value?.userID })
+}
+
 // ── Collab handlers ───────────────────────────────────────────────────────
 const collabFormOpen = ref(false)
 
@@ -404,16 +428,16 @@ function handleSendCollab(payload) {
   }, 1500)
 }
 
-function handleAcceptCollab(collab) {
+async function handleAcceptCollab(collab) {
   const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
   if (idx !== -1) collaborations.value[idx].status = 'accepted'
   const outIdx = collaborations.value.findIndex(
     c => c.direction === 'outgoing' && c.title === collab.title && c.status === 'pending'
   )
   if (outIdx !== -1) collaborations.value[outIdx].status = 'accepted'
-  addOffer({
-    offerID:      Date.now(),
-    collabID:     collab.collabID,
+  
+  await saveOfferToDB({
+    owner_id:     user.value?.userID,
     source:       'collab',
     title:        collab.title,
     discount:     collab.discount,
@@ -421,9 +445,9 @@ function handleAcceptCollab(collab) {
     startDate:    collab.startDate || '',
     endDate:      collab.endDate   || '',
     description:  collab.description,
-    partnerName:  collab.initiator?.name || collab.partner?.name,
-    partnerColor: collab.partner?.color  || '#2EC4B6',
     active:       true,
+    // Note: partner Name/Color are not persisted to DB in this schema,
+    // they could be appended to the description if needed, or added to schema later.
   })
 }
 
@@ -432,13 +456,13 @@ function handleDeclineCollab(collab) {
   if (idx !== -1) collaborations.value[idx].status = 'declined'
 }
 
-function handleEndCollab(collab) {
+async function handleEndCollab(collab) {
   if (!confirm(`End the "${collab.title}" collaboration?`)) return
   collaborations.value = collaborations.value.map(c =>
     c.title === collab.title ? { ...c, status: 'ended' } : c
   )
-  const match = allOffers.value.find(o => o.source === 'collab' && o.collabID === collab.collabID)
-  if (match) deleteOffer(match.offerID)
+  const match = allOffers.value.find(o => o.source === 'collab' && o.title === collab.title)
+  if (match) await deleteOfferFromDB(match.offerID)
 }
 </script>
 

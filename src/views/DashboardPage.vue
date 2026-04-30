@@ -149,7 +149,7 @@
     <OfferFormModal
       v-model="offerFormOpen"
       :offer="editingOffer"
-      @save="saveOffer"
+      @save="handleSaveOffer"
     />
 
     <CollabFormModal
@@ -188,7 +188,7 @@ const API = '/arrivo-website/backend/api/v1'
 
 const router = useRouter()
 const { user, isAgency, isProvider, logout } = useAuth()
-const { saveOffer, deleteOffer, addOffer, allOffers } = useOffers()
+const { saveOffer, deleteOffer, saveOfferToDB, deleteOfferFromDB, allOffers } = useOffers()
 
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
@@ -215,7 +215,7 @@ function setSection(s) {
 }
 
 // ── Counts ────────────────────────────────────────────────────────────────
-const unreadMessages    = computed(() => messages.value.filter(m => !m.is_read).length)
+const unreadMessages = computed(() => messages.value.filter(m => !m.read && !m.sent).length)
 const pendingCollabs    = computed(() => collaborations.value.filter(c => c.direction === 'incoming' && c.status === 'pending').length)
 const notificationCount = computed(() => unreadMessages.value + pendingCollabs.value)
 
@@ -302,8 +302,7 @@ async function fetchServices() {
 // Demo messages to show even before DB loads
 const demoMessages = [
   {
-    messageID: 9001,
-    from:      'Alice Smith',
+   messageID: 9001, id: 9001, sender_id: 1, from: 'Alice Smith',
     to:        null,
     title:     'Question about Alpine package',
     content:   'Hi, I had a question about the ski equipment rental included in the package. Is it full rental including boots?',
@@ -313,8 +312,7 @@ const demoMessages = [
     replies:   [],
   },
   {
-    messageID: 9002,
-    from:      'Bob Jones',
+messageID: 9002, id: 9002, sender_id: 2, from: 'Bob Jones',
     to:        null,
     title:     'Booking confirmation request',
     content:   'Could you please confirm my reservation for July 10th? I have not received a confirmation email yet.',
@@ -324,8 +322,7 @@ const demoMessages = [
     replies:   [],
   },
   {
-    messageID: 9003,
-    from:      'Alice Smith',
+    messageID: 9003, id: 9003, sender_id: 1, from: 'Alice Smith',
     to:        null,
     title:     'Special dietary requirements',
     content:   'I wanted to let you know that I have a vegetarian diet. What options are available?',
@@ -347,6 +344,8 @@ function normalizeMessage(m, currentUserId) {
 
   return {
     messageID: m.id,
+    id:        m.id,
+    sender_id: parseInt(m.sender_id) || null,
     from:      isSent ? 'You' : senderName,
     to:        isSent ? receiverName : null,
     title:     m.subject || '(no subject)',
@@ -611,6 +610,14 @@ function openOfferForm(offer) {
   offerFormOpen.value = true
 }
 
+async function handleSaveOffer(payload) {
+  await saveOfferToDB({ ...payload, owner_id: user.value?.userID || user.value?.id })
+}
+
+async function handleSaveOffer(payload) {
+  await saveOfferToDB({ ...payload, owner_id: user.value?.userID || user.value?.id })
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // COLLABORATION HANDLERS  (in-memory only until a DB table is added)
 // ─────────────────────────────────────────────────────────────────────────
@@ -657,31 +664,29 @@ function handleSendCollab(payload) {
   }, 1500)
 }
 
-function handleAcceptCollab(collab) {
+async function handleAcceptCollab(collab) {
   const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
   if (idx !== -1) collaborations.value[idx].status = 'accepted'
 
-  const outIdx = collaborations.value.findIndex(
-    c => c.direction === 'outgoing' && c.title === collab.title && c.status === 'pending'
-  )
-  if (outIdx !== -1) collaborations.value[outIdx].status = 'accepted'
+  // This is the object the PHP backend is looking for
+  const offerData = {
+    owner_id: user.value.userID, // CRITICAL: PHP needs agency_id/owner_id
+    title: collab.title,
+    discount: collab.discount,
+    type: collab.type || 'Bundle',
+    startDate: collab.startDate || null,
+    endDate: collab.endDate || null,
+    description: collab.description,
+    source: 'collab',
+    active: 1
+  }
 
-  addOffer({
-    offerID:      Date.now(),
-    collabID:     collab.collabID,
-    source:       'collab',
-    title:        collab.title,
-    discount:     collab.discount,
-    type:         collab.type || 'Bundle',
-    startDate:    collab.startDate || '',
-    endDate:      collab.endDate   || '',
-    description:  collab.description,
-    partnerName:  collab.initiator?.name || collab.partner?.name,
-    partnerColor: collab.partner?.color  || '#2EC4B6',
-    active:       true,
+  // Use the function that actually has the FETCH call
+  await saveOfferToDB({
+    ...offerData,
+    owner_id: user.value?.userID || user.value?.id // ensure it's captured reliably
   })
 }
-
 function handleDeclineCollab(collab) {
   const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
   if (idx !== -1) collaborations.value[idx].status = 'declined'
@@ -692,8 +697,8 @@ function handleEndCollab(collab) {
   collaborations.value = collaborations.value.map(c =>
     c.title === collab.title ? { ...c, status: 'ended' } : c
   )
-  const match = allOffers.value.find(o => o.source === 'collab' && o.collabID === collab.collabID)
-  if (match) deleteOffer(match.offerID)
+  const match = allOffers.value.find(o => o.source === 'collab' && o.title === collab.title)
+  if (match) deleteOfferFromDB(match.offerID)
 }
 </script>
 

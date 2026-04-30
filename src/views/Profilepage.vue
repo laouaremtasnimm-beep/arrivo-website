@@ -401,53 +401,68 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
 
-import NavBar        from '@/components/home/NavBar.vue'
+import NavBar from '@/components/home/NavBar.vue'
 
 const router = useRouter()
 const { user: authUser, logout } = useAuth()
 
+// ── Tab-isolated user read ────────────────────────────────────────────────
+// sessionStorage is per-tab/window, so agency tab and provider tab each keep
+// their own user even though they share localStorage.
+// We do NOT fall back to authUser.value — that ref comes from useAuth() which
+// also reads sessionStorage, but a second call risks returning a stale value
+// if the composable was instantiated before login completed in this tab.
+function getTabUser() {
+  try {
+    const s = sessionStorage.getItem('user')
+    if (s) return JSON.parse(s)
+    const l = localStorage.getItem('user')
+    if (l) {
+      sessionStorage.setItem('user', l)   // seed this tab on first fresh load
+      return JSON.parse(l)
+    }
+  } catch { /* ignore parse errors */ }
+  return null
+}
+
+// Resolved once, synchronously — no async overwrite possible.
+const storedUser = getTabUser() ?? {}
+
 const user = reactive({
-  ...authUser.value,
-  phone: '+1 (555) 234-5678',
-  location: 'Algiers, Algeria',
-  bio: authUser.value?.role === 'tourist'
-    ? 'Adventure seeker and travel enthusiast exploring the world one destination at a time.'
-    : authUser.value?.role === 'agency'
-    ? 'We craft unforgettable travel experiences across North Africa and the Mediterranean.'
-    : 'Premium transport and service provider with 8 years of experience.',
-  website: authUser.value?.role !== 'tourist' ? 'https://voyago.dz' : null,
-  license: authUser.value?.role !== 'tourist' ? 'TA-007823' : null,
-  years: authUser.value?.role !== 'tourist' ? 8 : null,
-  verified: authUser.value?.role === 'agency',
-  twoFA: false,
-  joinDate: 'March 2023',
+  ...storedUser,
+  phone:    storedUser.phone    ?? '+1 (555) 234-5678',
+  location: storedUser.location ?? 'Algiers, Algeria',
+  bio: storedUser.bio ?? (
+    storedUser.role === 'tourist'
+      ? 'Adventure seeker and travel enthusiast exploring the world one destination at a time.'
+      : storedUser.role === 'agency'
+      ? 'We craft unforgettable travel experiences across North Africa and the Mediterranean.'
+      : 'Premium transport and service provider with 8 years of experience.'
+  ),
+  website:  storedUser.website  ?? (storedUser.role !== 'tourist' ? 'https://voyago.dz' : null),
+  license:  storedUser.license  ?? (storedUser.role !== 'tourist' ? 'TA-007823'          : null),
+  years:    storedUser.years    ?? (storedUser.role !== 'tourist' ? 8                    : null),
+  verified: storedUser.verified ?? (storedUser.role === 'agency'),
+  twoFA:    storedUser.twoFA    ?? false,
+  joinDate: storedUser.joinDate ?? 'March 2023',
 })
 
-onMounted(async () => {
-  const localUserStr = localStorage.getItem('user')
-  if (localUserStr) {
-    try {
-      const localUser = JSON.parse(localUserStr)
-      if (localUser && localUser.id) {
-        const response = await fetch(`http://localhost/arrivo-website/backend/api/v1/profile.php?user_id=${localUser.id}`)
-        const data = await response.json()
-        if (data.profile) {
-          user.name = `${data.profile.first_name} ${data.profile.last_name}`
-          user.email = data.profile.email
-          user.role = data.profile.role
-          user.company = data.profile.company_name || ''
-          user.verified = data.profile.is_verified == 1
-        }
-      }
-    } catch (e) {
-      console.error('Error fetching profile:', e)
+// Keep this tab's sessionStorage in sync whenever the user saves edits,
+// so refreshing the page still shows the updated data.
+watch(
+  () => ({ name: user.name, email: user.email, company: user.company }),
+  (updated) => {
+    const current = getTabUser()
+    if (current) {
+      const merged = { ...current, ...updated }
+      sessionStorage.setItem('user', JSON.stringify(merged))
     }
   }
-})
+)
 
 const avatarPreview = ref(null)
 function handleAvatarChange(e) {
@@ -504,13 +519,9 @@ function cancelEdit(section) {
 }
 function saveEdit(section) {
   saving.value = true
-  
-  const localUserStr = localStorage.getItem('user')
-  let userId = null
-  if (localUserStr) {
-    const localUser = JSON.parse(localUserStr)
-    userId = localUser.id
-  }
+
+  const tabUser = getTabUser()
+  const userId = tabUser?.id ?? tabUser?.userID ?? null
 
   if (!userId) {
     saving.value = false

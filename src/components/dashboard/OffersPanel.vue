@@ -54,9 +54,9 @@
         <span class="offers-section__count">{{ manualOffers.length }}</span>
       </div>
 
-      <div class="offers-grid" v-if="manualOffers.length">
+      <div class="offers-grid" v-if="userManualOffers.length">
         <OfferCard
-          v-for="offer in manualOffers"
+          v-for="offer in userManualOffers"
           :key="offer.offerID"
           :offer="offer"
           @edit="$emit('edit', offer)"
@@ -83,15 +83,24 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useOffers } from '@/composables/useOffers'
 import OfferCard from '@/components/dashboard/OfferCard.vue'
 
+const props = defineProps({
+  userId: { type: [Number, String], default: null },
+})
 defineEmits(['add', 'edit'])
 
-const { allOffers, activeOffers, collabOffers, manualOffers, deleteOffer } = useOffers()
+const { allOffers, activeOffers, collabOffers, manualOffers, deleteOfferFromDB } = useOffers()
+
+// Only show THIS user's non-collab offers in the dashboard panel
+const userManualOffers = computed(() =>
+  manualOffers.value.filter(o => !props.userId || o.owner_id === Number(props.userId))
+)
 
 function handleDelete(offer) {
-  deleteOffer(offer.offerID)
+  deleteOfferFromDB(offer.offerID)
 }
 </script>
 

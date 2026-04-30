@@ -8,6 +8,31 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 try {
     if ($method === 'GET') {
+
+        // ?message_id=X  → single message (used by ComposeModal to resolve sender_id)
+        if (isset($_GET['message_id'])) {
+            $stmt = $pdo->prepare('
+                SELECT m.*,
+                       u.first_name AS sender_first,
+                       u.last_name  AS sender_last
+                FROM   messages m
+                JOIN   users    u ON m.sender_id = u.id
+                WHERE  m.id = ?
+                LIMIT  1
+            ');
+            $stmt->execute([(int) $_GET['message_id']]);
+            $msg = $stmt->fetch();
+
+            if (!$msg) {
+                http_response_code(404);
+                echo json_encode(["error" => "Message not found"]);
+                exit();
+            }
+            echo json_encode(["message" => $msg]);
+            exit();
+        }
+
+        // ?user_id=X  → inbox
         if (!isset($_GET['user_id'])) {
             http_response_code(400);
             echo json_encode(["error" => "Missing user_id parameter"]);
@@ -16,21 +41,16 @@ try {
 
         $userId = (int) $_GET['user_id'];
 
-        // Inbox
         $stmt = $pdo->prepare('
             SELECT m.*,
                    u.first_name AS sender_first,
-                   u.last_name  AS sender_last,
-                   u.company_name AS sender_company,
-                   r.first_name AS receiver_first,
-                   r.last_name  AS receiver_last
+                   u.last_name  AS sender_last
             FROM   messages m
-            JOIN   users u ON m.sender_id   = u.id
-            JOIN   users r ON m.receiver_id = r.id
-            WHERE  m.receiver_id = ? OR m.sender_id = ?
+            JOIN   users    u ON m.sender_id = u.id
+            WHERE  m.receiver_id = ?
             ORDER  BY m.created_at DESC
         ');
-        $stmt->execute([$userId, $userId]);
+        $stmt->execute([$userId]);
         $messages = $stmt->fetchAll();
 
         echo json_encode(["messages" => $messages]);
@@ -64,6 +84,7 @@ try {
         ]);
 
     } elseif ($method === 'PATCH') {
+        // Mark as read: { id: X }
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['id'])) {

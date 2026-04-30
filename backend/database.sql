@@ -143,9 +143,11 @@ CREATE TABLE special_offers (
     agency_id    INT           NOT NULL,
     title        VARCHAR(255)  NOT NULL,
     discount_pct INT           NOT NULL DEFAULT 10,
-    start_date   DATE          NOT NULL,
-    end_date     DATE          NOT NULL,
+    start_date   DATE          NULL,
+    end_date     DATE          NULL,
     description  TEXT          NULL,
+    type         VARCHAR(100)  NOT NULL DEFAULT 'General',
+    source       VARCHAR(50)   NOT NULL DEFAULT 'manual',
     is_active    TINYINT(1)    NOT NULL DEFAULT 1,
     created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (agency_id) REFERENCES users(id) ON DELETE CASCADE

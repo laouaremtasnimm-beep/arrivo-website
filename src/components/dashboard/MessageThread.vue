@@ -25,7 +25,7 @@
             </div>
 
             <div
-              v-for="reply in message?.replies"
+              v-for="reply in localReplies"
               :key="reply.id"
               class="thread-msg"
               :class="reply.fromMe ? 'thread-msg--outgoing' : 'thread-msg--incoming'"
@@ -42,6 +42,7 @@
           </div>
 
           <div class="thread__reply">
+            <p v-if="replyError" class="thread__reply-error">⚠️ {{ replyError }}</p>
             <textarea
               v-model="replyText"
               class="thread__reply-input"
@@ -65,21 +66,34 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 
 const props = defineProps({
-  modelValue:    Boolean,
-  message:       { type: Object, default: null },
-  currentUserId: { type: Number, default: null },
+  modelValue: Boolean,
+  message:    { type: Object, default: null },
 })
-const emit = defineEmits(['update:modelValue', 'reply', 'delete'])
+const emit = defineEmits(['update:modelValue', 'delete'])
 
-const API       = '/arrivo-website/backend/api/v1'
-const replyText = ref('')
-const bodyRef   = ref(null)
-const sending   = ref(false)
+const API          = '/arrivo-website/backend/api/v1'
+const { user }     = useAuth()
+const replyText    = ref('')
+const replyError   = ref('')
+const bodyRef      = ref(null)
+const sending      = ref(false)
+const localReplies = ref([])
+
+// Reset replies when a new message is opened
+watch(() => props.message, () => {
+  localReplies.value = props.message?.replies ? [...props.message.replies] : []
+})
 
 watch(() => props.modelValue, v => {
-  if (v) { replyText.value = ''; scrollToBottom() }
+  if (v) {
+    replyText.value  = ''
+    replyError.value = ''
+    localReplies.value = props.message?.replies ? [...props.message.replies] : []
+    scrollToBottom()
+  }
 })
 
 function scrollToBottom() {
@@ -90,41 +104,55 @@ function scrollToBottom() {
 
 async function sendReply() {
   if (!replyText.value.trim() || sending.value) return
+  replyError.value = ''
+
+  const senderId   = parseInt(user.value?.userID ?? user.value?.id) || null
+  // For demo messages sender_id is stored directly; for DB messages it comes from normalizeMessage
+  const receiverId = parseInt(props.message?.sender_id) || null
+
+  if (!senderId) {
+    replyError.value = 'Not logged in — please refresh and try again.'
+    return
+  }
+
+  if (!receiverId) {
+    // Demo message — just add locally without saving to DB
+    localReplies.value.push({
+      id:     Date.now(),
+      text:   replyText.value.trim(),
+      fromMe: true,
+      time:   'Just now',
+    })
+    replyText.value = ''
+    scrollToBottom()
+    return
+  }
+
   sending.value = true
-
-  // Figure out who to reply to — the original sender (if incoming) 
-  // or the original receiver (if we sent it)
-  const receiverId = props.message?.sender_id
-    ?? props.message?.receiver_id
-    ?? null
-
   try {
     const res = await fetch(`${API}/messages.php`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        sender_id:   props.currentUserId,
+        sender_id:   senderId,
         receiver_id: receiverId,
-        subject:     `Re: ${props.message?.title || ''}`,
+        subject:     `Re: ${props.message?.title ?? ''}`,
         content:     replyText.value.trim(),
       }),
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Reply failed')
 
-    emit('reply', {
-      messageID: props.message?.messageID,
-      reply: {
-        id:     data.message_id,
-        text:   replyText.value.trim(),
-        fromMe: true,
-        time:   'Just now',
-      },
+    localReplies.value.push({
+      id:     data.message_id,
+      text:   replyText.value.trim(),
+      fromMe: true,
+      time:   'Just now',
     })
     replyText.value = ''
     scrollToBottom()
   } catch (e) {
-    console.error('Reply failed:', e)
+    replyError.value = e.message
   } finally {
     sending.value = false
   }
@@ -201,6 +229,11 @@ function close() { emit('update:modelValue', false) }
 .thread__reply {
   border-top: 1px solid var(--gray-200); padding: 14px 16px;
   flex-shrink: 0; background: #fff;
+}
+.thread__reply-error {
+  font-size: .78rem; color: var(--coral); font-weight: 600;
+  margin: 0 0 8px; padding: 8px 12px;
+  background: rgba(255,90,95,.08); border-radius: 8px;
 }
 .thread__reply-input {
   width: 100%; border: 1.5px solid var(--gray-200); border-radius: 12px;

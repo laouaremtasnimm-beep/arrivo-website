@@ -70,8 +70,6 @@
     <MessageThread
       v-model="threadOpen"
       :message="activeMessage"
-      :current-user-id="currentUserId"
-      @reply="handleReply"
       @delete="handleDelete"
     />
 
@@ -98,7 +96,6 @@ const localMessages = ref(
   props.messages.map(m => ({ ...m, replies: m.replies || [] }))
 )
 
-// Keep in sync if parent refreshes messages
 watch(() => props.messages, (val) => {
   localMessages.value = val.map(m => ({ ...m, replies: m.replies || [] }))
 }, { deep: true })
@@ -124,23 +121,14 @@ function openThread(msg) {
   emit('open', msg)
 }
 
-function handleReply({ messageID, reply }) {
-  const idx = localMessages.value.findIndex(m => m.messageID === messageID)
-  if (idx !== -1) {
-    localMessages.value[idx].replies.push(reply)
-    activeMessage.value = { ...localMessages.value[idx] }
-  }
+function handleSend(newMsg) {
+  localMessages.value.unshift(newMsg)
 }
 
 function handleDelete(msg) {
   if (!confirm(`Delete conversation with ${msg.from}?`)) return
   localMessages.value = localMessages.value.filter(m => m.messageID !== msg.messageID)
   threadOpen.value = false
-}
-
-function handleSend(newMsg) {
-  // Already saved to DB inside ComposeModal, just add to local list
-  localMessages.value.unshift(newMsg)
 }
 
 function markAllRead() {

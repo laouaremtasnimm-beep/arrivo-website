@@ -68,6 +68,7 @@
             v-else-if="activeSection === 'messages'"
             key="messages"
             :messages="messages"
+            :current-user-id="user.userID ? parseInt(user.userID) : null"
             @open="handleOpenMessage"
             @compose="handleCompose"
           />
@@ -85,6 +86,7 @@
             v-else-if="activeSection === 'offers'"
             key="offers"
             :role="user.role"
+            :user-id="user.userID"
             @add="openOfferForm(null)"
             @edit="openOfferForm($event)"
           />
@@ -103,7 +105,7 @@
     <OfferFormModal
       v-model="offerFormOpen"
       :offer="editingOffer"
-      @save="saveOffer"
+      @save="handleSaveOffer"
     />
 
   </div>
@@ -130,7 +132,7 @@ const API = '/arrivo-website/backend/api/v1'
 
 const router = useRouter()
 const { user, logout } = useAuth()
-const { saveOffer } = useOffers()
+const { saveOffer, saveOfferToDB } = useOffers()
 
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
@@ -184,12 +186,28 @@ async function fetchServices() {
   } catch (e) { loadError.value = e.message }
 }
 
+// Normalize raw DB row → shape expected by MessagesPanel / MessageThread
+function normalizeMessage(m) {
+  return {
+    messageID: m.id,
+    id:        m.id,
+    sender_id: parseInt(m.sender_id) || null,
+    from:      (`${m.sender_first ?? ''} ${m.sender_last ?? ''}`).trim() || 'Unknown',
+    title:     m.subject  ?? '(no subject)',
+    content:   m.content  ?? '',
+    date:      m.created_at ?? '',
+    read:      !!parseInt(m.is_read),
+    sent:      false,
+    replies:   [],
+  }
+}
+
 async function fetchMessages() {
   try {
     const res  = await fetch(`${API}/messages.php?user_id=${user.value.userID}`)
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed to load messages')
-    messages.value = data.messages ?? []
+    messages.value = (data.messages ?? []).map(normalizeMessage)
   } catch (e) { loadError.value = e.message }
 }
 
@@ -336,6 +354,11 @@ function openOfferForm(offer) {
   if (offer?.source === 'collab') return
   editingOffer.value  = offer ?? null
   offerFormOpen.value = true
+}
+
+// Persist to DB and update the in-memory store
+async function handleSaveOffer(payload) {
+  await saveOfferToDB({ ...payload, owner_id: user.value?.userID })
 }
 </script>
 
