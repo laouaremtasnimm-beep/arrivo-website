@@ -89,7 +89,7 @@
           class="deal-card"
           :class="{ 'deal-card--collab': offer.source === 'collab', 'deal-card--featured': i === 0 && activeFilter === 'all' }"
           :style="{ '--i': i }"
-          @click="handleSelect(offer)"
+          
         >
           <!-- Featured ribbon -->
           <div v-if="i === 0 && activeFilter === 'all'" class="deal-ribbon">⭐ Featured</div>
@@ -139,6 +139,11 @@
     </section>
 
     <SiteFooter />
+
+   <OfferDetailModal
+  v-model="offerModalOpen"
+  :offer="selectedOffer"
+/>
   </div>
 </template>
 
@@ -148,6 +153,10 @@ import { useRouter } from 'vue-router'
 import { useOffers } from '@/composables/useOffers'
 import NavBar    from '@/components/home/NavBar.vue'
 import SiteFooter from '@/components/home/SiteFooter.vue'
+import OfferDetailModal from '@/components/home/OfferDetailModal.vue'
+
+const selectedOffer = ref(null)
+const offerModalOpen = ref(false)
 
 const router = useRouter()
 const { activeOffers } = useOffers()
@@ -190,7 +199,8 @@ const filteredOffers = computed(() => {
 
 // ── Actions ───────────────────────────────────────────────────────────────
 function handleSelect(offer) {
-  router.push({ path: '/search', query: { q: offer.title } })
+  selectedOffer.value = offer
+  offerModalOpen.value = true
 }
 
 function toggleSave(id) {
