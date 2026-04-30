@@ -14,15 +14,16 @@ export function useAuth() {
 
   function login(userData) {
     const u = {
-      userID: userData.id,
+      userID: userData.id,   // primary key — always use user.value.userID
+      id: userData.id,   // alias kept so any code using .id also works
       name: `${userData.first_name} ${userData.last_name}`,
       email: userData.email,
       role: userData.role,
-      company: userData.company ?? null,
-      avatar: userData.avatar ?? null,
+      company: userData.company_name ?? userData.company ?? null,
+      avatar: userData.avatar_url ?? userData.avatar ?? null,
     }
     _user.value = u
-    localStorage.setItem('user', JSON.stringify(u))  // ← persist
+    localStorage.setItem('user', JSON.stringify(u))
   }
 
   function switchRole(role) {

@@ -43,8 +43,6 @@
       </Transition>
 
       <main class="list-page__main">
-
-
         <ItemGrid
           :items="pagedResults"
           :total="allFiltered.length"
@@ -79,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useListPage } from '@/composables/useListPage'
 import { services } from '@/data/content.js'
@@ -99,16 +97,50 @@ const router       = useRouter()
 const sidebarOpen  = ref(false)
 const bookingOpen  = ref(false)
 const selectedItem = ref(null)
-const allItems     = ref(services)
 
-function goToDetail(item) { router.push(`/services/${item.id}`) }
+const DEMO_IDS = new Set(services.map(s => s.id))
+const allItems = ref([...services])
+
+function normalizeService(s) {
+  return {
+    id:           s.id,
+    title:        s.title,
+    provider:     s.provider_name ?? s.provider    ?? 'Provider',
+    icon:         s.icon          ?? '🛎️',
+    iconBg:       s.icon_bg       ?? 'svc-icon-coral',
+    type:         s.type          ?? 'Transport',
+    price:        s.price,
+    unit:         s.price_unit    ?? s.unit         ?? 'day',
+    rating:       s.rating        ?? 4.5,
+    reviews:      s.review_count  ?? s.reviews      ?? 0,
+    availability: s.is_available  == 1,
+    desc:         s.description   ?? s.desc         ?? '',
+    features:     typeof s.features === 'string'
+                    ? JSON.parse(s.features || '[]')
+                    : (s.features ?? []),
+  }
+}
+
+onMounted(async () => {
+  try {
+    const res  = await fetch('/arrivo-website/backend/api/v1/services.php')
+    const data = await res.json()
+    const dbRows = (data.services ?? []).map(normalizeService)
+    const newOnly = dbRows.filter(s => !DEMO_IDS.has(s.id))
+    allItems.value = [...services, ...newOnly]
+  } catch (e) {
+    console.error('Failed to load services from API:', e)
+  }
+})
+
+function goToDetail(item)  { router.push(`/services/${item.id}`) }
 function openBooking(item) { selectedItem.value = item; bookingOpen.value = true }
 function handleBooking(payload) { console.log('Service booked:', payload) }
 
 const heroStats = [
-  { icon: '🛎️', value: '500+',  label: 'services'           },
-  { icon: '✅',  value: '100%',  label: 'verified providers'  },
-  { icon: '⭐',  value: '4.8',   label: 'avg rating'          },
+  { icon: '🛎️', value: '500+', label: 'services'          },
+  { icon: '✅',  value: '100%', label: 'verified providers' },
+  { icon: '⭐',  value: '4.8',  label: 'avg rating'         },
 ]
 
 const categories = [

@@ -46,6 +46,11 @@
         <div class="dashboard__section-meta">{{ sectionMeta }}</div>
       </div>
 
+      <!-- Global loading/error banner -->
+      <div v-if="loadError" class="dashboard__error-banner">
+        ⚠️ {{ loadError }}
+      </div>
+
       <div class="dashboard__content">
         <Transition name="section-fade" mode="out-in">
 
@@ -88,13 +93,14 @@
             />
           </div>
 
-          <MessagesPanel
-            v-else-if="activeSection === 'messages'"
-            key="messages"
-            :messages="messages"
-            @open="handleOpenMessage"
-            @compose="handleCompose"
-          />
+        <MessagesPanel
+  v-else-if="activeSection === 'messages'"
+  key="messages"
+  :messages="messages"
+  :current-user-id="user.userID"
+  @open="handleOpenMessage"
+  @compose="handleCompose"
+/>
 
           <ReviewsPanel
             v-else-if="activeSection === 'reviews'"
@@ -104,26 +110,24 @@
             @delete="handleDeleteReview"
           />
 
-          <!-- OFFERS — reads from useOffers composable, no :offers prop needed -->
-         <OffersPanel
-  v-else-if="activeSection === 'offers'"
-  key="offers"
-  :role="user.role"
-  @add="openOfferForm(null)"
-  @edit="openOfferForm($event)"
-/>
+          <OffersPanel
+            v-else-if="activeSection === 'offers'"
+            key="offers"
+            :role="user.role"
+            @add="openOfferForm(null)"
+            @edit="openOfferForm($event)"
+          />
 
-          <!-- COLLABORATIONS -->
-         <CollaborationsPanel
-  v-else-if="activeSection === 'collaborations'"
-  key="collaborations"
-  :collaborations="collaborations"
-  @open-form="collabFormOpen = true"
-  @accept="handleAcceptCollab"
-  @decline="handleDeclineCollab"
-  @counter="handleCounterCollab"   
-  @end="handleEndCollab"
-/>
+          <CollaborationsPanel
+            v-else-if="activeSection === 'collaborations'"
+            key="collaborations"
+            :collaborations="collaborations"
+            @open-form="collabFormOpen = true"
+            @accept="handleAcceptCollab"
+            @decline="handleDeclineCollab"
+            @counter="handleCounterCollab"
+            @end="handleEndCollab"
+          />
 
         </Transition>
       </div>
@@ -142,7 +146,6 @@
       @save="handleSaveService"
     />
 
-    <!-- OfferFormModal calls saveOffer from the composable on @save -->
     <OfferFormModal
       v-model="offerFormOpen"
       :offer="editingOffer"
@@ -158,10 +161,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
-import { useOffers } from '@/composables/useOffers'   // ← single source of truth
+import { useOffers } from '@/composables/useOffers'
 
 import DashboardSidebar    from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardHeader     from '@/components/dashboard/DashboardHeader.vue'
@@ -178,18 +181,20 @@ import ServiceFormModal    from '@/components/dashboard/ServiceFormModal.vue'
 import CollaborationsPanel from '@/components/dashboard/CollaborationsPanel.vue'
 import CollabFormModal     from '@/components/dashboard/CollabFormModal.vue'
 
+// ─────────────────────────────────────────────────────────────────────────
+// BASE URL — same pattern that fixed login/register
+// ─────────────────────────────────────────────────────────────────────────
+const API = '/arrivo-website/backend/api/v1'
+
 const router = useRouter()
 const { user, isAgency, isProvider, logout } = useAuth()
-
-// ── Offers — composable is the ONLY source of truth ──────────────────────
-// At the top of <script setup> in DashboardMain.vue
-const { saveOffer, deleteOffer, addOffer } = useOffers()
-// Add this — either from a composable or directly mutate the local `services` ref
+const { saveOffer, deleteOffer, addOffer, allOffers } = useOffers()
 
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
 const mobileSidebarOpen = ref(false)
 const activeSection     = ref('overview')
+const loadError         = ref(null)
 
 const sectionMap = {
   overview:       { title: 'Overview',        meta: 'Your dashboard at a glance'              },
@@ -204,12 +209,416 @@ const sectionMap = {
 const sectionTitle = computed(() => sectionMap[activeSection.value]?.title || '')
 const sectionMeta  = computed(() => sectionMap[activeSection.value]?.meta  || '')
 
+function setSection(s) {
+  activeSection.value = s
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+// ── Counts ────────────────────────────────────────────────────────────────
+const unreadMessages    = computed(() => messages.value.filter(m => !m.is_read).length)
+const pendingCollabs    = computed(() => collaborations.value.filter(c => c.direction === 'incoming' && c.status === 'pending').length)
+const notificationCount = computed(() => unreadMessages.value + pendingCollabs.value)
+
+// ── Auth ──────────────────────────────────────────────────────────────────
+function handleLogout() { logout(); router.push('/') }
+function handleQuickAction() {
+  if (isAgency.value)   { openPackageForm(null); setSection('packages') }
+  if (isProvider.value) { openServiceForm(null); setSection('services') }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// DATA REFS  (start empty — filled by onMounted fetches)
+// ─────────────────────────────────────────────────────────────────────────
+const bookings       = ref([])
+const packages       = ref([])
+const services       = ref([])
+const messages       = ref([])
+const reviews        = ref([])
+const collaborations = ref([
+  // Collaborations are not yet stored in the DB, so we keep the demo seed here.
+  // Replace with a real fetch when you add a collaborations table.
+  {
+    collabID:    9001,
+    direction:   'incoming',
+    status:      'pending',
+    initiator:   { name: 'Wanderlust Travels', role: 'agency' },
+    partner:     { id: 'p1', name: 'Alpine Escapes', role: 'Service Provider', color: '#2EC4B6' },
+    title:       'Alps Fly & Drive Bundle',
+    discount:    20,
+    type:        'Bundle',
+    startDate:   '2025-07-01',
+    endDate:     '2025-07-31',
+    description: 'We propose a joint summer bundle combining your Mountain Guide service with our Swiss Alps Winter Retreat package at a 20% combined discount.',
+    sentDate:    'Jun 11, 2025',
+  },
+])
+
+// ─────────────────────────────────────────────────────────────────────────
+// FETCH HELPERS  — all use the full /arrivo-website/... path
+// ─────────────────────────────────────────────────────────────────────────
+async function fetchBookings() {
+  try {
+    const uid = user.value?.id
+    if (!uid) return
+
+    // Choose the right query param based on role
+    let param = `user_id=${uid}`
+    if (isAgency.value)    param = `agency_id=${uid}`
+    if (isProvider.value)  param = `provider_id=${uid}`
+
+    const res  = await fetch(`${API}/bookings.php?${param}`)
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed to load bookings')
+    bookings.value = data.bookings ?? []
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+async function fetchPackages() {
+  if (!isAgency.value) return
+  try {
+    const res  = await fetch(`${API}/packages.php?agency_id=${user.value.userID}`)
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed to load packages')
+    packages.value = data.packages ?? []
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+async function fetchServices() {
+  if (!isProvider.value) return
+  try {
+    const res  = await fetch(`${API}/services.php?provider_id=${user.value.userID}`)
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed to load services')
+    services.value = data.services ?? []
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+// Demo messages to show even before DB loads
+const demoMessages = [
+  {
+    messageID: 9001,
+    from:      'Alice Smith',
+    to:        null,
+    title:     'Question about Alpine package',
+    content:   'Hi, I had a question about the ski equipment rental included in the package. Is it full rental including boots?',
+    date:      'Jun 11, 2025',
+    read:      false,
+    sent:      false,
+    replies:   [],
+  },
+  {
+    messageID: 9002,
+    from:      'Bob Jones',
+    to:        null,
+    title:     'Booking confirmation request',
+    content:   'Could you please confirm my reservation for July 10th? I have not received a confirmation email yet.',
+    date:      'Jun 10, 2025',
+    read:      false,
+    sent:      false,
+    replies:   [],
+  },
+  {
+    messageID: 9003,
+    from:      'Alice Smith',
+    to:        null,
+    title:     'Special dietary requirements',
+    content:   'I wanted to let you know that I have a vegetarian diet. What options are available?',
+    date:      'Jun 9, 2025',
+    read:      true,
+    sent:      false,
+    replies:   [],
+  },
+]
+
+const DEMO_MSG_IDS = new Set(demoMessages.map(m => m.messageID))
+
+function normalizeMessage(m, currentUserId) {
+  const isSent = m.sender_id == currentUserId
+  const senderName = m.sender_company
+    ? m.sender_company
+    : `${m.sender_first} ${m.sender_last}`.trim()
+  const receiverName = `${m.receiver_first} ${m.receiver_last}`.trim()
+
+  return {
+    messageID: m.id,
+    from:      isSent ? 'You' : senderName,
+    to:        isSent ? receiverName : null,
+    title:     m.subject || '(no subject)',
+    content:   m.content,
+    date:      new Date(m.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+    read:      m.is_read == 1,
+    sent:      isSent,
+    replies:   [],
+  }
+}
+
+async function fetchMessages() {
+  // Seed with demo messages immediately
+  messages.value = [...demoMessages]
+  try {
+    const res  = await fetch(`${API}/messages.php?user_id=${user.value.userID}`)
+    const data = await res.json()
+    const dbRows = (data.messages ?? []).map(m => normalizeMessage(m, user.value.userID))
+    const newOnly = dbRows.filter(m => !DEMO_MSG_IDS.has(m.messageID))
+    messages.value = [...demoMessages, ...newOnly]
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+async function fetchReviews() {
+  // Reviews are per-item; for the dashboard we load all reviews linked to
+  // this agency's packages or this provider's services.
+  // For simplicity we fetch per each owned item after packages/services load.
+  // This runs after fetchPackages / fetchServices.
+  try {
+    const allReviews = []
+
+    if (isAgency.value) {
+      for (const pkg of packages.value) {
+        const res  = await fetch(`${API}/reviews.php?item_type=package&item_id=${pkg.id}`)
+        const data = await res.json()
+        if (res.ok) allReviews.push(...(data.reviews ?? []))
+      }
+    }
+
+    if (isProvider.value) {
+      for (const svc of services.value) {
+        const res  = await fetch(`${API}/reviews.php?item_type=service&item_id=${svc.id}`)
+        const data = await res.json()
+        if (res.ok) allReviews.push(...(data.reviews ?? []))
+      }
+    }
+
+    // Sort newest first
+    reviews.value = allReviews.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────
+onMounted(async () => {
+  // Sequential so reviews can run after packages/services are loaded
+  await fetchBookings()
+  await fetchPackages()
+  await fetchServices()
+  await fetchMessages()
+  await fetchReviews()
+})
+
+// ─────────────────────────────────────────────────────────────────────────
+// BOOKING HANDLERS
+// ─────────────────────────────────────────────────────────────────────────
+async function handleConfirmBooking(b) {
+  try {
+    const res = await fetch(`${API}/bookings.php`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: b.id, status: 'confirmed' }),
+    })
+    if (!res.ok) throw new Error('Update failed')
+    const idx = bookings.value.findIndex(x => x.id === b.id)
+    if (idx !== -1) bookings.value[idx].status = 'confirmed'
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+async function handleCancelBooking(b) {
+  try {
+    const res = await fetch(`${API}/bookings.php`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: b.id, status: 'cancelled' }),
+    })
+    if (!res.ok) throw new Error('Update failed')
+    const idx = bookings.value.findIndex(x => x.id === b.id)
+    if (idx !== -1) bookings.value[idx].status = 'cancelled'
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+function handleViewBooking(b) { console.log('View booking:', b) }
+
+// ─────────────────────────────────────────────────────────────────────────
+// PACKAGE HANDLERS
+// ─────────────────────────────────────────────────────────────────────────
+const packageFormOpen = ref(false)
+const editingPackage  = ref(null)
+
+function openPackageForm(pkg) {
+  editingPackage.value  = pkg ?? null
+  packageFormOpen.value = true
+}
+
+async function handleSavePackage(payload) {
+  try {
+    const isNew = !payload.id
+    const res = await fetch(`${API}/packages.php`, {
+      method: isNew ? 'POST' : 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(isNew ? { ...payload, agency_id: user.value.userID } : payload),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Save failed')
+
+    if (isNew) {
+      packages.value.unshift({ ...payload, id: data.package_id })
+    } else {
+      const idx = packages.value.findIndex(p => p.id === payload.id)
+      if (idx !== -1) packages.value[idx] = payload
+    }
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+async function handleDeletePackage(pkg) {
+  if (!confirm(`Delete "${pkg.title}"? This cannot be undone.`)) return
+  try {
+    const res = await fetch(`${API}/packages.php`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pkg.id }),
+    })
+    if (!res.ok) throw new Error('Delete failed')
+    packages.value = packages.value.filter(p => p.id !== pkg.id)
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// SERVICE HANDLERS
+// ─────────────────────────────────────────────────────────────────────────
+const serviceFormOpen = ref(false)
+const editingService  = ref(null)
+
+function openServiceForm(svc) {
+  editingService.value  = svc ?? null
+  serviceFormOpen.value = true
+}
+
+async function handleSaveService(payload) {
+  try {
+    const isNew = !payload.id
+    const res = await fetch(`${API}/services.php`, {
+      method: isNew ? 'POST' : 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(isNew ? { ...payload, provider_id: user.value.userID } : payload),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Save failed')
+
+    if (isNew) {
+      services.value.unshift({ ...payload, id: data.service_id })
+    } else {
+      const idx = services.value.findIndex(s => s.id === payload.id)
+      if (idx !== -1) services.value[idx] = payload
+    }
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+async function handleDeleteService(svc) {
+  if (!confirm(`Delete "${svc.title}"? This cannot be undone.`)) return
+  try {
+    const res = await fetch(`${API}/services.php`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: svc.id }),
+    })
+    if (!res.ok) throw new Error('Delete failed')
+    services.value = services.value.filter(s => s.id !== svc.id)
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+async function handleToggleAvailability(svc) {
+  try {
+    const res = await fetch(`${API}/services.php`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: svc.id }),
+    })
+    if (!res.ok) throw new Error('Toggle failed')
+    const idx = services.value.findIndex(s => s.id === svc.id)
+    if (idx !== -1) services.value[idx].is_available = services.value[idx].is_available ? 0 : 1
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// MESSAGE HANDLERS
+// ─────────────────────────────────────────────────────────────────────────
+async function handleOpenMessage(msg) {
+  try {
+    const res = await fetch(`${API}/messages.php`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: msg.messageID }),
+    })
+    if (!res.ok) throw new Error('Mark-read failed')
+    const idx = messages.value.findIndex(m => m.messageID === msg.messageID)
+    if (idx !== -1) messages.value[idx].read = 1
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+function handleCompose() { console.log('Compose — wire to a compose modal later') }
+
+// ─────────────────────────────────────────────────────────────────────────
+// REVIEW HANDLERS
+// ─────────────────────────────────────────────────────────────────────────
+function handleReplyReview(r)  { console.log('Reply:', r) }
+
+async function handleDeleteReview(r) {
+  if (!confirm('Delete this review?')) return
+  try {
+    const res = await fetch(`${API}/reviews.php`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: r.id }),
+    })
+    if (!res.ok) throw new Error('Delete failed')
+    reviews.value = reviews.value.filter(x => x.id !== r.id)
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// OFFER HANDLERS  (composable stays the source of truth — no DB yet)
+// ─────────────────────────────────────────────────────────────────────────
+const offerFormOpen = ref(false)
+const editingOffer  = ref(null)
+
+function openOfferForm(offer) {
+  if (offer?.source === 'collab') return
+  editingOffer.value  = offer ?? null
+  offerFormOpen.value = true
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// COLLABORATION HANDLERS  (in-memory only until a DB table is added)
+// ─────────────────────────────────────────────────────────────────────────
+const collabFormOpen = ref(false)
+
 function handleCounterCollab({ original, counter }) {
-  // Mark the original incoming request as countered
   const idx = collaborations.value.findIndex(c => c.collabID === original.collabID)
   if (idx !== -1) collaborations.value[idx].status = 'countered'
-
-  // Add the counter as a new outgoing request
   collaborations.value.unshift({
     ...counter,
     collabID:  Date.now(),
@@ -220,8 +629,6 @@ function handleCounterCollab({ original, counter }) {
     partner:   original.partner,
     isCounter: true,
   })
-
-  // Simulate: after 1.5s the partner receives it as a new incoming
   setTimeout(() => {
     collaborations.value.push({
       ...counter,
@@ -235,102 +642,6 @@ function handleCounterCollab({ original, counter }) {
     })
   }, 1500)
 }
-
-function setSection(s) {
-  activeSection.value = s
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-// ── Counts ────────────────────────────────────────────────────────────────
-const unreadMessages    = computed(() => messages.value.filter(m => !m.read).length)
-const pendingCollabs    = computed(() => collaborations.value.filter(c => c.direction === 'incoming' && c.status === 'pending').length)
-const notificationCount = computed(() => unreadMessages.value + pendingCollabs.value)
-
-// ── Auth ──────────────────────────────────────────────────────────────────
-function handleLogout() { logout(); router.push('/') }
-function handleQuickAction() {
-  if (isAgency.value)   { openPackageForm(null); setSection('packages') }
-  if (isProvider.value) { openServiceForm(null); setSection('services') }
-}
-
-// ── Booking handlers ──────────────────────────────────────────────────────
-function handleConfirmBooking(b) {
-  const idx = bookings.value.findIndex(x => x.reservationID === b.reservationID)
-  if (idx !== -1) bookings.value[idx].status = 'confirmed'
-}
-function handleCancelBooking(b) {
-  const idx = bookings.value.findIndex(x => x.reservationID === b.reservationID)
-  if (idx !== -1) bookings.value[idx].status = 'cancelled'
-}
-function handleViewBooking(b) { console.log('View booking:', b) }
-
-// ── Package handlers ──────────────────────────────────────────────────────
-const packageFormOpen = ref(false)
-const editingPackage  = ref(null)
-
-function openPackageForm(pkg) {
-  editingPackage.value  = pkg ?? null
-  packageFormOpen.value = true
-}
-function handleSavePackage(payload) {
-  const idx = packages.value.findIndex(p => p.packageID === payload.packageID)
-  if (idx !== -1) packages.value[idx] = payload
-  else packages.value.unshift(payload)
-}
-function handleDeletePackage(pkg) {
-  if (!confirm(`Delete "${pkg.title}"? This cannot be undone.`)) return
-  packages.value = packages.value.filter(p => p.packageID !== pkg.packageID)
-}
-
-// ── Service handlers ──────────────────────────────────────────────────────
-const serviceFormOpen = ref(false)
-const editingService  = ref(null)
-
-function openServiceForm(svc) {
-  editingService.value  = svc ?? null
-  serviceFormOpen.value = true
-}
-function handleSaveService(payload) {
-  const idx = services.value.findIndex(s => s.serviceID === payload.serviceID)
-  if (idx !== -1) services.value[idx] = payload
-  else services.value.unshift(payload)
-}
-function handleDeleteService(svc) {
-  if (!confirm(`Delete "${svc.title}"? This cannot be undone.`)) return
-  services.value = services.value.filter(s => s.serviceID !== svc.serviceID)
-}
-function handleToggleAvailability(svc) {
-  const idx = services.value.findIndex(s => s.serviceID === svc.serviceID)
-  if (idx !== -1) services.value[idx].availability = !services.value[idx].availability
-}
-
-// ── Message handlers ──────────────────────────────────────────────────────
-function handleOpenMessage(msg) {
-  const idx = messages.value.findIndex(m => m.messageID === msg.messageID)
-  if (idx !== -1) messages.value[idx].read = true
-}
-function handleCompose() { console.log('Compose — wire to a compose modal later') }
-
-// ── Review handlers ───────────────────────────────────────────────────────
-function handleReplyReview(r)  { console.log('Reply:', r) }
-function handleDeleteReview(r) {
-  if (!confirm('Delete this review?')) return
-  reviews.value = reviews.value.filter(x => x.reviewID !== r.reviewID)
-}
-
-// ── Offer handlers — delegate to composable ───────────────────────────────
-const offerFormOpen = ref(false)
-const editingOffer  = ref(null)
-
-function openOfferForm(offer) {
-  if (offer?.source === 'collab') return   // collab offers are not editable
-  editingOffer.value  = offer ?? null
-  offerFormOpen.value = true
-}
-// @save on OfferFormModal goes straight to saveOffer (wired in template above)
-
-// ── Collaboration handlers ────────────────────────────────────────────────
-const collabFormOpen = ref(false)
 
 function handleSendCollab(payload) {
   collaborations.value.unshift({ ...payload, direction: 'outgoing', status: 'pending' })
@@ -355,23 +666,21 @@ function handleAcceptCollab(collab) {
   )
   if (outIdx !== -1) collaborations.value[outIdx].status = 'accepted'
 
-  // Create a joint offer via the composable
-  
-    addOffer({
-      offerID:      Date.now(),
-      collabID:     collab.collabID,
-      source:       'collab',
-      title:        collab.title,
-      discount:     collab.discount,
-      type:         collab.type || 'Bundle',
-      startDate:    collab.startDate || '',
-      endDate:      collab.endDate   || '',
-      description:  collab.description,
-      partnerName:  collab.initiator?.name || collab.partner?.name,
-      partnerColor: collab.partner?.color  || '#2EC4B6',
-      active:       true,
-    })
-  }
+  addOffer({
+    offerID:      Date.now(),
+    collabID:     collab.collabID,
+    source:       'collab',
+    title:        collab.title,
+    discount:     collab.discount,
+    type:         collab.type || 'Bundle',
+    startDate:    collab.startDate || '',
+    endDate:      collab.endDate   || '',
+    description:  collab.description,
+    partnerName:  collab.initiator?.name || collab.partner?.name,
+    partnerColor: collab.partner?.color  || '#2EC4B6',
+    active:       true,
+  })
+}
 
 function handleDeclineCollab(collab) {
   const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
@@ -383,72 +692,9 @@ function handleEndCollab(collab) {
   collaborations.value = collaborations.value.map(c =>
     c.title === collab.title ? { ...c, status: 'ended' } : c
   )
-  // Remove the associated joint offer via composable
-  deleteOffer(
-    collab.collabID
-      ? undefined   // handled by filter below
-      : collab.offerID
-  )
-  // deleteOffer by collabID (collab offers use collabID, not offerID directly)
-  const { allOffers } = useOffers()
   const match = allOffers.value.find(o => o.source === 'collab' && o.collabID === collab.collabID)
   if (match) deleteOffer(match.offerID)
 }
-
-// ─────────────────────────────────────────────────────────────────────────
-// LOCAL DATA  (offers removed — now live in useOffers composable)
-// ─────────────────────────────────────────────────────────────────────────
-const bookings = ref([
-  { reservationID: 1041, guestName: 'Amelia Rhodes', itemName: 'Swiss Alps Winter Retreat', date: 'Jun 12, 2025', totalPrice: 4980, status: 'confirmed' },
-  { reservationID: 1040, guestName: 'Carlos Mendez', itemName: 'Greek Island Odyssey',      date: 'Jun 10, 2025', totalPrice: 3100, status: 'pending'   },
-  { reservationID: 1039, guestName: 'Yuki Tanaka',   itemName: 'Bali Spiritual Journey',    date: 'Jun 8, 2025',  totalPrice: 1650, status: 'confirmed' },
-  { reservationID: 1038, guestName: 'Lena Müller',   itemName: 'Amalfi Coast Drive',        date: 'Jun 6, 2025',  totalPrice: 3780, status: 'confirmed' },
-  { reservationID: 1037, guestName: "James O'Brien", itemName: 'Sahara Desert Adventure',   date: 'Jun 3, 2025',  totalPrice: 980,  status: 'cancelled' },
-])
-
-const packages = ref([
-  { packageID: 1, title: 'Swiss Alps Winter Retreat', destination: 'Switzerland', img: 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=200&q=70', type: 'Adventure', duration: 8,  price: 2490, rating: 4.9, bookings: 48, spots: 4 },
-  { packageID: 2, title: 'Bali Spiritual Journey',    destination: 'Indonesia',   img: 'https://images.unsplash.com/photo-1604999565976-8913ad2ddb7c?w=200&q=70', type: 'Cultural',  duration: 10, price: 1650, rating: 4.8, bookings: 36, spots: 8 },
-  { packageID: 3, title: 'Greek Island Odyssey',      destination: 'Greece',      img: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=200&q=70', type: 'Beach',     duration: 14, price: 3100, rating: 4.9, bookings: 22, spots: 2 },
-  { packageID: 4, title: 'Amalfi Coast Drive',        destination: 'Italy',       img: 'https://images.unsplash.com/photo-1533606688076-b6683a5f59f1?w=200&q=70', type: 'Beach',     duration: 7,  price: 1890, rating: 4.9, bookings: 31, spots: 5 },
-])
-
-const services = ref([
-  { serviceID: 101, icon: '🚐', iconBg: 'svc-icon-coral', title: 'Private Airport Transfer', provider: 'Alpine Escapes', type: 'Transport',   price: 45,  unit: 'trip',    rating: 4.9, reviews: 540, bookings: 124, availability: true  },
-  { serviceID: 102, icon: '🧗', iconBg: 'svc-icon-teal',  title: 'Mountain Guide',           provider: 'Alpine Escapes', type: 'Adventure',   price: 120, unit: 'day',     rating: 4.8, reviews: 312, bookings: 67,  availability: true  },
-  { serviceID: 103, icon: '🍽️', iconBg: 'svc-icon-sand',  title: 'Private Chef Experience',  provider: 'Alpine Escapes', type: 'Food',        price: 180, unit: 'evening', rating: 5.0, reviews: 178, bookings: 45,  availability: false },
-  { serviceID: 104, icon: '📸', iconBg: 'svc-icon-teal',  title: 'Travel Photography',       provider: 'Alpine Escapes', type: 'Photography', price: 150, unit: 'day',     rating: 4.7, reviews: 98,  bookings: 38,  availability: true  },
-])
-
-const messages = ref([
-  { messageID: 1, from: 'Amelia Rhodes', title: 'Question about Alpine package', content: 'Hi, I had a question about the ski equipment rental included…',  date: 'Today, 10:24', read: false },
-  { messageID: 2, from: 'Carlos Mendez', title: 'Booking confirmation request',  content: 'Could you please confirm my reservation for June 10th?',         date: 'Today, 09:12', read: false },
-  { messageID: 3, from: 'Yuki Tanaka',   title: 'Special dietary requirements',  content: 'I wanted to let you know that I have a vegetarian diet…',         date: 'Yesterday',    read: true  },
-  { messageID: 4, from: 'Lena Müller',   title: 'Airport pickup details',        content: 'Can you send me the driver contact details for my arrival?',      date: 'Jun 10',       read: true  },
-])
-
-const reviews = ref([
-  { reviewID: 1, touristName: 'Amelia Rhodes', itemName: 'Swiss Alps Winter Retreat', rating: 5, comment: 'Absolutely magical experience. The team was professional and attentive throughout.',    date: 'Jun 9, 2025' },
-  { reviewID: 2, touristName: 'Yuki Tanaka',   itemName: 'Bali Spiritual Journey',    rating: 5, comment: 'Life-changing trip. The spiritual experiences were authentic.',                         date: 'Jun 5, 2025' },
-  { reviewID: 3, touristName: 'Lena Müller',   itemName: 'Amalfi Coast Drive',        rating: 4, comment: 'Beautiful scenery and great organisation. A few minor hiccups but wonderful overall.', date: 'Jun 3, 2025' },
-])
-
-const collaborations = ref([
-  {
-    collabID:    9001,
-    direction:   'incoming',
-    status:      'pending',
-    initiator:   { name: 'Wanderlust Travels', role: 'agency' },
-    partner:     { id: 'p1', name: 'Alpine Escapes', role: 'Service Provider', color: '#2EC4B6' },
-    title:       'Alps Fly & Drive Bundle',
-    discount:    20,
-    type:        'Bundle',
-    startDate:   '2025-07-01',
-    endDate:     '2025-07-31',
-    description: 'We propose a joint summer bundle combining your Mountain Guide service with our Swiss Alps Winter Retreat package at a 20% combined discount.',
-    sentDate:    'Jun 11, 2025',
-  },
-])
 </script>
 
 <style scoped>
@@ -467,6 +713,16 @@ const collaborations = ref([
 }
 .dashboard__section-meta { font-size: .84rem; color: var(--gray-400); }
 .dashboard__content { padding: 20px 32px 40px; flex: 1; }
+
+.dashboard__error-banner {
+  margin: 12px 32px 0;
+  padding: 10px 16px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  font-size: .875rem;
+  color: #856404;
+}
 
 .section-fade-enter-active, .section-fade-leave-active { transition: opacity .18s ease, transform .18s ease; }
 .section-fade-enter-from, .section-fade-leave-to { opacity: 0; transform: translateY(8px); }

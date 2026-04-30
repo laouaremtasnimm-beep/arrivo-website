@@ -24,7 +24,6 @@
       </div>
     </div>
 
-    <!-- Empty state -->
     <div class="msg-empty" v-if="!filtered.length">
       <div class="msg-empty__icon">💬</div>
       <p class="msg-empty__title">No {{ activeTab === 'all' ? '' : activeTab + ' ' }}messages</p>
@@ -68,41 +67,45 @@
       </button>
     </div>
 
-    <!-- Thread panel -->
     <MessageThread
       v-model="threadOpen"
       :message="activeMessage"
+      :current-user-id="currentUserId"
       @reply="handleReply"
       @delete="handleDelete"
     />
 
-    <!-- Compose modal -->
     <ComposeModal
       v-model="composeOpen"
+      :current-user-id="currentUserId"
       @send="handleSend"
     />
-
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import MessageThread from '@/components/dashboard/MessageThread.vue'
 import ComposeModal  from '@/components/dashboard/ComposeModal.vue'
 
 const props = defineProps({
-  messages: { type: Array, default: () => [] },
+  messages:      { type: Array,  default: () => [] },
+  currentUserId: { type: Number, default: null },
 })
 const emit = defineEmits(['open', 'compose'])
 
-// Local reactive copy so mutations don't need to bubble all the way up
 const localMessages = ref(
   props.messages.map(m => ({ ...m, replies: m.replies || [] }))
 )
 
-const activeTab    = ref('all')
-const threadOpen   = ref(false)
-const composeOpen  = ref(false)
+// Keep in sync if parent refreshes messages
+watch(() => props.messages, (val) => {
+  localMessages.value = val.map(m => ({ ...m, replies: m.replies || [] }))
+}, { deep: true })
+
+const activeTab     = ref('all')
+const threadOpen    = ref(false)
+const composeOpen   = ref(false)
 const activeMessage = ref(null)
 
 const unreadCount = computed(() => localMessages.value.filter(m => !m.read && !m.sent).length)
@@ -114,7 +117,6 @@ const filtered = computed(() => {
 })
 
 function openThread(msg) {
-  // Mark as read
   const idx = localMessages.value.findIndex(m => m.messageID === msg.messageID)
   if (idx !== -1) localMessages.value[idx].read = true
   activeMessage.value = localMessages.value[idx] ?? msg
@@ -126,7 +128,6 @@ function handleReply({ messageID, reply }) {
   const idx = localMessages.value.findIndex(m => m.messageID === messageID)
   if (idx !== -1) {
     localMessages.value[idx].replies.push(reply)
-    // Keep activeMessage in sync
     activeMessage.value = { ...localMessages.value[idx] }
   }
 }
@@ -138,6 +139,7 @@ function handleDelete(msg) {
 }
 
 function handleSend(newMsg) {
+  // Already saved to DB inside ComposeModal, just add to local list
   localMessages.value.unshift(newMsg)
 }
 
@@ -148,7 +150,6 @@ function markAllRead() {
 
 <style scoped>
 .dash-card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 28px; overflow: hidden; }
-
 .dash-card__header {
   display: flex; align-items: flex-start; justify-content: space-between;
   padding: 24px 24px 0; gap: 16px; flex-wrap: wrap;
@@ -167,10 +168,7 @@ function markAllRead() {
 }
 .dash-card__count { font-size: .82rem; color: var(--gray-400); }
 .dash-card__btn   { padding: 8px 18px; font-size: .84rem; }
-
-.header-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-
-/* Tabs */
+.header-actions   { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .msg-tabs { display: flex; gap: 2px; background: var(--gray-100); border-radius: 50px; padding: 3px; }
 .msg-tab {
   padding: 5px 14px; border-radius: 50px; border: none;
@@ -179,37 +177,27 @@ function markAllRead() {
   font-family: 'DM Sans', sans-serif;
 }
 .msg-tab.active { background: #fff; color: var(--indigo); box-shadow: 0 1px 4px rgba(45,49,66,.1); }
-
-/* Unread badge */
 .unread-badge {
   background: var(--coral); color: #fff;
   font-size: .68rem; font-weight: 700; padding: 2px 8px;
   border-radius: 50px; font-family: 'DM Sans', sans-serif;
 }
-
-/* Message list */
 .messages-list { padding: 8px 0; }
-
 .message-row {
   display: flex; align-items: flex-start; gap: 14px;
   padding: 14px 24px; cursor: pointer; position: relative;
   transition: background var(--transition);
 }
-.message-row:hover { background: var(--gray-50); }
+.message-row:hover  { background: var(--gray-50); }
 .message-row.unread { background: rgba(46,196,182,.04); }
 .message-row.sent   { opacity: .85; }
-
 .msg-avatar {
   width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
   background: linear-gradient(135deg, var(--teal), var(--indigo));
   display: flex; align-items: center; justify-content: center;
   font-family: 'Fraunces', serif; font-size: .95rem; font-weight: 700; color: #fff;
 }
-.msg-avatar--sent {
-  background: linear-gradient(135deg, var(--coral), #ff8a8d);
-  font-size: .65rem;
-}
-
+.msg-avatar--sent { background: linear-gradient(135deg, var(--coral), #ff8a8d); font-size: .65rem; }
 .msg-body    { flex: 1; min-width: 0; }
 .msg-top     { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
 .msg-from    { font-weight: 600; font-size: .88rem; color: var(--indigo); }
@@ -217,25 +205,15 @@ function markAllRead() {
 .msg-title   { font-size: .88rem; font-weight: 600; color: var(--indigo); margin-bottom: 3px; }
 .message-row.unread .msg-title { color: var(--coral); }
 .msg-preview { font-size: .8rem; color: var(--gray-400); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
 .msg-indicators { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; padding-top: 4px; }
-.msg-unread-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--teal); flex-shrink: 0;
-}
-.msg-reply-count {
-  font-size: .7rem; color: var(--gray-400); font-weight: 600; white-space: nowrap;
-}
-
-/* Mark all read */
+.msg-unread-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+.msg-reply-count { font-size: .7rem; color: var(--gray-400); font-weight: 600; white-space: nowrap; }
 .see-all-btn {
   font-size: .78rem; font-weight: 600; color: var(--teal-dk);
   background: none; border: none; cursor: pointer;
   font-family: 'DM Sans', sans-serif; transition: color var(--transition);
 }
 .see-all-btn:hover { color: var(--teal); }
-
-/* Empty state */
 .msg-empty {
   padding: 48px 20px; text-align: center;
   display: flex; flex-direction: column; align-items: center; gap: 8px;

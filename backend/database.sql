@@ -289,3 +289,7 @@ INSERT INTO messages (sender_id, receiver_id, subject, content, is_read) VALUES
 (2, 3, 'Booking confirmation request',      'Could you please confirm my reservation for July 10th? I have not received a confirmation email yet.', 0),
 (1, 3, 'Special dietary requirements',      'I wanted to let you know that I have a vegetarian diet. What options are available?', 1),
 (3, 1, 'Re: Question about Alpine package', 'Hi Alice! Yes, the ski pass includes full equipment rental — skis, boots, poles and helmet. See you on the slopes!', 0);
+
+-- at the very bottom, after all INSERT INTO packages ... statements
+ALTER TABLE packages AUTO_INCREMENT = 1000;
+ALTER TABLE services AUTO_INCREMENT = 2000;

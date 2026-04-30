@@ -43,8 +43,6 @@
       </Transition>
 
       <main class="list-page__main">
-
-
         <ItemGrid
           :items="pagedResults"
           :total="allFiltered.length"
@@ -79,7 +77,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useListPage } from '@/composables/useListPage'
 import { packages } from '@/data/content.js'
@@ -99,9 +97,46 @@ const router       = useRouter()
 const sidebarOpen  = ref(false)
 const bookingOpen  = ref(false)
 const selectedItem = ref(null)
-const allItems     = ref(packages)
 
-function goToDetail(item) { router.push(`/packages/${item.id}`) }
+const DEMO_IDS = new Set(packages.map(p => p.id))
+const allItems = ref([...packages])
+
+function normalizePackage(p) {
+  return {
+    id:         p.id,
+    title:      p.title,
+    agency:     p.agency_name  ?? p.agency    ?? 'Agency',
+    img:        p.img_url      ?? p.img       ?? 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
+    type:       p.type         ?? 'Adventure',
+    duration:   p.duration_days ?? p.duration ?? 1,
+    rating:     p.rating       ?? 4.5,
+    reviews:    p.review_count ?? p.reviews   ?? 0,
+    spots:      p.spots_available ?? p.spots  ?? 10,
+    price:      p.price,
+    desc:       p.description  ?? p.desc      ?? '',
+    includes:   typeof p.includes === 'string'
+                  ? JSON.parse(p.includes || '[]')
+                  : (p.includes ?? []),
+  }
+}
+
+onMounted(async () => {
+  try {
+    const res  = await fetch('/arrivo-website/backend/api/v1/packages.php')
+    const data = await res.json()
+    const dbRows = (data.packages ?? []).map(normalizePackage)
+
+    // Deduplicate by title — if a DB package has the same title as a demo
+    // one, the demo version wins (keeps the richer content.js data intact)
+    const demoTitles = new Set(packages.map(p => p.title))
+    const newOnly = dbRows.filter(p => !demoTitles.has(p.title))
+    allItems.value = [...packages, ...newOnly]
+  } catch (e) {
+    console.error('Failed to load packages from API:', e)
+  }
+})
+
+function goToDetail(item)  { router.push(`/packages/${item.id}`) }
 function openBooking(item) { selectedItem.value = item; bookingOpen.value = true }
 function handleBooking(payload) { console.log('Booked:', payload) }
 

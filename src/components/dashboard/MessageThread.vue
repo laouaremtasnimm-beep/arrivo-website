@@ -4,7 +4,6 @@
       <div class="thread-backdrop" v-if="modelValue" @click.self="close">
         <div class="thread-panel">
 
-          <!-- Header -->
           <div class="thread__header">
             <button class="thread__back" @click="close">← Back</button>
             <div class="thread__header-info">
@@ -14,10 +13,8 @@
             <button class="thread__del" @click="$emit('delete', message)" title="Delete">🗑️</button>
           </div>
 
-          <!-- Message chain -->
           <div class="thread__body" ref="bodyRef">
 
-            <!-- Original message -->
             <div class="thread-msg thread-msg--incoming">
               <div class="thread-msg__avatar">{{ message?.from?.[0] }}</div>
               <div class="thread-msg__bubble">
@@ -27,7 +24,6 @@
               </div>
             </div>
 
-            <!-- Reply chain -->
             <div
               v-for="reply in message?.replies"
               :key="reply.id"
@@ -45,7 +41,6 @@
 
           </div>
 
-          <!-- Reply composer -->
           <div class="thread__reply">
             <textarea
               v-model="replyText"
@@ -56,8 +51,8 @@
             />
             <div class="thread__reply-footer">
               <span class="thread__reply-hint">Ctrl + Enter to send</span>
-              <button class="btn-send" @click="sendReply" :disabled="!replyText.trim()">
-                Send ↑
+              <button class="btn-send" @click="sendReply" :disabled="!replyText.trim() || sending">
+                {{ sending ? 'Sending…' : 'Send ↑' }}
               </button>
             </div>
           </div>
@@ -72,13 +67,16 @@
 import { ref, watch, nextTick } from 'vue'
 
 const props = defineProps({
-  modelValue: Boolean,
-  message:    { type: Object, default: null },
+  modelValue:    Boolean,
+  message:       { type: Object, default: null },
+  currentUserId: { type: Number, default: null },
 })
 const emit = defineEmits(['update:modelValue', 'reply', 'delete'])
 
+const API       = '/arrivo-website/backend/api/v1'
 const replyText = ref('')
 const bodyRef   = ref(null)
+const sending   = ref(false)
 
 watch(() => props.modelValue, v => {
   if (v) { replyText.value = ''; scrollToBottom() }
@@ -90,19 +88,46 @@ function scrollToBottom() {
   })
 }
 
-function sendReply() {
-  if (!replyText.value.trim()) return
-  emit('reply', {
-    messageID: props.message?.messageID,
-    reply: {
-      id:     Date.now(),
-      text:   replyText.value.trim(),
-      fromMe: true,
-      time:   'Just now',
-    },
-  })
-  replyText.value = ''
-  scrollToBottom()
+async function sendReply() {
+  if (!replyText.value.trim() || sending.value) return
+  sending.value = true
+
+  // Figure out who to reply to — the original sender (if incoming) 
+  // or the original receiver (if we sent it)
+  const receiverId = props.message?.sender_id
+    ?? props.message?.receiver_id
+    ?? null
+
+  try {
+    const res = await fetch(`${API}/messages.php`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender_id:   props.currentUserId,
+        receiver_id: receiverId,
+        subject:     `Re: ${props.message?.title || ''}`,
+        content:     replyText.value.trim(),
+      }),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Reply failed')
+
+    emit('reply', {
+      messageID: props.message?.messageID,
+      reply: {
+        id:     data.message_id,
+        text:   replyText.value.trim(),
+        fromMe: true,
+        time:   'Just now',
+      },
+    })
+    replyText.value = ''
+    scrollToBottom()
+  } catch (e) {
+    console.error('Reply failed:', e)
+  } finally {
+    sending.value = false
+  }
 }
 
 function close() { emit('update:modelValue', false) }
@@ -118,8 +143,6 @@ function close() { emit('update:modelValue', false) }
   background: #fff; display: flex; flex-direction: column;
   box-shadow: -8px 0 40px rgba(45,49,66,.12);
 }
-
-/* Header */
 .thread__header {
   display: flex; align-items: center; gap: 12px;
   padding: 18px 20px; border-bottom: 1px solid var(--gray-200);
@@ -145,28 +168,20 @@ function close() { emit('update:modelValue', false) }
   transition: all var(--transition);
 }
 .thread__del:hover { background: rgba(231,76,60,.1); color: #e74c3c; }
-
-/* Message body */
 .thread__body {
   flex: 1; overflow-y: auto; padding: 20px;
   display: flex; flex-direction: column; gap: 16px;
   scrollbar-width: thin; scrollbar-color: var(--gray-200) transparent;
 }
-
 .thread-msg { display: flex; gap: 10px; align-items: flex-end; }
 .thread-msg--outgoing { flex-direction: row-reverse; }
-
 .thread-msg__avatar {
   width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
   background: linear-gradient(135deg, var(--teal), var(--indigo));
   display: flex; align-items: center; justify-content: center;
   font-size: .72rem; font-weight: 700; color: #fff;
 }
-.thread-msg__avatar--you {
-  background: linear-gradient(135deg, var(--coral), #ff8a8d);
-  font-size: .6rem;
-}
-
+.thread-msg__avatar--you { background: linear-gradient(135deg, var(--coral), #ff8a8d); font-size: .6rem; }
 .thread-msg__bubble {
   max-width: 75%; padding: 12px 14px;
   background: var(--gray-50); border-radius: 16px 16px 16px 4px;
@@ -180,12 +195,9 @@ function close() { emit('update:modelValue', false) }
 .bubble--you .thread-msg__text,
 .bubble--you .thread-msg__time { color: rgba(255,255,255,.9); }
 .bubble--you .thread-msg__time { color: rgba(255,255,255,.5); }
-
 .thread-msg__name { font-size: .72rem; font-weight: 700; color: var(--gray-400); margin-bottom: 4px; }
 .thread-msg__text { font-size: .86rem; color: var(--indigo); line-height: 1.55; margin: 0 0 6px; }
 .thread-msg__time { font-size: .7rem; color: var(--gray-400); }
-
-/* Reply input */
 .thread__reply {
   border-top: 1px solid var(--gray-200); padding: 14px 16px;
   flex-shrink: 0; background: #fff;
@@ -209,10 +221,6 @@ function close() { emit('update:modelValue', false) }
 }
 .btn-send:hover:not(:disabled) { background: #3d4460; }
 .btn-send:disabled { opacity: .4; cursor: not-allowed; }
-
-/* Slide transition */
 .thread-slide-enter-active, .thread-slide-leave-active { transition: all .28s ease; }
-.thread-slide-enter-from, .thread-slide-leave-to {
-  opacity: 0; transform: translateX(40px);
-}
+.thread-slide-enter-from, .thread-slide-leave-to { opacity: 0; transform: translateX(40px); }
 </style>
