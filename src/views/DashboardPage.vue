@@ -610,14 +610,20 @@ function openOfferForm(offer) {
   offerFormOpen.value = true
 }
 
-async function handleSaveOffer(payload) {
-  await saveOfferToDB({ ...payload, owner_id: user.value?.userID || user.value?.id })
-}
+
 
 async function handleSaveOffer(payload) {
-  await saveOfferToDB({ ...payload, owner_id: user.value?.userID || user.value?.id })
+  // Use the ID from the payload (if editing) or the editingOffer ref
+  const offerId = payload.id || editingOffer.value?.offerID || editingOffer.value?.id;
+  
+  await saveOfferToDB({ 
+    ...payload, 
+    offerID: offerId,
+    owner_id: user.value?.userID || user.value?.id 
+  })
+  
+  offerFormOpen.value = false // Close the modal after saving
 }
-
 // ─────────────────────────────────────────────────────────────────────────
 // COLLABORATION HANDLERS  (in-memory only until a DB table is added)
 // ─────────────────────────────────────────────────────────────────────────
