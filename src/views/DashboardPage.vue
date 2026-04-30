@@ -256,20 +256,48 @@ const collaborations = ref([
 // ─────────────────────────────────────────────────────────────────────────
 // FETCH HELPERS  — all use the full /arrivo-website/... path
 // ─────────────────────────────────────────────────────────────────────────
+// ── Add this normalizer near the other fetch helpers ──────────────────────
+function normalizeBooking(b, role) {
+  // Resolve item name depending on booking type and role
+  let itemName = b.item_title ?? ''
+  if (b.booking_type === 'package')     itemName = b.package_title  ?? b.item_title ?? ''
+  if (b.booking_type === 'service')     itemName = b.service_title  ?? b.item_title ?? ''
+  if (b.booking_type === 'destination') itemName = b.destination_name ?? b.item_title ?? ''
+  if (b.booking_type === 'offer')       itemName = b.offer_title    ?? b.item_title ?? ''
+
+  // Tourist sees their own bookings — no guest_first in response
+  const guestName = (b.guest_first && b.guest_last)
+    ? `${b.guest_first} ${b.guest_last}`
+    : (user.value?.first_name && user.value?.last_name)
+      ? `${user.value.first_name} ${user.value.last_name}`
+      : 'Guest'
+
+  return {
+    ...b,
+    reservationID: b.id,
+    guestName,
+    itemName,
+    date:       b.check_in ?? '',
+    totalPrice: parseFloat(b.total_price) || 0,
+    status:     b.status ?? 'confirmed',
+  }
+}
+
+// ── Replace fetchBookings entirely ───────────────────────────────────────
 async function fetchBookings() {
   try {
-    const uid = user.value?.id
+    const uid = user.value?.userID          // ← was user.value?.id (wrong key)
     if (!uid) return
 
-    // Choose the right query param based on role
     let param = `user_id=${uid}`
-    if (isAgency.value)    param = `agency_id=${uid}`
-    if (isProvider.value)  param = `provider_id=${uid}`
+    if (isAgency.value)   param = `agency_id=${uid}`
+    if (isProvider.value) param = `provider_id=${uid}`
 
     const res  = await fetch(`${API}/bookings.php?${param}`)
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed to load bookings')
-    bookings.value = data.bookings ?? []
+
+    bookings.value = (data.bookings ?? []).map(b => normalizeBooking(b, user.value?.role))
   } catch (e) {
     loadError.value = e.message
   }

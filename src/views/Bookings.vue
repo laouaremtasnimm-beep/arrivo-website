@@ -134,16 +134,10 @@ const statusFilter = ref('all')
 const searchQuery  = ref('')
 
 const role = computed(() => {
-  if (isAgency.value)   return 'agency'
-  if (isProvider.value) return 'provider'
-  return 'tourist'
+  return 'tourist' // This page always shows personal bookings
 })
 
-const roleLabel = computed(() => ({
-  agency:   'Agency Portal',
-  provider: 'Provider Portal',
-  tourist:  'My Account',
-}[role.value]))
+const roleLabel = computed(() => 'My Account')
 
 const tabs = [
   { key: 'all',         label: 'All',          icon: '📋' },

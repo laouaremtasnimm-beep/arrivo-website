@@ -32,34 +32,34 @@ try {
             $stmt->execute([$_GET['user_id']]);
 
         } elseif (isset($_GET['agency_id'])) {
-            $stmt = $pdo->prepare('
-                SELECT b.*,
-                       COALESCE(p.title, b.item_title) AS package_title,
-                       COALESCE(o.title, b.item_title) AS offer_title,
-                       u.first_name    AS guest_first,
-                       u.last_name     AS guest_last
-                FROM   bookings b
-                LEFT   JOIN packages p ON b.package_id = p.id
-                LEFT   JOIN special_offers o ON b.offer_id = o.id
-                JOIN   users    u ON b.user_id    = u.id
-                WHERE  p.agency_id = ? OR o.agency_id = ?
-                ORDER  BY b.created_at DESC
-            ');
-            $stmt->execute([$_GET['agency_id'], $_GET['agency_id']]);
+    $stmt = $pdo->prepare('
+        SELECT b.*,
+               COALESCE(p.title, b.item_title) AS package_title,
+               COALESCE(o.title, b.item_title) AS offer_title,
+               u.first_name AS guest_first,
+               u.last_name  AS guest_last
+        FROM   bookings b
+        LEFT   JOIN packages       p ON b.package_id = p.id
+        LEFT   JOIN special_offers o ON b.offer_id   = o.id
+        JOIN   users u ON b.user_id = u.id
+        WHERE  (p.agency_id = ? OR o.agency_id = ?)
+        ORDER  BY b.created_at DESC
+    ');
+    $stmt->execute([$_GET['agency_id'], $_GET['agency_id']]);
 
-        } elseif (isset($_GET['provider_id'])) {
-            $stmt = $pdo->prepare('
-                SELECT b.*,
-                       COALESCE(s.title, b.item_title) AS service_title,
-                       u.first_name    AS guest_first,
-                       u.last_name     AS guest_last
-                FROM   bookings b
-                JOIN   services s ON b.service_id = s.id
-                JOIN   users    u ON b.user_id    = u.id
-                WHERE  s.provider_id = ?
-                ORDER  BY b.created_at DESC
-            ');
-            $stmt->execute([$_GET['provider_id']]);
+} elseif (isset($_GET['provider_id'])) {
+    $stmt = $pdo->prepare('
+        SELECT b.*,
+               COALESCE(s.title, b.item_title) AS service_title,
+               u.first_name AS guest_first,
+               u.last_name  AS guest_last
+        FROM   bookings b
+        JOIN   services s ON b.service_id = s.id
+        JOIN   users    u ON b.user_id    = u.id
+        WHERE  s.provider_id = ?
+        ORDER  BY b.created_at DESC
+    ');
+    $stmt->execute([$_GET['provider_id']]);
 
         } else {
             http_response_code(400);

@@ -71,11 +71,22 @@ defineEmits(['confirm', 'cancel', 'view'])
 
 const statusFilter = ref('all')
 
-const filtered = computed(() =>
-  statusFilter.value === 'all'
+// In the computed filtered — add a guard so missing fields don't crash the table
+const filtered = computed(() => {
+  const list = statusFilter.value === 'all'
     ? props.bookings
     : props.bookings.filter(b => b.status === statusFilter.value)
-)
+  // Ensure every row has the fields the template accesses
+  return list.map(b => ({
+    reservationID: b.reservationID ?? b.id ?? '—',
+    guestName:     b.guestName     ?? 'Guest',
+    itemName:      b.itemName      ?? b.item_title ?? '—',
+    date:          b.date          ?? b.check_in   ?? '—',
+    totalPrice:    b.totalPrice    ?? 0,
+    status:        b.status        ?? 'confirmed',
+    ...b,
+  }))
+})
 </script>
 
 <style scoped>
