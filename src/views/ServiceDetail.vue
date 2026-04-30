@@ -58,10 +58,12 @@
           </div>
 
           <DetailReviews
-            :rating="item.rating"
-            :total-reviews="item.reviews"
-            :reviews="mockReviews"
-          />
+  :rating="item.rating"
+  :total-reviews="item.reviews"
+  :reviews="mockReviews"
+  item-type="service"
+  :item-id="item.id"
+/>
         </div>
 
         <DetailSidebar
@@ -92,9 +94,8 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { services } from '@/data/content.js'
 import { useWishlist } from '@/composables/useWishlist.js'
 
 import NavBar           from '@/components/home/NavBar.vue'
@@ -112,7 +113,57 @@ const router = useRouter()
 
 const { isSaved, toggle } = useWishlist()
 
-const item       = computed(() => services.find(s => s.id === Number(route.params.id)))
+const item = ref(null)
+const loading = ref(true)
+
+const API = '/arrivo-website/backend/api/v1'
+
+onMounted(async () => {
+  try {
+    const res = await fetch(`${API}/services.php?id=${route.params.id}`)
+    const data = await res.json()
+    console.log('SERVICE API RESPONSE:', data)
+
+    const s = data.service
+    item.value = {
+      id: s.id,
+      icon: s.icon,
+      iconBg: 'svc-icon-teal',
+      title: s.title,
+      provider: s.provider_name || 'Unknown Provider',
+      type: s.type,
+      price: Number(s.price),
+      unit: s.price_unit,
+      rating: Number(s.rating),
+      reviews: Number(s.review_count),
+      availability: !!Number(s.is_available),
+      desc: s.description,
+      longDesc: s.long_desc,
+      img: s.img_url,
+      features: s.features && s.features !== 'null' ? JSON.parse(s.features) : []
+    }
+
+    const allRes = await fetch(`${API}/services.php`)
+    if (allRes.ok) {
+      const allData = await allRes.json()
+      if (allData.services) {
+        moreLike.value = allData.services
+          .filter(x => x.id !== s.id && x.type === s.type)
+          .slice(0, 6)
+          .map(x => ({
+             id: x.id, icon: x.icon, iconBg: 'svc-icon-teal', title: x.title, provider: x.provider_name || 'Unknown Provider', type: x.type,
+             price: Number(x.price), unit: x.price_unit, rating: Number(x.rating), reviews: Number(x.review_count),
+             availability: !!Number(x.is_available)
+          }))
+      }
+    }
+  } catch (e) {
+    console.error(e)
+    item.value = null
+  } finally {
+    loading.value = false
+  }
+})
 const isSavedVal = computed(() => item.value ? isSaved.value('service', item.value.id) : false)
 const bookingOpen = ref(false)
 
@@ -122,9 +173,7 @@ function handleToggleWishlist() {
   if (wasAdded) router.push('/wishlist')
 }
 
-const moreLike = computed(() =>
-  services.filter(s => s.id !== item.value?.id && s.type === item.value?.type).slice(0, 6)
-)
+const moreLike = ref([])
 
 function goToService(svc)        { router.push(`/services/${svc.id}`) }
 function handleContact()         { console.log('Contact provider') }

@@ -1,4 +1,5 @@
 <template>
+  <div v-if="loading">Loading...</div>
   <div class="detail-page" v-if="item">
     <NavBar />
 
@@ -62,10 +63,12 @@
           />
 
           <DetailReviews
-            :rating="item.rating"
-            :total-reviews="item.reviews"
-            :reviews="mockReviews"
-          />
+  :rating="item.rating"
+  :total-reviews="item.reviews"
+  :reviews="mockReviews"
+  item-type="package"
+  :item-id="item.id"
+/>
         </div>
 
         <DetailSidebar
@@ -88,16 +91,16 @@
     <BookingModal v-model="bookingOpen" :pkg="item" @submit="handleBooking" />
   </div>
 
-  <div class="not-found" v-else>
+  <div v-else class="not-found">
     <h2>Package not found</h2>
     <RouterLink to="/packages" class="btn btn-coral">← Back to packages</RouterLink>
   </div>
+
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { packages } from '@/data/content.js'
 import { useWishlist } from '@/composables/useWishlist.js'
 
 import NavBar             from '@/components/home/NavBar.vue'
@@ -116,7 +119,58 @@ const router = useRouter()
 
 const { isSaved, toggle } = useWishlist()
 
-const item       = computed(() => packages.find(p => p.id === Number(route.params.id)))
+const item = ref(null)
+const loading = ref(true)
+
+const API = '/arrivo-website/backend/api/v1'
+
+onMounted(async () => {
+  try {
+    const res = await fetch(`${API}/packages.php?id=${route.params.id}`)
+    const data = await res.json()
+    console.log('PACKAGE API RESPONSE:', data)
+
+    const p = data.package
+    item.value = {
+      id: p.id,
+      title: p.title,
+      agency: p.agency_name || 'Unknown Agency',
+      img: p.img_url,
+      type: p.type,
+      duration: p.duration_days,
+      rating: Number(p.rating),
+      reviews: Number(p.review_count),
+      spots: Number(p.spots_available),
+      price: Number(p.price),
+      desc: p.description,
+      longDesc: p.long_desc,
+      includes: p.includes && p.includes !== 'null' ? JSON.parse(p.includes) : [],
+      excludes: p.excludes && p.excludes !== 'null' ? JSON.parse(p.excludes) : [],
+      itinerary: p.itinerary && p.itinerary !== 'null' ? JSON.parse(p.itinerary) : []
+    }
+
+    const allRes = await fetch(`${API}/packages.php`)
+    if (allRes.ok) {
+      const allData = await allRes.json()
+      if (allData.packages) {
+        moreLike.value = allData.packages
+          .filter(x => x.id !== p.id && x.type === p.type)
+          .slice(0, 6)
+          .map(x => ({
+             id: x.id, title: x.title, agency: x.agency_name || 'Unknown Agency', img: x.img_url, type: x.type,
+             duration: x.duration_days, rating: Number(x.rating), reviews: Number(x.review_count),
+             spots: Number(x.spots_available), price: Number(x.price)
+          }))
+      }
+    }
+  } catch (e) {
+    console.error(e)
+    item.value = null
+  } finally {
+    loading.value = false
+  }
+})
+
 const isSavedVal = computed(() => item.value ? isSaved.value('package', item.value.id) : false)
 const bookingOpen = ref(false)
 
@@ -126,9 +180,7 @@ function handleToggleWishlist() {
   if (wasAdded) router.push('/wishlist')
 }
 
-const moreLike = computed(() =>
-  packages.filter(p => p.id !== item.value?.id && p.type === item.value?.type).slice(0, 6)
-)
+const moreLike = ref([])
 
 function goToPackage(pkg) { router.push(`/packages/${pkg.id}`) }
 function handleContact()  { console.log('Contact agency') }

@@ -156,6 +156,7 @@
       v-model="collabFormOpen"
       @send="handleSendCollab"
     />
+    <DashboardReviews :reviews="myPrebuiltReviews" />
 
   </div>
 </template>

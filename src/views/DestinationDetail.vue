@@ -44,11 +44,13 @@
             :best-time="item.bestTime"
           />
 
-          <DetailReviews
-            :rating="item.rating"
-            :total-reviews="item.reviews"
-            :reviews="mockReviews"
-          />
+         <DetailReviews
+  :rating="item.rating"
+  :total-reviews="item.reviews"
+  :reviews="mockReviews"
+  item-type="destination"
+  :item-id="item.id"
+/>
 
         </div>
 
