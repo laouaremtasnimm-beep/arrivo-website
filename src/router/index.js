@@ -1,4 +1,3 @@
-// ─── Full updated router/index.js for reference ───
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '@/composables/useAuth.js'
 
@@ -15,6 +14,7 @@ import DashboardPage from '@/views/DashboardPage.vue'
 import ProfilePage from '@/views/ProfilePage.vue'
 import SettingsPage from '@/views/SettingsPage.vue'
 import DealsPage from '@/views/DealsPage.vue'
+import Bookings from '@/views/Bookings.vue'   // ← ADD THIS IMPORT
 
 const routes = [
   { path: '/', component: Home },
@@ -36,13 +36,17 @@ const routes = [
     }
   },
   {
-    path: '/profile',            // ← NEW
-    component: ProfilePage,
+    path: '/bookings',          // ← FIX: was missing, caused blank page
+    component: Bookings,
     beforeEnter: (to, from, next) => {
       const { isLoggedIn } = useAuth()
-      if (!isLoggedIn.value) next('/auth?mode=login&redirect=/profile')
+      if (!isLoggedIn.value) next('/auth?mode=login&redirect=/bookings')
       else next()
     }
+  },
+  {
+    path: '/profile',
+    component: ProfilePage,
   },
   {
     path: '/settings',
@@ -61,8 +65,7 @@ const routes = [
   { path: '/partners/agencies', component: () => import('@/views/AgenciesPage.vue') },
   { path: '/partners/providers', component: () => import('@/views/ProvidersPage.vue') },
   { path: '/partners/affiliates', component: () => import('@/views/AffiliatesPage.vue') },
-  { path: '/wishlist', component: () => import('@/views/WishlistPage.vue') }
-
+  { path: '/wishlist', component: () => import('@/views/WishlistPage.vue') },
 ]
 
 const router = createRouter({
@@ -71,4 +74,4 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-export default router 
+export default router
