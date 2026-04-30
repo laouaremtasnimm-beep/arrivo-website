@@ -102,12 +102,11 @@
   @compose="handleCompose"
 />
 
-          <ReviewsPanel
+          <DashboardReviews
             v-else-if="activeSection === 'reviews'"
             key="reviews"
-            :reviews="reviews"
-            @reply="handleReplyReview"
-            @delete="handleDeleteReview"
+            :role="user.role"
+            :user-id="user.userID"
           />
 
           <OffersPanel
@@ -156,7 +155,6 @@
       v-model="collabFormOpen"
       @send="handleSendCollab"
     />
-    <DashboardReviews :reviews="myPrebuiltReviews" />
 
   </div>
 </template>
@@ -175,7 +173,7 @@ import BookingsTable       from '@/components/dashboard/BookingsTable.vue'
 import PackagesTable       from '@/components/dashboard/PackagesTable.vue'
 import ServicesTable       from '@/components/dashboard/ServicesTable.vue'
 import MessagesPanel       from '@/components/dashboard/MessagesPanel.vue'
-import ReviewsPanel        from '@/components/dashboard/ReviewsPanel.vue'
+import DashboardReviews    from '@/components/dashboard/DashboardReviews.vue'
 import OffersPanel         from '@/components/dashboard/OffersPanel.vue'
 import OfferFormModal      from '@/components/dashboard/OfferFormModal.vue'
 import PackageFormModal    from '@/components/dashboard/PackageFormModal.vue'
@@ -236,7 +234,6 @@ const bookings       = ref([])
 const packages       = ref([])
 const services       = ref([])
 const messages       = ref([])
-const reviews        = ref([])
 const collaborations = ref([
   // Collaborations are not yet stored in the DB, so we keep the demo seed here.
   // Replace with a real fetch when you add a collaborations table.
@@ -374,45 +371,12 @@ async function fetchMessages() {
   }
 }
 
-async function fetchReviews() {
-  // Reviews are per-item; for the dashboard we load all reviews linked to
-  // this agency's packages or this provider's services.
-  // For simplicity we fetch per each owned item after packages/services load.
-  // This runs after fetchPackages / fetchServices.
-  try {
-    const allReviews = []
-
-    if (isAgency.value) {
-      for (const pkg of packages.value) {
-        const res  = await fetch(`${API}/reviews.php?item_type=package&item_id=${pkg.id}`)
-        const data = await res.json()
-        if (res.ok) allReviews.push(...(data.reviews ?? []))
-      }
-    }
-
-    if (isProvider.value) {
-      for (const svc of services.value) {
-        const res  = await fetch(`${API}/reviews.php?item_type=service&item_id=${svc.id}`)
-        const data = await res.json()
-        if (res.ok) allReviews.push(...(data.reviews ?? []))
-      }
-    }
-
-    // Sort newest first
-    reviews.value = allReviews.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  } catch (e) {
-    loadError.value = e.message
-  }
-}
-
 // ── Bootstrap ─────────────────────────────────────────────────────────────
 onMounted(async () => {
-  // Sequential so reviews can run after packages/services are loaded
   await fetchBookings()
   await fetchPackages()
   await fetchServices()
   await fetchMessages()
-  await fetchReviews()
 })
 
 // ─────────────────────────────────────────────────────────────────────────

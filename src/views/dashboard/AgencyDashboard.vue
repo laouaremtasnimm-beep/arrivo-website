@@ -72,12 +72,11 @@
             @compose="handleCompose"
           />
 
-          <ReviewsPanel
+          <DashboardReviews
             v-else-if="activeSection === 'reviews'"
             key="reviews"
-            :reviews="reviews"
-            @reply="handleReplyReview"
-            @delete="handleDeleteReview"
+            role="agency"
+            :user-id="user.userID"
           />
 
           <!-- Agency-specific: offers + collaborations -->
@@ -139,7 +138,7 @@ import OverviewSection     from '@/components/dashboard/OverviewSection.vue'
 import BookingsTable       from '@/components/dashboard/BookingsTable.vue'
 import PackagesTable       from '@/components/dashboard/PackagesTable.vue'
 import MessagesPanel       from '@/components/dashboard/MessagesPanel.vue'
-import ReviewsPanel        from '@/components/dashboard/ReviewsPanel.vue'
+import DashboardReviews    from '@/components/dashboard/DashboardReviews.vue'
 import OffersPanel         from '@/components/dashboard/OffersPanel.vue'
 import OfferFormModal      from '@/components/dashboard/OfferFormModal.vue'
 import PackageFormModal    from '@/components/dashboard/PackageFormModal.vue'
@@ -184,7 +183,6 @@ function handleLogout() { logout(); router.push('/') }
 const bookings = ref([])
 const packages = ref([])
 const messages = ref([])
-const reviews  = ref([])
 
 // Collaborations are not yet in the DB — seeded with demo data for now
 const collaborations = ref([
@@ -249,24 +247,10 @@ async function fetchMessages() {
     console.log('normalized messages:', JSON.stringify(messages.value))  // ← and this
   } catch (e) { loadError.value = e.message }
 }
-// Reviews are per-package — fetch for each package the agency owns
-async function fetchReviews() {
-  try {
-    const all = []
-    for (const pkg of packages.value) {
-      const res  = await fetch(`${API}/reviews.php?item_type=package&item_id=${pkg.id}`)
-      const data = await res.json()
-      if (res.ok) all.push(...(data.reviews ?? []))
-    }
-    reviews.value = all.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  } catch (e) { loadError.value = e.message }
-}
-
 onMounted(async () => {
   await fetchBookings()
   await fetchPackages()
   await fetchMessages()
-  await fetchReviews()  // must run after fetchPackages
 })
 
 // ── Booking handlers ──────────────────────────────────────────────────────

@@ -105,6 +105,9 @@ import ReviewReplyBox from '@/components/dashboard/ReviewReplyBox.vue'
 const props = defineProps({
   // Optional: pass pre-fetched reviews; if absent the component self-fetches
   reviews: { type: Array, default: () => [] },
+  // Pass these explicitly from the parent dashboard so role isolation is guaranteed
+  role:   { type: String, default: null },  // 'agency' | 'provider' | 'admin'
+  userId: { type: [String, Number], default: null },
 })
 const emit = defineEmits(['reply', 'delete'])
 
@@ -137,48 +140,50 @@ function formatDate(iso) {
 async function fetchAllReviews() {
   loading.value = true
   try {
-    const user = getUser()
-    // If no user or user passed prop reviews, fall back gracefully
-    if (!user && !props.reviews.length) { loading.value = false; return }
-
-    // If parent already passed reviews (e.g. from a parent dashboard fetch), use those
+    // If parent already passed reviews, use those directly
     if (props.reviews.length) {
       localReviews.value = props.reviews.map(r => ({ ...r, reply: r.reply || null }))
       loading.value = false
       return
     }
 
-    // --- Self-fetch strategy ---
-    // 1. Fetch the user's packages / services to get their IDs
-    const role = user?.role  // 'agency' or 'provider'
+    // Prefer explicit props; fall back to localStorage
+    const fallback = getUser()
+    const role   = props.role   || fallback?.role
+    const userId = props.userId || fallback?.userID
 
+    if (!role || !userId) { loading.value = false; return }
+
+    // --- Self-fetch strategy ---
+    // 1. Fetch only the items that belong to THIS user's role
     let ownedItems = []
 
-    if (role === 'agency' || role === 'admin') {
-      const pkgRes  = await fetch(`${API_PACKAGES}?agency_id=${user.id}`)
+    if (role === 'agency') {
+      const pkgRes  = await fetch(`${API_PACKAGES}?agency_id=${userId}`, { cache: 'no-store' })
       const pkgData = await pkgRes.json()
       const pkgs    = pkgData.packages || []
       ownedItems.push(...pkgs.map(p => ({ id: p.id, name: p.title, type: 'package' })))
-    }
-
-    if (role === 'provider' || role === 'admin') {
-      const svcRes  = await fetch(`${API_SERVICES}?provider_id=${user.id}`)
+    } else if (role === 'provider') {
+      const svcRes  = await fetch(`${API_SERVICES}?provider_id=${userId}`, { cache: 'no-store' })
       const svcData = await svcRes.json()
       const svcs    = svcData.services || []
       ownedItems.push(...svcs.map(s => ({ id: s.id, name: s.title, type: 'service' })))
-    }
-
-    // Admin / fallback: also check destinations
-    if (role === 'admin') {
-      const dRes  = await fetch(API_DESTS)
-      const dData = await dRes.json()
-      const dests = dData.destinations || []
-      ownedItems.push(...dests.map(d => ({ id: d.id, name: d.name, type: 'destination' })))
+    } else if (role === 'admin') {
+      // Admin sees everything
+      const [pkgRes, svcRes, dRes] = await Promise.all([
+        fetch(`${API_PACKAGES}`, { cache: 'no-store' }),
+        fetch(`${API_SERVICES}`, { cache: 'no-store' }),
+        fetch(API_DESTS,         { cache: 'no-store' }),
+      ])
+      const [pkgData, svcData, dData] = await Promise.all([pkgRes.json(), svcRes.json(), dRes.json()])
+      ownedItems.push(...(pkgData.packages     || []).map(p => ({ id: p.id, name: p.title, type: 'package' })))
+      ownedItems.push(...(svcData.services     || []).map(s => ({ id: s.id, name: s.title, type: 'service' })))
+      ownedItems.push(...(dData.destinations   || []).map(d => ({ id: d.id, name: d.name,  type: 'destination' })))
     }
 
     // 2. For each owned item, fetch its reviews
     const reviewPromises = ownedItems.map(item =>
-      fetch(`${API_REVIEWS}?item_type=${item.type}&item_id=${item.id}`)
+      fetch(`${API_REVIEWS}?item_type=${item.type}&item_id=${item.id}`, { cache: 'no-store' })
         .then(r => r.json())
         .then(d => ({ item, reviews: d.reviews || [] }))
         .catch(() => ({ item, reviews: [] }))

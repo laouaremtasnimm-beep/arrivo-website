@@ -73,12 +73,11 @@
             @compose="handleCompose"
           />
 
-          <ReviewsPanel
+          <DashboardReviews
             v-else-if="activeSection === 'reviews'"
             key="reviews"
-            :reviews="reviews"
-            @reply="handleReplyReview"
-            @delete="handleDeleteReview"
+            role="provider"
+            :user-id="user.userID"
           />
 
           <!-- Provider-specific: offers panel (no collaborations tab) -->
@@ -124,7 +123,7 @@ import OverviewSection  from '@/components/dashboard/OverviewSection.vue'
 import BookingsTable    from '@/components/dashboard/BookingsTable.vue'
 import ServicesTable    from '@/components/dashboard/ServicesTable.vue'
 import MessagesPanel    from '@/components/dashboard/MessagesPanel.vue'
-import ReviewsPanel     from '@/components/dashboard/ReviewsPanel.vue'
+import DashboardReviews from '@/components/dashboard/DashboardReviews.vue'
 import OffersPanel      from '@/components/dashboard/OffersPanel.vue'
 import OfferFormModal   from '@/components/dashboard/OfferFormModal.vue'
 import ServiceFormModal from '@/components/dashboard/ServiceFormModal.vue'
@@ -167,7 +166,6 @@ function handleLogout() { logout(); router.push('/') }
 const bookings = ref([])
 const services = ref([])
 const messages = ref([])
-const reviews  = ref([])
 
 // ── Fetches — all use provider_id ─────────────────────────────────────────
 async function fetchBookings() {
@@ -213,24 +211,10 @@ async function fetchMessages() {
   } catch (e) { loadError.value = e.message }
 }
 
-// Reviews are per-service — fetch for each service the provider owns
-async function fetchReviews() {
-  try {
-    const all = []
-    for (const svc of services.value) {
-      const res  = await fetch(`${API}/reviews.php?item_type=service&item_id=${svc.id}`)
-      const data = await res.json()
-      if (res.ok) all.push(...(data.reviews ?? []))
-    }
-    reviews.value = all.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-  } catch (e) { loadError.value = e.message }
-}
-
 onMounted(async () => {
   await fetchBookings()
   await fetchServices()
   await fetchMessages()
-  await fetchReviews()  // must run after fetchServices
 })
 
 // ── Booking handlers ──────────────────────────────────────────────────────
