@@ -72,6 +72,7 @@
           <div
             v-for="b in filtered" :key="b.id"
             class="bk-card" :class="{ 'bk-card--cancelled': b.status === 'cancelled' }"
+            @click="handleView(b)"
           >
             <div class="bk-card__thumb">
               <div class="bk-card__thumb-bg">{{ typeIcon(b.booking_type) }}</div>
@@ -100,9 +101,9 @@
                   <span class="price-label">total</span>
                 </div>
                 <div class="bk-card__actions">
-                  <button class="btn btn-ghost btn--sm" @click="handleView(b)">Details</button>
-                  <button v-if="canConfirm(b)" class="btn btn-teal btn--sm" @click="handleConfirm(b)">Confirm</button>
-                  <button v-if="canCancel(b)"  class="btn btn-coral btn--sm" @click="handleCancel(b)">Cancel</button>
+                  <button class="btn btn-ghost btn--sm" @click.stop="handleView(b)">Details</button>
+                  <button v-if="canConfirm(b)" class="btn btn-teal btn--sm" @click.stop="handleConfirm(b)">Confirm</button>
+                  <button v-if="canCancel(b)"  class="btn btn-coral btn--sm" @click.stop="handleCancel(b)">Cancel</button>
                 </div>
               </div>
             </div>
@@ -126,7 +127,7 @@ import SiteFooter from '@/components/home/SiteFooter.vue'
 
 const router = useRouter()
 const { user, isAgency, isProvider, isLoggedIn } = useAuth()
-const { bookings, loading, fetchBookings, updateStatus } = useBookings()
+const { bookings, loading, fetchBookings, updateStatus, cancelBooking } = useBookings()
 
 const activeTab    = ref('all')
 const statusFilter = ref('all')
@@ -149,6 +150,7 @@ const tabs = [
   { key: 'package',     label: 'Packages',     icon: '✈️' },
   { key: 'service',     label: 'Services',     icon: '🎯' },
   { key: 'destination', label: 'Destinations', icon: '📍' },
+  { key: 'offer',       label: 'Offers',       icon: '🏷️' },
 ]
 
 const statuses = [
@@ -180,24 +182,32 @@ const emptyStates = {
   package:     { icon: '✈️', title: 'No package bookings',     sub: 'Find the perfect travel package for your next trip.', link: '/packages',      cta: 'Browse Packages'       },
   service:     { icon: '🎯', title: 'No service bookings',     sub: 'Discover guides, drivers, chefs and more.',           link: '/services',      cta: 'Browse Services'       },
   destination: { icon: '📍', title: 'No destination bookings', sub: 'Explore our curated destinations.',                   link: '/destinations',  cta: 'Explore Destinations'  },
+  offer:       { icon: '🏷️', title: 'No offer bookings',       sub: 'Grab a limited-time deal before it expires.',         link: '/deals',         cta: 'View Deals'            },
 }
 const emptyState = computed(() => emptyStates[activeTab.value] ?? emptyStates.all)
 
 function bookingTitle(b) {
-  return b.package_title || b.service_title || b.destination_name || `Booking #${b.id}`
+  return b.package_title || b.service_title || b.destination_name || b.offer_title || `Booking #${b.id}`
 }
-function typeIcon(type) { return { package: '✈️', service: '🎯', destination: '📍' }[type] ?? '📋' }
-function typeName(type) { return { package: 'Package', service: 'Service', destination: 'Destination' }[type] ?? 'Booking' }
+function typeIcon(type) { return { package: '✈️', service: '🎯', destination: '📍', offer: '🏷️' }[type] ?? '📋' }
+function typeName(type) { return { package: 'Package', service: 'Service', destination: 'Destination', offer: 'Offer' }[type] ?? 'Booking' }
 function formatDate(d)  { return d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '' }
 function canConfirm(b)  { return role.value !== 'tourist' && b.status === 'pending' }
 function canCancel(b)   { return b.status === 'pending' || (role.value === 'tourist' && b.status === 'confirmed') }
 
 async function handleConfirm(b) { await updateStatus(b.id, 'confirmed') }
-async function handleCancel(b)  { await updateStatus(b.id, 'cancelled') }
+async function handleCancel(b) {
+  if (!confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) return
+  await cancelBooking(b.id)
+}
 function handleView(b) {
-  const paths = { package: '/packages', service: '/services', destination: '/destinations' }
+  const paths = { package: '/packages', service: '/services', destination: '/destinations', offer: '/deals' }
   const id = b.package_id ?? b.service_id ?? b.destination_id
-  if (id) router.push(`${paths[b.booking_type]}/${id}`)
+  if (id && b.booking_type !== 'offer') {
+    router.push(`${paths[b.booking_type]}/${id}`)
+  } else if (b.booking_type === 'offer') {
+    router.push('/deals')
+  }
 }
 
 onMounted(() => {
@@ -261,7 +271,7 @@ onMounted(() => {
 
 .bk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
 
-.bk-card { background: var(--white); border-radius: var(--radius, 14px); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; transition: box-shadow var(--transition), transform var(--transition); }
+.bk-card { background: var(--white); border-radius: var(--radius, 14px); box-shadow: var(--shadow); overflow: hidden; display: flex; flex-direction: column; transition: box-shadow var(--transition), transform var(--transition); cursor: pointer; }
 .bk-card:hover { box-shadow: var(--shadow-lg, 0 8px 32px rgba(0,0,0,.1)); transform: translateY(-3px); }
 .bk-card--cancelled { opacity: .62; }
 

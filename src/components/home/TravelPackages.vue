@@ -64,10 +64,11 @@
 
             <!-- IMPORTANT: .stop prevents card click -->
             <button
-              class="btn btn-coral pkg-book"
-              @click.stop="$emit('book', pkg)"
+              class="btn pkg-book"
+              :class="isBooked('package', pkg.id) ? 'btn-outline-danger' : 'btn-coral'"
+              @click.stop="$emit(isBooked('package', pkg.id) ? 'cancel' : 'book', pkg)"
             >
-              Book now
+              {{ isBooked('package', pkg.id) ? 'Cancel Booking' : 'Book now' }}
             </button>
           </div>
         </div>
@@ -78,13 +79,16 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useBookings } from '@/composables/useBookings'
 
 const props = defineProps({
   packages: { type: Array, default: () => [] },
 })
 
-// ✅ Added "select"
-defineEmits(['book', 'select'])
+const { isBooked } = useBookings()
+
+// ✅ Added "select" and "cancel"
+defineEmits(['book', 'cancel', 'select'])
 
 const tabs = ['All', 'Adventure', 'Beach', 'Cultural', 'Family']
 const activeTab = ref('All')
@@ -234,5 +238,13 @@ const filtered = computed(() =>
 .pkg-book {
   padding: 9px 22px;
   font-size: 0.88rem;
+}
+.btn-outline-danger {
+  background: transparent;
+  border: 1px solid var(--coral);
+  color: var(--coral);
+}
+.btn-outline-danger:hover {
+  background: rgba(255, 90, 95, 0.1);
 }
 </style>

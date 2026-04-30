@@ -74,10 +74,11 @@
           :reviews="item.reviews"
           :spots="item.spots"
           :facts="item.facts"
-          :cta-label="alreadyBooked ? '✓ Booked' : 'Book this package'"
-          :cta-disabled="alreadyBooked"
+          :cta-label="alreadyBooked ? 'Cancel Booking' : 'Book this package'"
+          :cta-danger="alreadyBooked"
           entity-label="agency"
           @book="bookingOpen = true"
+          @cancel="handleCancel"
           @message="handleContact"
         />
       </div>
@@ -118,7 +119,7 @@ const router = useRouter()
 
 const { isSaved, toggle }             = useWishlist()
 const { user, isLoggedIn }            = useAuth()
-const { isBooked, createBooking, fetchBookings, loaded } = useBookings()
+const { isBooked, createBooking, fetchBookings, loaded, getBookingId, cancelBooking } = useBookings()
 
 const item    = ref(null)
 const loading = ref(true)
@@ -225,10 +226,20 @@ async function handleBooking(payload) {
 
   if (result.ok) {
     bookingOpen.value = false
-    alert('Package booked! View it in your bookings.')
+    alert('Package booked successfully!')
+    router.push('/bookings')
   } else {
     alert('Failed to book: ' + result.error)
   }
+}
+
+async function handleCancel() {
+  if (!confirm('Are you sure you want to cancel this booking?')) return
+  const id = getBookingId('package', item.value.id)
+  if (!id) return
+  const res = await cancelBooking(id)
+  if (res.ok) alert('Booking cancelled successfully.')
+  else alert('Failed to cancel: ' + res.error)
 }
 
 const mockReviews = [

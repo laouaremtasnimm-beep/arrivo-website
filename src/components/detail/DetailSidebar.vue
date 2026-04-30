@@ -34,7 +34,11 @@
       </div>
 
       <!-- CTA -->
-      <button class="btn btn-coral detail-sidebar__cta" @click="$emit('book')">
+      <button 
+        class="btn detail-sidebar__cta" 
+        :class="ctaDanger ? 'btn-outline-danger' : 'btn-coral'"
+        @click="$emit(ctaDanger ? 'cancel' : 'book')"
+      >
         {{ ctaLabel }}
       </button>
 
@@ -68,9 +72,10 @@ defineProps({
   ctaLabel:    { type: String, default: 'Book now'},
   entityLabel: { type: String, default: 'provider'},
   note:        { type: String, default: "You won't be charged yet." },
+  ctaDanger:   { type: Boolean, default: false },
 })
 
-defineEmits(['book', 'message'])
+defineEmits(['book', 'cancel', 'message'])
 </script>
 
 <style scoped>
@@ -147,5 +152,13 @@ defineEmits(['book', 'message'])
 .trust-item {
   display: flex; align-items: center; gap: 8px;
   font-size: .84rem; color: var(--gray-600);
+}
+.btn-outline-danger {
+  background: transparent;
+  border: 1px solid var(--coral);
+  color: var(--coral);
+}
+.btn-outline-danger:hover {
+  background: rgba(255, 90, 95, 0.1);
 }
 </style>

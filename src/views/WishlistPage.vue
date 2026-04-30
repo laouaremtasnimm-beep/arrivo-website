@@ -56,18 +56,28 @@
           </template>
           <template v-else-if="activeTab === 'packages'">
             <PackageCard
-              v-for="item in currentItems" :key="'pkg-' + item.id"
-              :item="item" :saved="true"
-              @select="goToDetail" @book="openBooking"
-              @toggle-wishlist="handleRemove('package', item.id)"
+              v-for="pkg in savedPkgItems"
+              :key="'pkg-' + pkg.id"
+              :item="pkg"
+              saved
+              :booked="isBooked('package', pkg.id)"
+              @toggle-wishlist="toggle('package', pkg.id)"
+              @select="router.push(`/packages/${pkg.id}`)"
+              @book="openBooking('package', pkg)"
+              @cancel="handleCancel('package', pkg)"
             />
           </template>
           <template v-else>
             <ServiceCard
-              v-for="item in currentItems" :key="'svc-' + item.id"
-              :item="item" :saved="true"
-              @select="goToDetail" @book="openBooking"
-              @toggle-wishlist="handleRemove('service', item.id)"
+              v-for="svc in savedSvcItems"
+              :key="'svc-' + svc.id"
+              :item="svc"
+              saved
+              :booked="isBooked('service', svc.id)"
+              @toggle-wishlist="toggle('service', svc.id)"
+              @select="router.push(`/services/${svc.id}`)"
+              @book="openBooking('service', svc)"
+              @cancel="handleCancel('service', svc)"
             />
           </template>
         </div>
@@ -108,6 +118,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { destinations, packages as mockPackages, services as mockServices } from '@/data/content.js'
 import { useWishlist } from '@/composables/useWishlist.js'
+import { useBookings } from '@/composables/useBookings'
+import { useAuth } from '@/composables/useAuth'
 
 import NavBar          from '@/components/home/NavBar.vue'
 import SiteFooter      from '@/components/home/SiteFooter.vue'
@@ -120,6 +132,8 @@ const router = useRouter()
 
 // ── Shared wishlist state ──────────────────────────────────────────────────
 const { itemsOfType, toggle, clearType } = useWishlist()
+const { user, isLoggedIn } = useAuth()
+const { createBooking, isBooked, getBookingId, cancelBooking } = useBookings()
 
 // Get the saved entries for each type
 const destEntries = itemsOfType('destination')  // [{type:'destination', id:N}, ...]
@@ -241,8 +255,45 @@ function goToDetail(item) {
 // ── Booking ────────────────────────────────────────────────────────────────
 const bookingOpen  = ref(false)
 const selectedItem = ref(null)
-function openBooking(item) { selectedItem.value = item; bookingOpen.value = true }
-function handleBookingSubmit(payload) { console.log('Booking:', payload) }
+const selectedItemType = ref(null)
+
+function openBooking(type, item) { 
+  selectedItemType.value = type;
+  selectedItem.value = item; 
+  bookingOpen.value = true 
+}
+
+async function handleBookingSubmit(payload) {
+  if (!isLoggedIn.value) { alert('Please log in to book.'); return }
+
+  const result = await createBooking({
+    user_id:  user.value?.userID ?? user.value?.id,
+    type:     selectedItemType.value,
+    item_id:  selectedItem.value.id,
+    title:    selectedItem.value.title ?? selectedItem.value.name,
+    price:    selectedItem.value.price,
+    check_in: payload.checkin,
+    guests:   parseInt(payload.guests) || 1,
+    notes:    payload.notes,
+  })
+
+  if (result.ok) {
+    bookingOpen.value = false
+    alert(`${selectedItemType.value} booked successfully!`)
+    router.push('/bookings')
+  } else {
+    alert('Failed to book: ' + result.error)
+  }
+}
+
+async function handleCancel(type, item) {
+  if (!confirm('Are you sure you want to cancel this booking?')) return
+  const id = getBookingId(type, item.id)
+  if (!id) return
+  const res = await cancelBooking(id)
+  if (res.ok) alert('Booking cancelled successfully.')
+  else alert('Failed to cancel: ' + res.error)
+}
 </script>
 
 <style scoped>

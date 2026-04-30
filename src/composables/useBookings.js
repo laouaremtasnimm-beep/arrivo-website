@@ -40,13 +40,16 @@ export function useBookings() {
         const body = {
             user_id: payload.user_id,
             // map type → correct id field
+            booking_type: payload.type,
             ...(payload.type === 'package' && { package_id: payload.item_id }),
             ...(payload.type === 'service' && { service_id: payload.item_id }),
             ...(payload.type === 'destination' && { destination_id: payload.item_id }),
+            ...(payload.type === 'offer' && { offer_id: payload.item_id }),
             check_in: payload.check_in ?? null,
             guests: payload.guests ?? 1,
             total_price: payload.price ?? 0,
             notes: payload.notes ?? '',
+            title: payload.title ?? '',
         }
 
         try {
@@ -70,10 +73,12 @@ export function useBookings() {
                 package_title: payload.type === 'package' ? payload.title : undefined,
                 service_title: payload.type === 'service' ? payload.title : undefined,
                 destination_name: payload.type === 'destination' ? payload.title : undefined,
+                offer_title: payload.type === 'offer' ? payload.title : undefined,
                 // store item_id so isBooked() can look it up
                 package_id: payload.type === 'package' ? payload.item_id : undefined,
                 service_id: payload.type === 'service' ? payload.item_id : undefined,
                 destination_id: payload.type === 'destination' ? payload.item_id : undefined,
+                offer_id: payload.type === 'offer' ? payload.item_id : undefined,
             }
             _bookings.value.unshift(newBooking)
             return { ok: true }
@@ -102,6 +107,28 @@ export function useBookings() {
         }
     }
 
+    // ── Delete a booking (Cancellation) ──────────────────────────────────────
+    async function cancelBooking(id) {
+        // Optimistic removal
+        const prev = [..._bookings.value]
+        _bookings.value = _bookings.value.filter(b => b.id !== id)
+
+        try {
+            const res = await fetch(API, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Failed to cancel booking')
+            return { ok: true }
+        } catch (e) {
+            console.error('cancelBooking failed', e)
+            _bookings.value = prev // Rollback on failure
+            return { ok: false, error: e.message }
+        }
+    }
+
     // ── Helper: has the user already booked this item? ───────────────────────
     function isBooked(type, itemId) {
         return _bookings.value.some(b => {
@@ -109,8 +136,21 @@ export function useBookings() {
             if (type === 'package') return Number(b.package_id) === Number(itemId)
             if (type === 'service') return Number(b.service_id) === Number(itemId)
             if (type === 'destination') return Number(b.destination_id) === Number(itemId)
+            if (type === 'offer') return Number(b.offer_id) === Number(itemId)
             return false
         })
+    }
+
+    function getBookingId(type, itemId) {
+        const b = _bookings.value.find(b => {
+            if (b.booking_type !== type) return false
+            if (type === 'package') return Number(b.package_id) === Number(itemId)
+            if (type === 'service') return Number(b.service_id) === Number(itemId)
+            if (type === 'destination') return Number(b.destination_id) === Number(itemId)
+            if (type === 'offer') return Number(b.offer_id) === Number(itemId)
+            return false
+        })
+        return b?.id
     }
 
     return {
@@ -120,6 +160,8 @@ export function useBookings() {
         fetchBookings,
         createBooking,
         updateStatus,
+        cancelBooking,
         isBooked,
+        getBookingId,
     }
 }

@@ -13,7 +13,7 @@
     <HotOffers @select="handleOfferSelect" />
 
     <DestinationGrid :destinations="homeDestinations" @select="handleDestSelect" />
-    <TravelPackages  :packages="homePackages"         @select="handlePackageSelect" @book="openBooking" />
+    <TravelPackages  :packages="homePackages"         @select="handlePackageSelect" @book="openBooking" @cancel="handleCancel" />
     <ServicesGrid    :services="homeServices"         @select="handleServiceSelect" />
     <HowItWorks />
     <ReviewsSection  :reviews="reviews" />
@@ -34,6 +34,8 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { destinations, packages, services } from '@/data/content.js'
+import { useAuth } from '@/composables/useAuth'
+import { useBookings } from '@/composables/useBookings'
 
 import NavBar            from '@/components/home/NavBar.vue'
 import HeroSection       from '@/components/home/HeroSection.vue'
@@ -50,6 +52,8 @@ import SiteFooter        from '@/components/home/SiteFooter.vue'
 import BookingModal      from '@/components/home/BookingModal.vue'
 
 const router = useRouter()
+const { user, isLoggedIn } = useAuth()
+const { createBooking, cancelBooking, getBookingId } = useBookings()
 
 // ── Booking modal ──────────────────────────────────────────────────────────
 const bookingOpen     = ref(false)
@@ -59,8 +63,36 @@ function openBooking(pkg) {
   selectedPackage.value = pkg
   bookingOpen.value     = true
 }
-function handleBookingSubmit(payload) {
-  console.log('Booking submitted:', payload)
+async function handleBookingSubmit(payload) {
+  if (!isLoggedIn.value) { alert('Please log in to book.'); return }
+
+  const result = await createBooking({
+    user_id:  user.value?.userID ?? user.value?.id,
+    type:     'package',
+    item_id:  selectedPackage.value.id,
+    title:    selectedPackage.value.title,
+    price:    selectedPackage.value.price,
+    check_in: payload.checkin,
+    guests:   parseInt(payload.guests) || 1,
+    notes:    payload.notes,
+  })
+
+  if (result.ok) {
+    bookingOpen.value = false
+    alert('Package booked successfully!')
+    router.push('/bookings')
+  } else {
+    alert('Failed to book: ' + result.error)
+  }
+}
+
+async function handleCancel(pkg) {
+  if (!confirm('Are you sure you want to cancel this booking?')) return
+  const id = getBookingId('package', pkg.id)
+  if (!id) return
+  const res = await cancelBooking(id)
+  if (res.ok) alert('Booking cancelled successfully.')
+  else alert('Failed to cancel: ' + res.error)
 }
 
 // ── Search ─────────────────────────────────────────────────────────────────

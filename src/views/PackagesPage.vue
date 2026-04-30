@@ -58,8 +58,10 @@
             :key="item.id"
             :item="item"
             :saved="isItemSaved(item)"
+            :booked="isBooked('package', item.id)"
             @select="goToDetail"
             @book="openBooking"
+            @cancel="handleCancel"
             @toggle-wishlist="toggleWishlist(item)"
           />
         </ItemGrid>
@@ -81,6 +83,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useListPage } from '@/composables/useListPage'
 import { packages } from '@/data/content.js'
+import { useAuth } from '@/composables/useAuth'
+import { useBookings } from '@/composables/useBookings'
 
 import NavBar           from '@/components/home/NavBar.vue'
 import PageHero         from '@/components/shared/PageHero.vue'
@@ -97,6 +101,9 @@ const router       = useRouter()
 const sidebarOpen  = ref(false)
 const bookingOpen  = ref(false)
 const selectedItem = ref(null)
+
+const { user, isLoggedIn } = useAuth()
+const { createBooking, isBooked, getBookingId, cancelBooking } = useBookings()
 
 const DEMO_IDS = new Set(packages.map(p => p.id))
 const allItems = ref([...packages])
@@ -138,7 +145,37 @@ onMounted(async () => {
 
 function goToDetail(item)  { router.push(`/packages/${item.id}`) }
 function openBooking(item) { selectedItem.value = item; bookingOpen.value = true }
-function handleBooking(payload) { console.log('Booked:', payload) }
+async function handleBooking(payload) {
+  if (!isLoggedIn.value) { alert('Please log in to book.'); return }
+
+  const result = await createBooking({
+    user_id:  user.value?.userID ?? user.value?.id,
+    type:     'package',
+    item_id:  selectedItem.value.id,
+    title:    selectedItem.value.title,
+    price:    selectedItem.value.price,
+    check_in: payload.checkin,
+    guests:   parseInt(payload.guests) || 1,
+    notes:    payload.notes,
+  })
+
+  if (result.ok) {
+    bookingOpen.value = false
+    alert('Package booked successfully!')
+    router.push('/bookings')
+  } else {
+    alert('Failed to book: ' + result.error)
+  }
+}
+
+async function handleCancel(item) {
+  if (!confirm('Are you sure you want to cancel this booking?')) return
+  const id = getBookingId('package', item.id)
+  if (!id) return
+  const res = await cancelBooking(id)
+  if (res.ok) alert('Booking cancelled successfully.')
+  else alert('Failed to cancel: ' + res.error)
+}
 
 const heroStats = [
   { icon: '✈️', value: '340+', label: 'packages'         },

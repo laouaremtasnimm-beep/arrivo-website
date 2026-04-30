@@ -56,11 +56,12 @@
           :rating="item.rating"
           :reviews="item.reviews"
           :facts="item.facts?.slice(0, 4)"
-          :cta-label="alreadyBooked ? '✓ Booked' : 'Find packages here'"
-          :cta-disabled="alreadyBooked"
+          :cta-label="alreadyBooked ? 'Cancel Booking' : 'Book your trip'"
+          :cta-danger="alreadyBooked"
           entity-label="Find services here"
           note="Browse packages and services for this destination."
           @book="openBookingOrPackages"
+          @cancel="handleCancel"
           @message="goToServices"
         />
       </div>
@@ -103,7 +104,7 @@ const router = useRouter()
 
 const { isSaved, toggle }                            = useWishlist()
 const { user, isLoggedIn }                           = useAuth()
-const { isBooked, createBooking, fetchBookings, loaded } = useBookings()
+const { isBooked, createBooking, fetchBookings, loaded, getBookingId, cancelBooking } = useBookings()
 
 // Ensure bookings are loaded
 if (isLoggedIn.value && !loaded.value) {
@@ -153,10 +154,20 @@ async function handleBooking(payload) {
 
   if (result.ok) {
     bookingOpen.value = false
-    alert('Destination booked! View it in your bookings.')
+    alert('Destination booked successfully!')
+    router.push('/bookings')
   } else {
-    alert('Failed to book: ' + result.error)
+    alert('Failed to book destination: ' + result.error)
   }
+}
+
+async function handleCancel() {
+  if (!confirm('Are you sure you want to cancel this booking?')) return
+  const id = getBookingId('destination', item.value.id)
+  if (!id) return
+  const res = await cancelBooking(id)
+  if (res.ok) alert('Booking cancelled successfully.')
+  else alert('Failed to cancel: ' + res.error)
 }
 
 const mockReviews = [

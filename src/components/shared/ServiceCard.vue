@@ -59,8 +59,12 @@
         </div>
       </div>
 
-      <button class="btn btn-teal svc-card__cta" @click.stop="$emit('book', item)">
-        Book service
+      <button
+        class="btn svc-card__cta"
+        :class="booked ? 'btn-outline-danger' : 'btn-teal'"
+        @click.stop="$emit(booked ? 'cancel' : 'book', item)"
+      >
+        {{ booked ? 'Cancel Booking' : 'Book service' }}
       </button>
     </div>
 
@@ -70,10 +74,11 @@
 <script setup>
 
 defineProps({
-  item:  { type: Object,  required: true },
-  saved: { type: Boolean, default: false },
+  item:   { type: Object,  required: true },
+  saved:  { type: Boolean, default: false },
+  booked: { type: Boolean, default: false },
 })
-defineEmits(['select', 'book', 'toggle-wishlist'])
+defineEmits(['select', 'book', 'cancel', 'toggle-wishlist'])
 </script>
 
 <style scoped>
@@ -165,4 +170,12 @@ defineEmits(['select', 'book', 'toggle-wishlist'])
 .svc-card__unit       { font-size: .75rem; color: var(--gray-400); font-family: 'DM Sans', sans-serif; font-weight: 400; }
 
 .svc-card__cta { width: 100%; padding: 11px; font-size: .88rem; border-radius: 10px; }
+.btn-outline-danger {
+  background: transparent;
+  border: 1px solid var(--coral);
+  color: var(--coral);
+}
+.btn-outline-danger:hover {
+  background: rgba(255, 90, 95, 0.1);
+}
 </style>

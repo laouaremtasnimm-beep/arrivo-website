@@ -20,7 +20,7 @@
 
           <div class="modal__body">
 
-            <!-- Description -->
+            <!-- Description a-->
             <p class="offer-desc">{{ offer?.description }}</p>
 
             <!-- Trust strip -->
@@ -99,8 +99,12 @@
           <!-- Footer CTA -->
           <div class="modal__footer">
             <div class="footer-note">🔥 Limited time — offer ends {{ offer?.endDate }}</div>
-            <button class="btn-book" @click="bookDeal">
-              Book this deal
+            <button 
+              class="btn-book" 
+              :class="{'btn-outline-danger': alreadyBooked}"
+              @click="alreadyBooked ? handleCancel() : bookDeal()"
+            >
+              {{ alreadyBooked ? 'Cancel Booking' : 'Book this deal' }}
             </button>
           </div>
 
@@ -123,6 +127,9 @@ import { useRouter } from 'vue-router'
 import { packages, services } from '@/data/content.js'
 import BookingModal from '@/components/home/BookingModal.vue'
 
+import { useAuth } from '@/composables/useAuth'
+import { useBookings } from '@/composables/useBookings'
+
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   offer:      { type: Object,  default: null  },
@@ -130,8 +137,14 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const router       = useRouter()
+const { user, isLoggedIn } = useAuth()
+const { createBooking, isBooked, getBookingId, cancelBooking } = useBookings()
 const bookingOpen  = ref(false)
 const bookingTarget = ref(null)
+
+const alreadyBooked = computed(() => {
+  return props.offer ? isBooked('offer', props.offer.offerID || props.offer.id) : false
+})
 
 // ── Match packages to this offer by keyword in title ────────────────────
 const matchedPackages = computed(() => {
@@ -200,9 +213,45 @@ function bookDeal() {
   bookingOpen.value = true
 }
 
-function handleBookingSubmit(payload) {
-  console.log('Offer deal booked:', payload)
-  close()
+async function handleBookingSubmit(payload) {
+  if (!isLoggedIn.value) { alert('Please log in to book.'); return }
+
+  const basePrice = bookingTarget.value.price || 0
+  const discount = props.offer?.discount || 0
+  const finalPrice = Math.round(basePrice * (1 - discount / 100))
+
+  const result = await createBooking({
+    user_id:  user.value?.userID ?? user.value?.id,
+    type:     'offer',
+    item_id:  props.offer?.offerID || props.offer?.id,
+    title:    props.offer?.title,
+    price:    finalPrice,
+    check_in: payload.checkin,
+    guests:   parseInt(payload.guests) || 1,
+    notes:    payload.notes,
+  })
+
+  if (result.ok) {
+    bookingOpen.value = false
+    close()
+    alert('Offer booked successfully!')
+    router.push('/bookings')
+  } else {
+    alert('Failed to book offer: ' + result.error)
+  }
+}
+
+async function handleCancel() {
+  if (!confirm('Are you sure you want to cancel this booking?')) return
+  const id = getBookingId('offer', props.offer?.offerID || props.offer?.id)
+  if (!id) return
+  const res = await cancelBooking(id)
+  if (res.ok) {
+    alert('Booking cancelled successfully.')
+    close()
+  } else {
+    alert('Failed to cancel: ' + res.error)
+  }
 }
 
 function close() { emit('update:modelValue', false) }
@@ -275,6 +324,21 @@ function close() { emit('update:modelValue', false) }
 .cards-grid {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 12px;
+}
+.btn-book {
+  padding: 14px 28px; font-family: 'Fraunces', serif; font-size: 1.1rem;
+  font-weight: 700; background: var(--coral); color: #fff; border: none;
+  border-radius: 14px; cursor: pointer; transition: all var(--transition);
+}
+.btn-book:hover { background: #ff4a50; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,90,95,.3); }
+
+.btn-book.btn-outline-danger {
+  background: transparent;
+  border: 1.5px solid var(--coral);
+  color: var(--coral);
+}
+.btn-book.btn-outline-danger:hover {
+  background: rgba(255, 90, 95, 0.1);
 }
 .mini-card {
   background: var(--white); border-radius: var(--radius-sm);
