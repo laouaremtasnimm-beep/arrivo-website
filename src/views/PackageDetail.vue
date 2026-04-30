@@ -16,7 +16,6 @@
         />
       </div>
 
-      <!-- Title + meta -->
       <div class="detail-page__title-row">
         <div>
           <div class="detail-page__type-tag">{{ item.type }}</div>
@@ -31,6 +30,8 @@
             <span class="detail-page__spots" v-if="item.spots <= 5">
               · 🔥 {{ item.spots }} spots left
             </span>
+            <!-- Already booked badge -->
+            <span v-if="alreadyBooked" class="booked-badge">✓ Already booked</span>
           </div>
         </div>
       </div>
@@ -38,19 +39,14 @@
       <div class="detail-page__body">
         <div class="detail-page__content">
 
-          <!-- About -->
           <div class="pkg-about">
             <h3 class="pkg-section-title">About this package</h3>
             <p class="pkg-about__text">{{ item.longDesc }}</p>
           </div>
 
-          <!-- Itinerary -->
           <PackageItinerary :itinerary="item.itinerary" />
-
-          <!-- Inclusions -->
           <PackageInclusions :includes="item.includes" :excludes="item.excludes" />
 
-          <!-- Agency -->
           <div class="pkg-section-title" style="margin-bottom:16px">About the agency</div>
           <EntityCard
             :name="item.agency"
@@ -63,12 +59,12 @@
           />
 
           <DetailReviews
-  :rating="item.rating"
-  :total-reviews="item.reviews"
-  :reviews="mockReviews"
-  item-type="package"
-  :item-id="item.id"
-/>
+            :rating="item.rating"
+            :total-reviews="item.reviews"
+            :reviews="mockReviews"
+            item-type="package"
+            :item-id="item.id"
+          />
         </div>
 
         <DetailSidebar
@@ -78,7 +74,8 @@
           :reviews="item.reviews"
           :spots="item.spots"
           :facts="item.facts"
-          cta-label="Book this package"
+          :cta-label="alreadyBooked ? '✓ Booked' : 'Book this package'"
+          :cta-disabled="alreadyBooked"
           entity-label="agency"
           @book="bookingOpen = true"
           @message="handleContact"
@@ -91,17 +88,19 @@
     <BookingModal v-model="bookingOpen" :pkg="item" @submit="handleBooking" />
   </div>
 
-  <div v-else class="not-found">
+  <div v-else-if="!loading" class="not-found">
     <h2>Package not found</h2>
     <RouterLink to="/packages" class="btn btn-coral">← Back to packages</RouterLink>
   </div>
-
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWishlist } from '@/composables/useWishlist.js'
+import { useBookings } from '@/composables/useBookings.js'
+import { useAuth }     from '@/composables/useAuth.js'
+import { packages }    from '@/data/content.js'
 
 import NavBar             from '@/components/home/NavBar.vue'
 import DetailBreadcrumb   from '@/components/detail/DetailBreadcrumb.vue'
@@ -117,62 +116,89 @@ import BookingModal       from '@/components/home/BookingModal.vue'
 const route  = useRoute()
 const router = useRouter()
 
-const { isSaved, toggle } = useWishlist()
+const { isSaved, toggle }             = useWishlist()
+const { user, isLoggedIn }            = useAuth()
+const { isBooked, createBooking, fetchBookings, loaded } = useBookings()
 
-const item = ref(null)
+const item    = ref(null)
 const loading = ref(true)
+const moreLike = ref([])
+const bookingOpen = ref(false)
 
 const API = '/arrivo-website/backend/api/v1'
 
+// Ensure bookings are loaded so isBooked() works
 onMounted(async () => {
-  try {
-    const res = await fetch(`${API}/packages.php?id=${route.params.id}`)
-    const data = await res.json()
-    console.log('PACKAGE API RESPONSE:', data)
+  if (isLoggedIn.value && !loaded.value) {
+    fetchBookings(user.value)
+  }
 
-    const p = data.package
+  const id = Number(route.params.id)
+  const mockP = packages.find(p => p.id === id)
+
+  if (mockP) {
     item.value = {
-      id: p.id,
-      title: p.title,
-      agency: p.agency_name || 'Unknown Agency',
-      img: p.img_url,
-      type: p.type,
-      duration: p.duration_days,
-      rating: Number(p.rating),
-      reviews: Number(p.review_count),
-      spots: Number(p.spots_available),
-      price: Number(p.price),
-      desc: p.description,
-      longDesc: p.long_desc,
-      includes: p.includes && p.includes !== 'null' ? JSON.parse(p.includes) : [],
-      excludes: p.excludes && p.excludes !== 'null' ? JSON.parse(p.excludes) : [],
-      itinerary: p.itinerary && p.itinerary !== 'null' ? JSON.parse(p.itinerary) : []
+      id: mockP.id, title: mockP.title, agency: mockP.agency || 'Unknown Agency',
+      img: mockP.img, type: mockP.type, duration: mockP.duration,
+      rating: Number(mockP.rating), reviews: Number(mockP.reviews),
+      spots: Number(mockP.spots), price: Number(mockP.price),
+      desc: mockP.desc, longDesc: mockP.desc,
+      includes: mockP.includes || [],
+      excludes: mockP.excludes || [],
+      itinerary: mockP.itinerary || [],
     }
-
-    const allRes = await fetch(`${API}/packages.php`)
-    if (allRes.ok) {
-      const allData = await allRes.json()
-      if (allData.packages) {
-        moreLike.value = allData.packages
-          .filter(x => x.id !== p.id && x.type === p.type)
-          .slice(0, 6)
-          .map(x => ({
-             id: x.id, title: x.title, agency: x.agency_name || 'Unknown Agency', img: x.img_url, type: x.type,
-             duration: x.duration_days, rating: Number(x.rating), reviews: Number(x.review_count),
-             spots: Number(x.spots_available), price: Number(x.price)
-          }))
+  } else {
+    try {
+      const res  = await fetch(`${API}/packages.php?id=${id}`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.package) {
+          const p = data.package
+          item.value = {
+            id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency',
+            img: p.img_url, type: p.type, duration: p.duration_days,
+            rating: Number(p.rating), reviews: Number(p.review_count),
+            spots: Number(p.spots_available), price: Number(p.price),
+            desc: p.description, longDesc: p.long_desc,
+            includes:  p.includes  && p.includes  !== 'null' ? JSON.parse(p.includes)  : [],
+            excludes:  p.excludes  && p.excludes  !== 'null' ? JSON.parse(p.excludes)  : [],
+            itinerary: p.itinerary && p.itinerary !== 'null' ? JSON.parse(p.itinerary) : [],
+          }
+        }
       }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  try {
+    const allRes  = await fetch(`${API}/packages.php`)
+    const allData = await allRes.json()
+    const dbRows = allData.packages || []
+    
+    const demoTitles = new Set(packages.map(p => p.title))
+    const newOnly = dbRows.filter(p => !demoTitles.has(p.title)).map(p => ({
+        id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency', 
+        img: p.img_url, type: p.type, duration: p.duration_days, 
+        rating: Number(p.rating), reviews: Number(p.review_count), 
+        spots: Number(p.spots_available), price: Number(p.price)
+    }))
+    
+    const allItems = [...packages, ...newOnly]
+    
+    if (item.value) {
+      moreLike.value = allItems
+        .filter(x => x.id !== item.value.id && x.type === item.value.type).slice(0, 6)
     }
   } catch (e) {
     console.error(e)
-    item.value = null
-  } finally {
-    loading.value = false
   }
+  
+  loading.value = false
 })
 
-const isSavedVal = computed(() => item.value ? isSaved.value('package', item.value.id) : false)
-const bookingOpen = ref(false)
+const isSavedVal    = computed(() => item.value ? isSaved.value('package', item.value.id) : false)
+const alreadyBooked = computed(() => item.value ? isBooked('package', item.value.id) : false)
 
 function handleToggleWishlist() {
   if (!item.value) return
@@ -180,17 +206,36 @@ function handleToggleWishlist() {
   if (wasAdded) router.push('/wishlist')
 }
 
-const moreLike = ref([])
-
 function goToPackage(pkg) { router.push(`/packages/${pkg.id}`) }
 function handleContact()  { console.log('Contact agency') }
-function handleBooking(p) { console.log('Booked:', p) }
+
+async function handleBooking(payload) {
+  if (!isLoggedIn.value) { alert('Please log in to book.'); return }
+
+  const result = await createBooking({
+    user_id:  user.value?.userID ?? user.value?.id,
+    type:     'package',
+    item_id:  item.value.id,
+    title:    item.value.title,
+    price:    item.value.price,
+    check_in: payload.checkin,
+    guests:   parseInt(payload.guests) || 1,
+    notes:    payload.notes,
+  })
+
+  if (result.ok) {
+    bookingOpen.value = false
+    alert('Package booked! View it in your bookings.')
+  } else {
+    alert('Failed to book: ' + result.error)
+  }
+}
 
 const mockReviews = [
-  { id:1, name:'Amelia R.',  location:'London, UK',     rating:5, date:'May 2025', text:'The entire package was flawlessly organised. The chalet was stunning and the ski instructor was brilliant. Worth every penny.' },
-  { id:2, name:'Thomas K.',  location:'Munich, Germany',rating:5, date:'Feb 2025', text:'Best ski holiday I\'ve ever had. The Zermatt day trip alone was worth the price. The off-piste guide knew the mountain perfectly.' },
-  { id:3, name:'Maria S.',   location:'Rome, Italy',    rating:4, date:'Jan 2025', text:'Excellent organisation and beautiful location. The food was outstanding. We\'d have liked slightly more free time but overall brilliant.' },
-  { id:4, name:'David C.',   location:'New York, USA',  rating:5, date:'Mar 2025', text:'Genuinely life-changing experience. The Swiss Alps in winter are something everyone should see. The team was professional and warm.' },
+  { id:1, name:'Amelia R.',  location:'London, UK',      rating:5, date:'May 2025', text:'The entire package was flawlessly organised. The chalet was stunning and the ski instructor was brilliant. Worth every penny.' },
+  { id:2, name:'Thomas K.',  location:'Munich, Germany', rating:5, date:'Feb 2025', text:"Best ski holiday I've ever had. The Zermatt day trip alone was worth the price. The off-piste guide knew the mountain perfectly." },
+  { id:3, name:'Maria S.',   location:'Rome, Italy',     rating:4, date:'Jan 2025', text:'Excellent organisation and beautiful location. The food was outstanding. Slightly more free time would have been nice but overall brilliant.' },
+  { id:4, name:'David C.',   location:'New York, USA',   rating:5, date:'Mar 2025', text:'Genuinely life-changing experience. The Swiss Alps in winter are something everyone should see. The team was professional and warm.' },
 ]
 </script>
 
@@ -198,25 +243,21 @@ const mockReviews = [
 .detail-page { min-height: 100vh; background: var(--gray-50); padding-top: 72px; }
 .detail-page__inner { max-width: 1200px; margin: 0 auto; padding: 0 5% 80px; }
 .detail-page__hero-wrap { margin: 24px 0 32px; }
-
 .detail-page__title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 40px; flex-wrap: wrap; }
 .detail-page__type-tag  { display: inline-block; background: var(--teal-lt); color: var(--teal-dk); font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 4px 12px; border-radius: 50px; margin-bottom: 10px; }
 .detail-page__title     { font-family: 'Fraunces', serif; font-size: clamp(1.8rem, 3.5vw, 2.8rem); font-weight: 700; color: var(--indigo); margin-bottom: 8px; }
 .detail-page__subtitle  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .92rem; color: var(--gray-600); }
-.detail-page__dot       { color: var(--gray-200); }
-.detail-page__reviews   { color: var(--gray-400); }
-.detail-page__spots     { color: var(--coral); font-weight: 600; }
-
+.detail-page__dot { color: var(--gray-200); }
+.detail-page__reviews { color: var(--gray-400); }
+.detail-page__spots { color: var(--coral); font-weight: 600; }
+.booked-badge { background: rgba(39,174,96,.12); color: #1a7a45; font-size: .78rem; font-weight: 700; padding: 3px 12px; border-radius: 50px; border: 1px solid rgba(39,174,96,.25); }
 .detail-page__body    { display: grid; grid-template-columns: 1fr 360px; gap: 48px; align-items: flex-start; }
 .detail-page__content { min-width: 0; }
-
 .pkg-about { margin-bottom: 36px; }
 .pkg-section-title { font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 700; color: var(--indigo); margin-bottom: 16px; }
-.pkg-about__text   { font-size: .95rem; color: var(--gray-600); line-height: 1.75; }
-
+.pkg-about__text { font-size: .95rem; color: var(--gray-600); line-height: 1.75; }
 .not-found { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
 .not-found h2 { font-family: 'Fraunces', serif; font-size: 1.8rem; }
-
 @media (max-width: 900px) { .detail-page__body { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .detail-page__inner { padding: 0 4% 60px; } }
 </style>
