@@ -166,6 +166,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useOffers } from '@/composables/useOffers'
+import { useWishlist } from '@/composables/useWishlist'
 
 import DashboardSidebar    from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardHeader     from '@/components/dashboard/DashboardHeader.vue'
@@ -190,6 +191,7 @@ const API = '/arrivo-website/backend/api/v1'
 const router = useRouter()
 const { user, isAgency, isProvider, logout } = useAuth()
 const { saveOffer, deleteOffer, saveOfferToDB, deleteOfferFromDB, allOffers } = useOffers()
+const { toggle: toggleWishlist } = useWishlist()
 
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
@@ -472,6 +474,7 @@ async function handleSavePackage(payload) {
 
     if (isNew) {
       packages.value.unshift({ ...payload, id: data.package_id })
+      toggleWishlist('package', data.package_id) // Add to wishlist
     } else {
       const idx = packages.value.findIndex(p => p.id === payload.id)
       if (idx !== -1) packages.value[idx] = payload
@@ -520,6 +523,7 @@ async function handleSaveService(payload) {
 
     if (isNew) {
       services.value.unshift({ ...payload, id: data.service_id })
+      toggleWishlist('service', data.service_id) // Add to wishlist
     } else {
       const idx = services.value.findIndex(s => s.id === payload.id)
       if (idx !== -1) services.value[idx] = payload

@@ -104,9 +104,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { destinations, packages, services } from '@/data/content.js'
+import { destinations } from '@/data/content.js'
 import { useWishlist } from '@/composables/useWishlist.js'
 
 import NavBar          from '@/components/home/NavBar.vue'
@@ -126,6 +126,40 @@ const destEntries = itemsOfType('destination')  // [{type:'destination', id:N}, 
 const pkgEntries  = itemsOfType('package')
 const svcEntries  = itemsOfType('service')
 
+const API = '/arrivo-website/backend/api/v1'
+
+const allPackages = ref([])
+const allServices = ref([])
+
+onMounted(async () => {
+  try {
+    const pRes = await fetch(`${API}/packages.php`)
+    if (pRes.ok) {
+      const pData = await pRes.json()
+      allPackages.value = (pData.packages || []).map(p => ({
+        id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency',
+        img: p.img_url, type: p.type, duration: p.duration_days,
+        rating: Number(p.rating), reviews: Number(p.review_count),
+        spots: Number(p.spots_available), price: Number(p.price), desc: p.description
+      }))
+    }
+  } catch (e) { console.error('Failed to load packages', e) }
+
+  try {
+    const sRes = await fetch(`${API}/services.php`)
+    if (sRes.ok) {
+      const sData = await sRes.json()
+      allServices.value = (sData.services || []).map(s => ({
+        id: s.id, icon: s.icon, iconBg: 'svc-icon-teal', title: s.title,
+        provider: s.provider_name || 'Unknown Provider', type: s.type,
+        price: Number(s.price), unit: s.price_unit, rating: Number(s.rating),
+        reviews: Number(s.review_count), availability: !!Number(s.is_available),
+        desc: s.description, img: s.img_url
+      }))
+    }
+  } catch (e) { console.error('Failed to load services', e) }
+})
+
 // Resolve entries → actual data objects, preserving wishlist order
 const savedDestItems = computed(() =>
   destEntries.value
@@ -134,12 +168,12 @@ const savedDestItems = computed(() =>
 )
 const savedPkgItems = computed(() =>
   pkgEntries.value
-    .map(e => packages.find(p => p.id === e.id))
+    .map(e => allPackages.value.find(p => p.id === e.id))
     .filter(Boolean)
 )
 const savedSvcItems = computed(() =>
   svcEntries.value
-    .map(e => services.find(s => s.id === e.id))
+    .map(e => allServices.value.find(s => s.id === e.id))
     .filter(Boolean)
 )
 
