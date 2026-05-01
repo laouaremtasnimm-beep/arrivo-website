@@ -59,10 +59,11 @@ defineEmits(['select', 'book', 'toggle-wishlist'])
   box-shadow: var(--shadow); overflow: hidden;
   transition: transform var(--transition), box-shadow var(--transition);
   cursor: pointer;
+  display: flex; flex-direction: column; height: 420px;
 }
 .result-card:hover { transform: translateY(-5px); box-shadow: var(--shadow-md); }
 
-.result-card__img { height: 200px; position: relative; overflow: hidden; }
+.result-card__img { height: 200px; flex-shrink: 0; position: relative; overflow: hidden; }
 .result-card__img img { height: 100%; transition: transform .5s ease; }
 .result-card:hover .result-card__img img { transform: scale(1.06); }
 
@@ -83,7 +84,7 @@ defineEmits(['select', 'book', 'toggle-wishlist'])
   padding: 4px 12px; font-size: .72rem; font-weight: 700; color: var(--indigo);
 }
 
-.result-card__body     { padding: 20px; }
+.result-card__body     { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; }
 .result-card__meta     { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .result-card__category { font-size: .75rem; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: .05em; }
 .result-card__rating   { display: flex; align-items: center; gap: 4px; font-size: .82rem; font-weight: 600; color: var(--indigo); }
@@ -100,6 +101,7 @@ defineEmits(['select', 'book', 'toggle-wishlist'])
 .result-card__footer {
   display: flex; align-items: center; justify-content: space-between;
   padding-top: 14px; border-top: 1px solid var(--gray-100);
+  margin-top: auto;
 }
 .result-card__from  { font-size: .72rem; color: var(--gray-400); }
 .result-card__price { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; color: var(--coral); }

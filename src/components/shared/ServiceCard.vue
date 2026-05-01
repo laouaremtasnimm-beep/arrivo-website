@@ -51,7 +51,7 @@
         </div>
 
         <div class="svc-card__pricing">
-          <div class="svc-card__price-label">{{ item.priceLabel || 'from' }}</div>
+          <div class="svc-card__price-label">{{ item.priceLabel || ' ' }}</div>
           <div class="svc-card__price">
             ${{ item.price }}
             <span class="svc-card__unit">/{{ item.unit || 'day' }}</span>
@@ -83,16 +83,44 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist'])
 
 <style scoped>
 .svc-card {
-  background: var(--white); border-radius: var(--radius);
-  box-shadow: var(--shadow); overflow: hidden;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
   transition: transform var(--transition), box-shadow var(--transition), border-bottom-color var(--transition);
-  cursor: pointer; border-bottom: 3px solid transparent;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+
+  display: flex;          /* ✅ ADD THIS */
+  flex-direction: column; /* ✅ ADD THIS */
+  height: 420px;           /* ✅ ADD THIS */
 }
+
 .svc-card:hover {
   transform: translateY(-5px); box-shadow: var(--shadow-md);
   border-bottom-color: var(--teal);
 }
+.svc-card__body {
+  padding: 16px 20px 20px;
 
+  display: flex;          /* ✅ ADD */
+  flex-direction: column; /* ✅ ADD */
+  flex-grow: 1;           /* ✅ ADD */
+}
+.svc-card__cta {
+  width: 100%;
+  padding: 11px;
+  font-size: .88rem;
+  border-radius: 10px;
+
+  margin-top: 10px; /* ✅ THIS IS THE MAGIC */
+}
+.svc-card__features {
+  display: -webkit-box;
+  -webkit-line-clamp: 3; /* limit features */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 /* Image variant */
 .svc-card__img { height: 190px; position: relative; overflow: hidden; }
 .svc-card__img img { height: 100%; transition: transform .5s ease; }
@@ -147,12 +175,18 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist'])
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-.svc-card__features { display: flex; flex-direction: column; gap: 3px; margin-bottom: 14px; }
+.svc-card__features { display: flex; flex-direction: column; gap: 3px; margin-bottom: 0px; }
 .svc-feature { font-size: .76rem; color: var(--gray-600); }
 
 .svc-card__footer {
-  display: flex; align-items: flex-end; justify-content: space-between;
-  margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+
+  margin-top: auto;   /* ✅ THIS pushes it down */
+  margin-bottom: 0x;
 }
 .svc-card__meta { display: flex; flex-direction: column; gap: 4px; }
 .svc-card__rating {

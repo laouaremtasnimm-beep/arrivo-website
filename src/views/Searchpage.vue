@@ -84,7 +84,9 @@
     <DealCard
       v-if="item.category === 'offer'"
       :offer="item"
+      :saved="wishlist.includes(item.id)"
       @select="goToDetail"
+      @toggle-save="toggleWishlist"
     />
 
     <!-- 🔵 Everything else -->
@@ -107,6 +109,7 @@
     @toggle-wishlist="toggleWishlist"
   />
 
+  
   </template>
 </div>
 
@@ -118,7 +121,9 @@
     <DealCard
       v-if="item.category === 'offer'"
       :offer="item"
+      :saved="wishlist.includes(item.id)"
       @select="goToDetail"
+      @toggle-save="toggleWishlist"
     />
 
     <!-- 🔵 Others -->
@@ -373,14 +378,11 @@ const mergedServices = [
 
     // 🔥 include offers from composable
     const offers = useOffers().activeOffers.value.map(o => ({
+      ...o, // Pass everything for consistency
       id: o.offerID,
       category: 'offer',
       title: o.title,
       desc: o.description,
-      img: null,
-      price: 0,
-      rating: 0,
-      reviews: 0,
       tag: o.discount + '% OFF'
     }))
 
@@ -539,6 +541,8 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
 </script>
 
 <style scoped>
+
+
 .search-page { min-height: 100vh; display: flex; flex-direction: column; background: var(--gray-50); }
 .search-body { display: grid; grid-template-columns: 280px 1fr; flex: 1; align-items: flex-start; }
 .results-area { padding: 28px 32px; min-height: 80vh; }
