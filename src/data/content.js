@@ -44,29 +44,4 @@ export const services = [
   { id: 2013, icon: '🏄', iconBg: 'svc-icon-coral', title: 'Surf Lessons', provider: 'Ride The Wave', type: 'Adventure', price: 70, unit: 'session', rating: 4.7, reviews: 318, availability: true, desc: 'Learn to surf with certified instructors on the best beginner and intermediate breaks.', features: ['Board & wetsuit', 'Video analysis', '2-hour session'] },
   { id: 2014, icon: '🌿', iconBg: 'svc-icon-teal', title: 'Eco Nature Walk', provider: 'Green Paths', type: 'Wellness', price: 55, unit: 'person', rating: 4.8, reviews: 195, availability: true, desc: 'Guided nature walks through national parks, forests and wetlands with a naturalist.', features: ['Binoculars provided', 'Wildlife spotting', 'Photography tips'] },
 ]
-
-export const allForSearch = [
-  ...destinations.map(d => ({
-    ...d,
-    title: d.name,
-    category: 'dest',
-    categoryLabel: 'Destination',
-    ctaLabel: 'Explore',
-    priceLabel: 'packages from',
-    price: d.price ?? d.startingPrice ?? 0
-  })),
-  ...packages.map(p => ({
-    ...p,
-    category: 'package',
-    categoryLabel: 'Travel Package',
-    ctaLabel: 'Book now',
-    priceLabel: 'per person',
-  })),
-  ...services.map(s => ({
-    ...s,
-    category: 'service',
-    categoryLabel: 'Service',
-    ctaLabel: 'Book service',
-    priceLabel: `per ${s.unit || 'day'}`,
-  })),
-]
+
