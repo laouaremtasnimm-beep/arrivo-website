@@ -79,7 +79,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { destinations } from '@/data/content.js'
 import { useWishlist }  from '@/composables/useWishlist.js'
@@ -101,11 +101,34 @@ const router = useRouter()
 const { isSaved, toggle }                            = useWishlist()
 const { user, isLoggedIn }                           = useAuth()
 const { isBooked, createBooking, fetchBookings, loaded, getBookingId, cancelBooking } = useBookings()
-
+async function loadItem(id) {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  loading.value = true
+  item.value = null
+  try {
+    const res  = await fetch(`/arrivo-website/backend/api/v1/listings.php?id=${id}`)
+    const data = await res.json()
+    if (data.listing) {
+      const dbItem = { ...data.listing, img: data.listing.image, from: data.listing.price }
+      const demo   = destinations.find(d => d.id === dbItem.id)
+      item.value   = demo ? { ...dbItem, ...demo } : dbItem
+    } else {
+      item.value = destinations.find(d => d.id === Number(id)) ?? null
+    }
+  } catch (e) {
+    console.error('Failed to fetch destination:', e)
+    item.value = destinations.find(d => d.id === Number(id)) ?? null
+  } finally {
+    loading.value = false
+  }
+}
 // Ensure bookings are loaded
 if (isLoggedIn.value && !loaded.value) {
   fetchBookings(user.value)
 }
+onMounted(() => loadItem(route.params.id))
+watch(() => route.params.id, (newId) => { if (newId) loadItem(newId) })
+
 
 const item = ref(null)
 const loading = ref(true)

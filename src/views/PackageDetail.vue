@@ -49,14 +49,15 @@
 
           <div class="pkg-section-title" style="margin-bottom:16px">About the agency</div>
           <EntityCard
-            :name="item.agency"
-            :bio="item.agencyBio"
-            :img="item.agencyImg"
-            :rating="item.agencyRating"
-            :reviews="item.agencyReviews"
-            entity-label="Agency"
-            @contact="handleContact"
-          />
+           :name="item.agency"
+  :bio="item.agencyBio"
+  :img="item.agencyImg"
+  :rating="item.agencyRating"
+  :reviews="item.agencyReviews"
+  :receiver-id="item.agency_id"   
+  entity-label="Agency"
+  @contact="handleContact"
+/>
 
           <DetailReviews
             :rating="item.rating"
@@ -96,7 +97,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWishlist } from '@/composables/useWishlist.js'
 import { useBookings } from '@/composables/useBookings.js'
@@ -128,84 +129,76 @@ const bookingOpen = ref(false)
 
 const API = '/arrivo-website/backend/api/v1'
 
-// Ensure bookings are loaded so isBooked() works
-onMounted(async () => {
-  if (isLoggedIn.value && !loaded.value) {
-    fetchBookings(user.value)
-  }
 
-  const id = Number(route.params.id)
-  
-  // 1. Fetch from DB
+
+async function loadItem(id) {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  loading.value = true
+  item.value    = null
+  // inside loadItem, right after `item.value = demo ? ...`
+console.log('agency_id on item:', item.value?.agency_id)
+  moreLike.value = []
+  id = Number(id)
+
   try {
     const res = await fetch(`${API}/packages.php?id=${id}`)
     if (res.ok) {
       const data = await res.json()
       if (data.package) {
-        const p = data.package
+        console.log('raw package from API:', data.package)
+console.log('agency_id value:', data.package?.agency_id)
+        const p      = data.package
         const dbItem = {
-          id: p.id,
-          title: p.title,
-          agency: p.agency_name || 'Unknown Agency',
+          agency_id: p.agency_id,
+          id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency',
           img: p.img_url || p.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
-          type: p.type,
-          duration: p.duration_days,
-          rating: Number(p.rating || 4.5),
-          reviews: Number(p.review_count || 0),
-          spots: Number(p.spots_available || 0),
-          price: Number(p.price || 0),
+          type: p.type, duration: p.duration_days,
+          rating: Number(p.rating || 4.5), reviews: Number(p.review_count || 0),
+          spots: Number(p.spots_available || 0), price: Number(p.price || 0),
           longDesc: p.long_desc || p.description || '',
-          includes: p.includes && p.includes !== 'null' ? JSON.parse(p.includes) : [],
-          excludes: p.excludes && p.excludes !== 'null' ? JSON.parse(p.excludes) : [],
+          includes:  p.includes  && p.includes  !== 'null' ? JSON.parse(p.includes)  : [],
+          excludes:  p.excludes  && p.excludes  !== 'null' ? JSON.parse(p.excludes)  : [],
           itinerary: p.itinerary && p.itinerary !== 'null' ? JSON.parse(p.itinerary) : [],
         }
-
-        const demo = packages.find(x => x.id === id)
-        item.value = demo ? { ...dbItem, ...demo } : dbItem
+       const demo = packages.find(x => x.id === id)
+item.value = demo ? { ...dbItem, ...demo, agency_id: dbItem.agency_id } : dbItem
       }
     }
   } catch (e) {
     console.error('Failed to fetch package from DB:', e)
   }
 
-  // 2. Fallback to mock if DB failed or returned nothing
   if (!item.value) {
     const mockP = packages.find(p => p.id === id)
-    if (mockP) {
-      item.value = {
-        ...mockP,
-        longDesc: mockP.desc,
-        reviews: Number(mockP.reviews),
-        rating: Number(mockP.rating)
-      }
-    }
+    if (mockP) item.value = { ...mockP, longDesc: mockP.desc, reviews: Number(mockP.reviews), rating: Number(mockP.rating) }
   }
 
   try {
     const allRes  = await fetch(`${API}/packages.php`)
     const allData = await allRes.json()
-    const dbRows = allData.packages || []
-    
+    const dbRows  = allData.packages || []
     const demoTitles = new Set(packages.map(p => p.title))
     const newOnly = dbRows.filter(p => !demoTitles.has(p.title)).map(p => ({
-        id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency', 
-        img: p.img_url, type: p.type, duration: p.duration_days, 
-        rating: Number(p.rating), reviews: Number(p.review_count), 
-        spots: Number(p.spots_available), price: Number(p.price)
+      id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency',
+      img: p.img_url, type: p.type, duration: p.duration_days,
+      rating: Number(p.rating), reviews: Number(p.review_count),
+      spots: Number(p.spots_available), price: Number(p.price)
     }))
-    
     const allItems = [...packages, ...newOnly]
-    
     if (item.value) {
-      moreLike.value = allItems
-        .filter(x => x.id !== item.value.id && x.type === item.value.type).slice(0, 6)
+      moreLike.value = allItems.filter(x => x.id !== item.value.id && x.type === item.value.type).slice(0, 6)
     }
-  } catch (e) {
-    console.error(e)
-  }
-  
+  } catch (e) { console.error(e) }
+
   loading.value = false
+}
+
+
+onMounted(() => {
+  if (isLoggedIn.value && !loaded.value) fetchBookings(user.value)
+  loadItem(route.params.id)
 })
+watch(() => route.params.id, (newId) => { if (newId) loadItem(newId) })
 
 const isSavedVal    = computed(() => item.value ? isSaved.value('package', item.value.id) : false)
 const alreadyBooked = computed(() => item.value ? isBooked('package', item.value.id) : false)

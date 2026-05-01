@@ -9,7 +9,12 @@ $method = $_SERVER['REQUEST_METHOD'];
 try {
     if ($method === 'GET') {
         if (isset($_GET['id'])) {
-            $stmt = $pdo->prepare('SELECT * FROM services WHERE id = ?');
+            $stmt = $pdo->prepare('
+                SELECT s.*, u.company_name AS provider_name
+                FROM services s
+                LEFT JOIN users u ON u.id = s.provider_id
+                WHERE s.id = ?
+            ');
             $stmt->execute([$_GET['id']]);
             $service = $stmt->fetch();
 
@@ -31,16 +36,16 @@ try {
             echo json_encode(["services" => $services]);
 
         } else {
-    $stmt = $pdo->query('
-        SELECT s.*, u.company_name AS provider_name
-        FROM services s
-        LEFT JOIN users u ON u.id = s.provider_id
-        WHERE s.is_available = 1
-        ORDER BY s.created_at DESC
-    ');
-    $services = $stmt->fetchAll();
-    echo json_encode(["services" => $services]);
-}
+            $stmt = $pdo->query('
+                SELECT s.*, u.company_name AS provider_name
+                FROM services s
+                LEFT JOIN users u ON u.id = s.provider_id
+                WHERE s.is_available = 1
+                ORDER BY s.created_at DESC
+            ');
+            $services = $stmt->fetchAll();
+            echo json_encode(["services" => $services]);
+        }
 
     } elseif ($method === 'POST') {
         $data = json_decode(file_get_contents('php://input'), true);
@@ -119,7 +124,6 @@ try {
         echo json_encode(["message" => "Service updated"]);
 
     } elseif ($method === 'PATCH') {
-        // Toggle availability only
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['id'])) {

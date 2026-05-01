@@ -46,14 +46,15 @@
 
           <div style="margin-bottom:36px">
             <div class="pkg-section-title" style="margin-bottom:16px">About the provider</div>
-            <EntityCard
-              :name="item.provider"
-              :bio="item.providerBio"
-              :rating="item.providerRating"
-              :reviews="item.providerReviews"
-              entity-label="Provider"
-              @contact="handleContact"
-            />
+           <EntityCard
+  :name="item.provider"
+  :bio="item.providerBio"
+  :rating="item.providerRating"
+  :reviews="item.providerReviews"
+  :receiver-id="item.provider_id" 
+  entity-label="Provider"
+  @contact="handleContact"
+/>
           </div>
 
           <DetailReviews
@@ -95,7 +96,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useWishlist } from '@/composables/useWishlist.js'
 import { useBookings } from '@/composables/useBookings.js'
@@ -126,84 +127,73 @@ const bookingOpen = ref(false)
 
 const API = '/arrivo-website/backend/api/v1'
 
-onMounted(async () => {
-  if (isLoggedIn.value && !loaded.value) {
-    fetchBookings(user.value)
-  }
 
-  const id = Number(route.params.id)
 
-  // 1. Fetch from DB
+async function loadItem(id) {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  loading.value  = true
+  item.value     = null
+
+  moreLike.value = []
+  id = Number(id)
+
   try {
     const res = await fetch(`${API}/services.php?id=${id}`)
     if (res.ok) {
       const data = await res.json()
       if (data.service) {
-        const s = data.service
-        const dbItem = {
-          id: s.id,
-          title: s.title,
-          provider: s.provider_name || 'Unknown Provider',
-          img: null, // ✅ Emoji only
-          icon: s.icon || '🛎️',
-          type: s.type,
-          price: Number(s.price || 0),
-          unit: s.price_unit || 'trip',
-          rating: Number(s.rating || 4.5),
-          reviews: Number(s.review_count || 0),
-          availability: s.is_available !== undefined ? !!Number(s.is_available) : true,
-          longDesc: s.long_desc || s.description || '',
-          features: s.features && s.features !== 'null' ? JSON.parse(s.features) : [],
-        }
-
-        const demo = services.find(x => x.id === id)
-        item.value = demo ? { ...dbItem, ...demo } : dbItem
+        console.log('raw service from API:', data.service)
+console.log('provider_id value:', data.service?.provider_id)
+        const s      = data.service
+       const dbItem = {
+  provider_id: s.provider_id,        // ← add this
+  id: s.id, title: s.title, provider: s.provider_name || 'Unknown Provider',
+  img: null, icon: s.icon || '🛎️', type: s.type,
+  price: Number(s.price || 0), unit: s.price_unit || 'trip',
+  rating: Number(s.rating || 4.5), reviews: Number(s.review_count || 0),
+  availability: s.is_available !== undefined ? !!Number(s.is_available) : true,
+  longDesc: s.long_desc || s.description || '',
+  features: s.features && s.features !== 'null' ? JSON.parse(s.features) : [],
+}
+const demo = services.find(x => x.id === id)
+item.value = demo ? { ...dbItem, ...demo, provider_id: dbItem.provider_id } : dbItem  // ← pin provider_id
       }
     }
   } catch (e) {
     console.error('Failed to fetch service from DB:', e)
   }
 
-  // 2. Fallback to mock
   if (!item.value) {
     const mockS = services.find(s => s.id === id)
-    if (mockS) {
-      item.value = {
-        ...mockS,
-        longDesc: mockS.desc,
-        reviews: Number(mockS.reviews),
-        rating: Number(mockS.rating),
-        availability: !!mockS.availability
-      }
-    }
+    if (mockS) item.value = { ...mockS, longDesc: mockS.desc, reviews: Number(mockS.reviews), rating: Number(mockS.rating), availability: !!mockS.availability }
   }
 
   try {
     const allRes  = await fetch(`${API}/services.php`)
     const allData = await allRes.json()
-    const dbRows = allData.services || []
-    
+    const dbRows  = allData.services || []
     const demoTitles = new Set(services.map(s => s.title))
     const newOnly = dbRows.filter(s => !demoTitles.has(s.title)).map(s => ({
-        id: s.id, icon: s.icon, iconBg: 'svc-icon-teal', 
-        title: s.title, provider: s.provider_name || 'Unknown Provider', 
-        type: s.type, price: Number(s.price), unit: s.price_unit, 
-        rating: Number(s.rating), reviews: Number(s.review_count), 
-        availability: !!Number(s.is_available)
+      id: s.id, icon: s.icon, iconBg: 'svc-icon-teal',
+      title: s.title, provider: s.provider_name || 'Unknown Provider',
+      type: s.type, price: Number(s.price), unit: s.price_unit,
+      rating: Number(s.rating), reviews: Number(s.review_count),
+      availability: !!Number(s.is_available)
     }))
-    
     const allItems = [...services, ...newOnly]
-
     if (item.value) {
-      moreLike.value = allItems
-        .filter(x => x.id !== item.value.id && x.type === item.value.type).slice(0, 6)
+      moreLike.value = allItems.filter(x => x.id !== item.value.id && x.type === item.value.type).slice(0, 6)
     }
-  } catch (e) {
-    console.error(e)
-  }
-  
+  } catch (e) { console.error(e) }
+
   loading.value = false
+}
+
+onMounted(() => {
+  if (isLoggedIn.value && !loaded.value) fetchBookings(user.value)
+  loadItem(route.params.id)
 })
+watch(() => route.params.id, (newId) => { if (newId) loadItem(newId) })
 
 const isSavedVal    = computed(() => item.value ? isSaved.value('service', item.value.id) : false)
 const alreadyBooked = computed(() => item.value ? isBooked('service', item.value.id) : false)
