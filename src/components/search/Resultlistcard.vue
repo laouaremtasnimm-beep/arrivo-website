@@ -37,8 +37,12 @@
           <div class="list-card__from">{{ item.priceLabel || 'from' }}</div>
           <div class="list-card__price">${{ item.price.toLocaleString() }}</div>
         </div>
-        <button class="btn btn-coral" @click.stop="$emit('book', item)">
-          {{ item.ctaLabel || 'Book now' }}
+        <button
+          class="btn"
+          :class="booked ? 'btn-outline-danger' : 'btn-coral'"
+          @click.stop="$emit('book', item)"
+        >
+          {{ booked ? 'Cancel booking' : (item.ctaLabel || 'Book now') }}
         </button>
       </div>
     </div>
@@ -48,8 +52,9 @@
 
 <script setup>
 defineProps({
-  item:  { type: Object,  required: true },
-  saved: { type: Boolean, default: false },
+  item:   { type: Object,  required: true },
+  saved:  { type: Boolean, default: false },
+  booked: { type: Boolean, default: false },
 })
 defineEmits(['select', 'book', 'toggle-wishlist'])
 </script>
@@ -114,5 +119,14 @@ defineEmits(['select', 'book', 'toggle-wishlist'])
 @media (max-width: 640px) {
   .list-card { grid-template-columns: 1fr; }
   .list-card__img { min-height: 200px; }
+}
+
+.btn-outline-danger {
+  background: transparent;
+  border: 1.5px solid var(--coral);
+  color: var(--coral);
+}
+.btn-outline-danger:hover {
+  background: var(--coral-lt);
 }
 </style>

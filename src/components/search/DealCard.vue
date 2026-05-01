@@ -36,8 +36,12 @@
 
     <!-- Card footer -->
     <div class="deal-footer">
-      <button class="btn btn-teal deal-cta">
-        Grab deal →
+      <button
+        class="btn deal-cta"
+        :class="booked ? 'btn-outline-danger' : 'btn-teal'"
+        @click.stop="$emit('book', offer)"
+      >
+        {{ booked ? 'Cancel booking' : 'Grab deal →' }}
       </button>
       <!-- Save button (keeping it consistent with search card actions if possible, 
            or just as a decorative element if wishlist logic differs) -->
@@ -57,9 +61,10 @@
 defineProps({
   offer:    { type: Object,  required: true },
   saved:    { type: Boolean, default: false },
+  booked:   { type: Boolean, default: false },
   showSave: { type: Boolean, default: true },
 })
-defineEmits(['select', 'toggle-save'])
+defineEmits(['select', 'toggle-save', 'book'])
 </script>
 
 <style scoped>
@@ -151,4 +156,13 @@ defineEmits(['select', 'toggle-save'])
 }
 .deal-save:hover  { border-color: var(--coral); color: var(--coral); }
 .deal-save.saved  { background: var(--coral-lt); border-color: var(--coral); color: var(--coral); }
+
+.btn-outline-danger {
+  background: transparent;
+  border: 1.5px solid var(--coral);
+  color: var(--coral);
+}
+.btn-outline-danger:hover {
+  background: var(--coral-lt);
+}
 </style>

@@ -121,16 +121,20 @@
 
           <!-- Card footer -->
           <div class="deal-footer">
-            <button class="btn btn-teal deal-cta" @click.stop="handleSelect(offer)">
-              Grab deal →
+            <button 
+              class="btn deal-cta" 
+              :class="isBooked('offer', offer.offerID) ? 'btn-outline-danger' : 'btn-teal'"
+              @click.stop="handleSelect(offer)"
+            >
+              {{ isBooked('offer', offer.offerID) ? 'Cancel booking' : 'Grab deal →' }}
             </button>
             <button
               class="deal-save"
-              :class="{ saved: saved.includes(offer.offerID) }"
-              @click.stop="toggleSave(offer.offerID)"
-              :title="saved.includes(offer.offerID) ? 'Remove from wishlist' : 'Save deal'"
+              :class="{ saved: isSaved('offer', offer.offerID) }"
+              @click.stop="toggle('offer', offer.offerID)"
+              :title="isSaved('offer', offer.offerID) ? 'Remove from wishlist' : 'Save deal'"
             >
-              {{ saved.includes(offer.offerID) ? '♥' : '♡' }}
+              {{ isSaved('offer', offer.offerID) ? '♥' : '♡' }}
             </button>
           </div>
         </div>
@@ -151,15 +155,20 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useOffers } from '@/composables/useOffers'
+import { useWishlist } from '@/composables/useWishlist'
+import { useBookings } from '@/composables/useBookings'
 import NavBar    from '@/components/home/NavBar.vue'
 import SiteFooter from '@/components/home/SiteFooter.vue'
 import OfferDetailModal from '@/components/home/OfferDetailModal.vue'
+
+const { toggle, isSaved } = useWishlist()
 
 const selectedOffer = ref(null)
 const offerModalOpen = ref(false)
 
 const router = useRouter()
 const { activeOffers } = useOffers()
+const { isBooked, getBookingId, cancelBooking } = useBookings()
 
 // ── Fake load so the page doesn't pop in ──────────────────────────────────
 const loading = ref(true)
@@ -178,7 +187,6 @@ const typeFilters = [
 
 const activeFilter = ref('all')
 const sortBy       = ref('default')
-const saved        = ref([])
 
 const activeFilterLabel = computed(
   () => typeFilters.find(f => f.value === activeFilter.value)?.label ?? ''
@@ -198,7 +206,17 @@ const filteredOffers = computed(() => {
 })
 
 // ── Actions ───────────────────────────────────────────────────────────────
-function handleSelect(offer) {
+async function handleSelect(offer) {
+  if (isBooked('offer', offer.offerID)) {
+    if (!confirm('Are you sure you want to cancel this booking?')) return
+    const bid = getBookingId('offer', offer.offerID)
+    if (bid) {
+      const res = await cancelBooking(bid)
+      if (res.ok) alert('Booking cancelled successfully.')
+      else alert('Failed to cancel: ' + res.error)
+    }
+    return
+  }
   selectedOffer.value = offer
   offerModalOpen.value = true
 }
@@ -456,5 +474,14 @@ function toggleSave(id) {
   .deals-body   { padding: 28px 4% 48px; }
   .deals-filters { flex-direction: column; align-items: flex-start; }
   .deals-grid   { grid-template-columns: 1fr; }
+}
+
+.btn-outline-danger {
+  background: transparent;
+  border: 1.5px solid var(--coral);
+  color: var(--coral);
+}
+.btn-outline-danger:hover {
+  background: var(--coral-lt);
 }
 </style>

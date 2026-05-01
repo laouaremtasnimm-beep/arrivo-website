@@ -66,7 +66,20 @@
               @book="openBooking('package', pkg)"
               @cancel="handleCancel('package', pkg)"
             />
+            
           </template>
+          <template v-else-if="activeTab === 'offers'">
+  <DealCard
+    v-for="offer in savedOfferItems"
+    :key="'offer-' + offer.id"
+    :offer="offer"
+    :saved="true"
+    :booked="isBooked('offer', offer.id)"
+    @toggle-save="toggle('offer', offer.id)"
+    @select="router.push(`/offers/${offer.id}`)"
+    @book="handleOfferBook"
+  />
+</template>
           <template v-else>
             <ServiceCard
               v-for="svc in savedSvcItems"
@@ -109,6 +122,7 @@
     </Transition>
 
     <BookingModal v-model="bookingOpen" :pkg="selectedItem" @submit="handleBookingSubmit" />
+    <OfferDetailModal v-model="offerModalOpen" :offer="selectedOffer" />
     <SiteFooter />
   </div>
 </template>
@@ -120,6 +134,9 @@ import { destinations, packages as mockPackages, services as mockServices } from
 import { useWishlist } from '@/composables/useWishlist.js'
 import { useBookings } from '@/composables/useBookings'
 import { useAuth } from '@/composables/useAuth'
+import { useOffers } from '@/composables/useOffers'
+
+import DealCard from '@/components/search/DealCard.vue'
 
 import NavBar          from '@/components/home/NavBar.vue'
 import SiteFooter      from '@/components/home/SiteFooter.vue'
@@ -127,6 +144,7 @@ import DestinationCard from '@/components/shared/DestinationCard.vue'
 import PackageCard     from '@/components/shared/PackageCard.vue'
 import ServiceCard     from '@/components/shared/ServiceCard.vue'
 import BookingModal    from '@/components/home/BookingModal.vue'
+import OfferDetailModal from '@/components/home/OfferDetailModal.vue'
 
 const router = useRouter()
 
@@ -134,11 +152,36 @@ const router = useRouter()
 const { itemsOfType, toggle, clearType } = useWishlist()
 const { user, isLoggedIn } = useAuth()
 const { createBooking, isBooked, getBookingId, cancelBooking } = useBookings()
+const { activeOffers } = useOffers()
 
 // Get the saved entries for each type
-const destEntries = itemsOfType('destination')  // [{type:'destination', id:N}, ...]
-const pkgEntries  = itemsOfType('package')
-const svcEntries  = itemsOfType('service')
+const destEntries  = itemsOfType('destination')
+const pkgEntries   = itemsOfType('package')
+const svcEntries   = itemsOfType('service')
+const offerEntries = itemsOfType('offer')
+
+// Resolve entries → actual data objects, preserving wishlist order
+const savedDestItems = computed(() =>
+  destEntries.value
+    .map(e => destinations.find(d => d.id === e.id))
+    .filter(Boolean)
+)
+
+const savedOfferItems = computed(() =>
+  offerEntries.value
+    .map(e => {
+      // Find in DB offers or mock offers
+      const o = activeOffers.value.find(off => off.offerID === e.id) || mockOffers.find(off => off.id === e.id)
+      if (!o) return null
+      return {
+        ...o,
+        id: o.offerID || o.id,
+        desc: o.description,
+        tag: o.discount + '% OFF'
+      }
+    })
+    .filter(Boolean)
+)
 
 const API = '/arrivo-website/backend/api/v1'
 
@@ -181,11 +224,7 @@ onMounted(async () => {
 })
 
 // Resolve entries → actual data objects, preserving wishlist order
-const savedDestItems = computed(() =>
-  destEntries.value
-    .map(e => destinations.find(d => d.id === e.id))
-    .filter(Boolean)
-)
+
 const savedPkgItems = computed(() =>
   pkgEntries.value
     .map(e => allPackages.value.find(p => p.id === e.id))
@@ -199,17 +238,18 @@ const savedSvcItems = computed(() =>
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
 const activeTab = ref('destinations')
-
 const tabs = computed(() => [
   { key: 'destinations', label: 'Destinations', icon: '📍', count: savedDestItems.value.length },
-  { key: 'packages',     label: 'Packages',     icon: '🧳', count: savedPkgItems.value.length  },
-  { key: 'services',     label: 'Services',     icon: '✨', count: savedSvcItems.value.length  },
+  { key: 'packages',     label: 'Packages',     icon: '🧳', count: savedPkgItems.value.length },
+  { key: 'services',     label: 'Services',     icon: '✨', count: savedSvcItems.value.length },
+  { key: 'offers',       label: 'Offers',       icon: '🏷️', count: savedOfferItems.value.length },
 ])
 
 const currentItems = computed(() => {
   if (activeTab.value === 'destinations') return savedDestItems.value
   if (activeTab.value === 'packages')     return savedPkgItems.value
-  return savedSvcItems.value
+  if (activeTab.value === 'services')     return savedSvcItems.value
+  return savedOfferItems.value
 })
 
 const activeTabLabel = computed(() => tabs.value.find(t => t.key === activeTab.value)?.label || '')
@@ -218,7 +258,7 @@ const emptyStates = {
   destinations: { icon: '🗺️', title: 'No saved destinations yet', sub: 'Browse destinations and tap the heart to save your favourites here.', link: '/destinations', cta: 'Explore destinations' },
   packages:     { icon: '🧳', title: 'No saved packages yet',     sub: 'Find travel packages that inspire you and save them for later.',        link: '/packages',     cta: 'Browse packages'      },
   services:     { icon: '✨', title: 'No saved services yet',     sub: 'Discover guides, drivers, chefs and more — save the ones you love.',    link: '/services',     cta: 'Discover services'    },
-}
+  offers:       { icon: '🏷️', title: 'No saved offers yet',       sub: 'Check back often for exclusive deals and discounts from our partners.', link: '/deals',        cta: 'View deals'         },}
 const activeTabEmpty = computed(() => emptyStates[activeTab.value])
 
 // ── Remove + toast ─────────────────────────────────────────────────────────
@@ -240,7 +280,12 @@ function handleRemove(type, id) {
 
 function clearTab() {
   confirmClear.value = false
-  const typeMap = { destinations: 'destination', packages: 'package', services: 'service' }
+  const typeMap = { 
+    destinations: 'destination', 
+    packages:     'package', 
+    services:     'service',
+    offers:       'offer'
+  }
   clearType(typeMap[activeTab.value])
   showToast(`All ${activeTabLabel.value.toLowerCase()} cleared`)
 }
@@ -249,18 +294,30 @@ function clearTab() {
 function goToDetail(item) {
   if (activeTab.value === 'destinations') router.push(`/destinations/${item.id}`)
   else if (activeTab.value === 'packages') router.push(`/packages/${item.id}`)
-  else router.push(`/services/${item.id}`)
+  else if (activeTab.value === 'services') router.push(`/services/${item.id}`)
+  else router.push(`/deals`) // Offers go to deals page or dynamic detail if it existed
 }
 
 // ── Booking ────────────────────────────────────────────────────────────────
 const bookingOpen  = ref(false)
+const offerModalOpen = ref(false)
 const selectedItem = ref(null)
+const selectedOffer = ref(null)
 const selectedItemType = ref(null)
 
 function openBooking(type, item) { 
   selectedItemType.value = type;
   selectedItem.value = item; 
   bookingOpen.value = true 
+}
+
+function handleOfferBook(offer) {
+  if (isBooked('offer', offer.id)) {
+    handleCancel('offer', offer)
+    return
+  }
+  selectedOffer.value = offer
+  offerModalOpen.value = true
 }
 
 async function handleBookingSubmit(payload) {

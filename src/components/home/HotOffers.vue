@@ -26,7 +26,13 @@
         <div class="offer-title">{{ offer.title }}</div>
         <div class="offer-dates">{{ offer.startDate }} → {{ offer.endDate }}</div>
         <p class="offer-desc">{{ offer.description }}</p>
-        <button class="btn btn-teal offer-btn" @click.stop="openOffer(offer)">Grab deal</button>
+        <button 
+          class="btn offer-btn" 
+          :class="isBooked('offer', offer.offerID) ? 'btn-outline-danger' : 'btn-teal'"
+          @click.stop="openOffer(offer)"
+        >
+          {{ isBooked('offer', offer.offerID) ? 'Cancel booking' : 'Grab deal' }}
+        </button>
       </div>
 
       <div v-if="visibleOffers.length === 0" class="offers-empty">
@@ -44,15 +50,27 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useOffers } from '@/composables/useOffers'
+import { useBookings } from '@/composables/useBookings'
 import OfferDetailModal from '@/components/home/OfferDetailModal.vue'
 
 const { activeOffers } = useOffers()
+const { isBooked, getBookingId, cancelBooking } = useBookings()
 const visibleOffers = computed(() => activeOffers.value.slice(0, 6))
 
 const modalOpen     = ref(false)
 const selectedOffer = ref(null)
 
-function openOffer(offer) {
+async function openOffer(offer) {
+  if (isBooked('offer', offer.offerID)) {
+    if (!confirm('Are you sure you want to cancel this booking?')) return
+    const bid = getBookingId('offer', offer.offerID)
+    if (bid) {
+      const res = await cancelBooking(bid)
+      if (res.ok) alert('Booking cancelled successfully.')
+      else alert('Failed to cancel: ' + res.error)
+    }
+    return
+  }
   selectedOffer.value = offer
   modalOpen.value     = true
 }
@@ -102,6 +120,15 @@ function openOffer(offer) {
 .offer-dates { font-size: .78rem; color: var(--gray-400); }
 .offer-desc  { font-size: .82rem; color: var(--gray-600); margin-top: 10px; line-height: 1.5; flex: 1; }
 .offer-btn   { margin-top: 18px; padding: 8px 20px; font-size: .82rem; }
+
+.btn-outline-danger {
+  background: transparent;
+  border: 1.5px solid var(--coral);
+  color: var(--coral);
+}
+.btn-outline-danger:hover {
+  background: var(--coral-lt);
+}
 
 .offers-empty {
   display: flex; align-items: center; justify-content: center;

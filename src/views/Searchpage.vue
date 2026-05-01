@@ -84,29 +84,33 @@
     <DealCard
       v-if="item.category === 'offer'"
       :offer="item"
-      :saved="wishlist.includes(item.id)"
+      :saved="isSaved('offer', item.id)"
+      :booked="isBooked('offer', item.id)"
       @select="goToDetail"
-      @toggle-save="toggleWishlist"
+      @toggle-save="toggleWishlist('offer', item.id)"
+      @book="handleBook"
     />
 
     <!-- 🔵 Everything else -->
     <ServiceCard
   v-else-if="item.category === 'service'"
   :item="item"
-    :saved="wishlist.includes(item.id)"
+    :saved="isSaved('service', item.id)"
+    :booked="isBooked('service', item.id)"
     @select="goToDetail"
     @book="handleBook"
-    @toggle-wishlist="toggleWishlist"
+    @toggle-wishlist="toggleWishlist('service', item.id)"
   />
 
   <!-- 🔵 PACKAGE / OTHER -->
   <ResultCard
     v-else
     :item="item"
-    :saved="wishlist.includes(item.id)"
+    :saved="isSaved(item.category === 'dest' ? 'destination' : item.category, item.id)"
+    :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id)"
     @select="goToDetail"
     @book="handleBook"
-    @toggle-wishlist="toggleWishlist"
+    @toggle-wishlist="toggleWishlist(item.category, item.id)"
   />
 
   
@@ -121,28 +125,32 @@
     <DealCard
       v-if="item.category === 'offer'"
       :offer="item"
-      :saved="wishlist.includes(item.id)"
+      :saved="isSaved('offer', item.id)"
+      :booked="isBooked('offer', item.id)"
       @select="goToDetail"
-      @toggle-save="toggleWishlist"
+      @toggle-save="toggleWishlist('offer', item.id)"
+      @book="handleBook"
     />
 
     <!-- 🔵 Others -->
   <ServiceListCard
   v-else-if="item.category === 'service'"
   :item="item"
-    :saved="wishlist.includes(item.id)"
+    :saved="isSaved('service', item.id)"
+    :booked="isBooked('service', item.id)"
     @select="goToDetail"
     @book="handleBook"
-    @toggle-wishlist="toggleWishlist"
+    @toggle-wishlist="toggleWishlist('service', item.id)"
   />
 
   <ResultListCard
     v-else
     :item="item"
-    :saved="wishlist.includes(item.id)"
+    :saved="isSaved(item.category === 'dest' ? 'destination' : item.category, item.id)"
+    :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id)"
     @select="goToDetail"
     @book="handleBook"
-    @toggle-wishlist="toggleWishlist"
+    @toggle-wishlist="toggleWishlist(item.category, item.id)"
   />
 
   </template>
@@ -157,6 +165,7 @@
     </div>
 
     <BookingModal v-model="bookingOpen" :pkg="selectedItem" @submit="handleBookingSubmit" />
+    <OfferDetailModal v-model="offerModalOpen" :offer="selectedOffer" />
   </div>
 </template>
 
@@ -166,6 +175,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth }    from '@/composables/useAuth'
 import { useBookings } from '@/composables/useBookings'
 import { useOffers } from '@/composables/useOffers'
+import { useWishlist } from '@/composables/useWishlist'
 import { packages as demoPackages, services as demoServices } from '@/data/content.js'
 
 import NavBar           from '@/components/home/NavBar.vue'
@@ -180,12 +190,14 @@ import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal     from '@/components/search/BookingModal.vue'
 import DealCard from '@/components/search/DealCard.vue'
 import ServiceCard from '@/components/shared/ServiceCard.vue'
+import OfferDetailModal from '@/components/home/OfferDetailModal.vue'
 
 
 const route  = useRoute()
 const router = useRouter()
 const { user, isLoggedIn } = useAuth()
-const { createBooking }    = useBookings()
+const { createBooking, isBooked, getBookingId, cancelBooking } = useBookings()
+const { toggle, isSaved }  = useWishlist()
 
 
 
@@ -234,9 +246,10 @@ const fetchError        = ref(null)
 const page              = ref(1)
 const perPage           = 9
 const mobileSidebarOpen = ref(false)
-const wishlist          = ref([])
 const bookingOpen       = ref(false)
+const offerModalOpen     = ref(false)
 const selectedItem      = ref(null)
+const selectedOffer     = ref(null)
 
 
 const allResults = ref([])
@@ -418,9 +431,11 @@ watch(activeCategory, () => {
 onMounted(runSearch)
 
 // ── Actions ───────────────────────────────────────────────────────────────
-function toggleWishlist(id) {
-  const idx = wishlist.value.indexOf(id)
-  idx === -1 ? wishlist.value.push(id) : wishlist.value.splice(idx, 1)
+function toggleWishlist(category, id) {
+  // Normalize category names for the shared wishlist if necessary
+  const typeMap = { dest: 'destination', package: 'package', service: 'service', offer: 'offer' }
+  const type = typeMap[category] || category
+  toggle(type, id)
 }
 
 function goToDetail(item) {
@@ -430,8 +445,26 @@ function goToDetail(item) {
   if (item.category === 'offer')   return router.push('/deals')
 }
 
-function handleBook(item) {
-  if (item.category === 'offer') { router.push('/deals'); return }
+async function handleBook(item) {
+  const typeMap = { dest: 'destination', package: 'package', service: 'service', offer: 'offer' }
+  const type = typeMap[item.category] || item.category
+
+  if (isBooked(type, item.id)) {
+    if (!confirm('Are you sure you want to cancel this booking?')) return
+    const bid = getBookingId(type, item.id)
+    if (bid) {
+      const res = await cancelBooking(bid)
+      if (res.ok) alert('Booking cancelled successfully.')
+      else alert('Failed to cancel: ' + res.error)
+    }
+    return
+  }
+
+  if (item.category === 'offer') {
+    selectedOffer.value = item
+    offerModalOpen.value = true
+    return
+  }
   selectedItem.value = item
   bookingOpen.value  = true
 }

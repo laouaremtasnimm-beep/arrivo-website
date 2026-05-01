@@ -36,8 +36,12 @@
           <div class="result-card__from">{{ item.priceLabel || 'from' }}</div>
           <div class="result-card__price">${{ item.price?.toLocaleString?.() || '' }}</div>
         </div>
-        <button class="btn btn-coral result-card__cta" @click.stop="$emit('book', item)">
-          {{ item.ctaLabel || 'Book now' }}
+        <button
+          class="btn result-card__cta"
+          :class="booked ? 'btn-outline-danger' : 'btn-coral'"
+          @click.stop="$emit('book', item)"
+        >
+          {{ booked ? 'Cancel booking' : (item.ctaLabel || 'Book now') }}
         </button>
       </div>
     </div>
@@ -47,8 +51,9 @@
 
 <script setup>
 defineProps({
-  item:  { type: Object,  required: true },
-  saved: { type: Boolean, default: false },
+  item:   { type: Object,  required: true },
+  saved:  { type: Boolean, default: false },
+  booked: { type: Boolean, default: false },
 })
 defineEmits(['select', 'book', 'toggle-wishlist'])
 </script>
@@ -106,4 +111,13 @@ defineEmits(['select', 'book', 'toggle-wishlist'])
 .result-card__from  { font-size: .72rem; color: var(--gray-400); }
 .result-card__price { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; color: var(--coral); }
 .result-card__cta   { padding: 8px 18px; font-size: .84rem; }
+
+.btn-outline-danger {
+  background: transparent;
+  border: 1.5px solid var(--coral);
+  color: var(--coral);
+}
+.btn-outline-danger:hover {
+  background: var(--coral-lt);
+}
 </style>
