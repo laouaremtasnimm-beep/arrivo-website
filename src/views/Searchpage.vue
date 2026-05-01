@@ -287,7 +287,7 @@ function normalizePackage(p) {
     title: p.title,
     agency: p.agency_name || 'Agency',
     desc: p.description || '',
-    img: p.img_url,
+    img: p.img_url || p.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
     price: Number(p.price || 0),
     rating: Number(p.rating || 4.5),
     reviews: Number(p.review_count || 0),

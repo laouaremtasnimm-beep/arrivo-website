@@ -113,7 +113,7 @@ function normalizePackage(p) {
     id:         p.id,
     title:      p.title,
     agency:     p.agency_name  ?? p.agency    ?? 'Agency',
-    img:        p.img_url      ?? p.img       ?? 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
+    img:        p.img_url || p.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
     type:       p.type         ?? 'Adventure',
     duration:   p.duration_days ?? p.duration ?? 1,
     rating:     p.rating       ?? 4.5,

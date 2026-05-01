@@ -134,24 +134,8 @@ onMounted(async () => {
     }
   } catch (e) { console.error('Home: Failed to fetch dests', e) }
 
-  // Fetch dynamic packages
-  try {
-    const res = await fetch('/arrivo-website/backend/api/v1/packages.php')
-    const data = await res.json()
-    if (data.packages?.length) {
-      const dbPkgs = data.packages.map(p => ({
-        ...p,
-        img: p.img_url || p.img,
-        agency: p.agency_name
-      }))
-
-      const merged = dbPkgs.map(dbItem => {
-        const demo = demoPackages.find(p => p.id === dbItem.id)
-        return demo ? { ...dbItem, ...demo } : dbItem
-      })
-      homePackages.value = merged.slice(0, 6)
-    }
-  } catch (e) { console.error('Home: Failed to fetch packages', e) }
+  // Dynamic destinations and services are still fetched, 
+  // but packages are kept static (demo only) per request.
 })
 
 const reviews = ref([

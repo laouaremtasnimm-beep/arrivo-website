@@ -56,12 +56,10 @@
           :rating="item.rating"
           :reviews="item.reviews"
           :facts="item.facts?.slice(0, 4)"
-          :cta-label="alreadyBooked ? 'Cancel Booking' : 'Book your trip'"
-          :cta-danger="alreadyBooked"
+          cta-label="Find packages here"
           entity-label="Find services here"
           note="Browse packages and services for this destination."
-          @book="openBookingOrPackages"
-          @cancel="handleCancel"
+          @book="goToPackages"
           @message="goToServices"
         />
       </div>
@@ -72,8 +70,6 @@
         @select="goToDestination"
       />
     </div>
-
-    <BookingModal v-model="bookingOpen" :pkg="item" @submit="handleBooking" />
   </div>
 
   <div class="not-found" v-else>
@@ -151,14 +147,6 @@ const moreLike = computed(() =>
   destinations.filter(d => d.id !== item.value?.id && d.type === item.value?.type).slice(0, 6)
 )
 
-function openBookingOrPackages() {
-  // If user is logged in, allow direct destination booking; otherwise redirect to packages
-  if (isLoggedIn.value) {
-    bookingOpen.value = true
-  } else {
-    goToPackages()
-  }
-}
 function goToPackages()   { router.push({ path: '/packages',     query: { q: item.value?.name } }) }
 function goToServices()   { router.push({ path: '/services',     query: { q: item.value?.name } }) }
 function goToDestination(dest) { router.push(`/destinations/${dest.id}`) }
