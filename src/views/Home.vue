@@ -31,16 +31,16 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { destinations, packages, services } from '@/data/content.js'
+import { destinations as demoDestinations, packages as demoPackages, services as demoServices } from '@/data/content.js'
 import { useAuth } from '@/composables/useAuth'
 import { useBookings } from '@/composables/useBookings'
 
 import NavBar            from '@/components/home/NavBar.vue'
 import HeroSection       from '@/components/home/HeroSection.vue'
 import SearchBar         from '@/components/home/SearchBar.vue'
-import HotOffers         from '@/components/home/HotOffers.vue'        // ← was SpecialOffers
+import HotOffers         from '@/components/home/HotOffers.vue'
 import DestinationGrid   from '@/components/home/DestinationGrid.vue'
 import TravelPackages    from '@/components/home/TravelPackages.vue'
 import ServicesGrid      from '@/components/home/ServicesGrid.vue'
@@ -109,9 +109,50 @@ function handlePackageSelect(pkg) { router.push(`/packages/${pkg.id}`) }
 function handleServiceSelect(svc) { router.push(`/services/${svc.id}`) }
 
 // ── Homepage preview data ──────────────────────────────────────────────────
-const homeDestinations = ref(destinations.slice(0, 4))
-const homePackages     = ref(packages.slice(0, 6))
-const homeServices     = ref(services.slice(0, 8))
+const homeDestinations = ref(demoDestinations.slice(0, 4))
+const homePackages     = ref(demoPackages.slice(0, 6))
+const homeServices     = ref(demoServices.slice(0, 8))
+
+onMounted(async () => {
+  // Fetch dynamic destinations
+  try {
+    const res = await fetch('/arrivo-website/backend/api/v1/listings.php')
+    const data = await res.json()
+    if (data.listings?.length) {
+      const dbDests = data.listings.map(d => ({
+        ...d,
+        img: d.image,
+        from: d.price
+      }))
+      
+      // Merge: content.js takes precedence for images/titles if IDs match
+      const merged = dbDests.map(dbItem => {
+        const demo = demoDestinations.find(d => d.id === dbItem.id)
+        return demo ? { ...dbItem, ...demo } : dbItem
+      })
+      homeDestinations.value = merged.slice(0, 4)
+    }
+  } catch (e) { console.error('Home: Failed to fetch dests', e) }
+
+  // Fetch dynamic packages
+  try {
+    const res = await fetch('/arrivo-website/backend/api/v1/packages.php')
+    const data = await res.json()
+    if (data.packages?.length) {
+      const dbPkgs = data.packages.map(p => ({
+        ...p,
+        img: p.img_url || p.img,
+        agency: p.agency_name
+      }))
+
+      const merged = dbPkgs.map(dbItem => {
+        const demo = demoPackages.find(p => p.id === dbItem.id)
+        return demo ? { ...dbItem, ...demo } : dbItem
+      })
+      homePackages.value = merged.slice(0, 6)
+    }
+  } catch (e) { console.error('Home: Failed to fetch packages', e) }
+})
 
 const reviews = ref([
   { id: 1, rating: 5, text: 'Voyago made planning our honeymoon completely effortless. The agency was professional and delivered everything promised. Santorini was magical!',            name: 'Amelia R.', location: 'London, UK'   },

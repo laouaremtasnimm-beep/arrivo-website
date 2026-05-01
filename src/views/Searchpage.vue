@@ -102,16 +102,25 @@
     @toggle-wishlist="toggleWishlist('service', item.id)"
   />
 
-  <!-- 🔵 PACKAGE / OTHER -->
-  <ResultCard
-    v-else
-    :item="item"
-    :saved="isSaved(item.category === 'dest' ? 'destination' : item.category, item.id)"
-    :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id)"
-    @select="goToDetail"
-    @book="handleBook"
-    @toggle-wishlist="toggleWishlist(item.category, item.id)"
-  />
+    <!-- 🔵 DESTINATION -->
+    <DestinationCard
+      v-else-if="item.category === 'dest'"
+      :item="item"
+      :saved="isSaved('destination', item.id)"
+      @select="goToDetail"
+      @toggle-wishlist="toggleWishlist('dest', item.id)"
+    />
+
+    <!-- 🔵 PACKAGE / OTHER -->
+    <ResultCard
+      v-else
+      :item="item"
+      :saved="isSaved(item.category === 'dest' ? 'destination' : item.category, item.id)"
+      :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id)"
+      @select="goToDetail"
+      @book="handleBook"
+      @toggle-wishlist="toggleWishlist(item.category, item.id)"
+    />
 
   
   </template>
@@ -176,7 +185,7 @@ import { useAuth }    from '@/composables/useAuth'
 import { useBookings } from '@/composables/useBookings'
 import { useOffers } from '@/composables/useOffers'
 import { useWishlist } from '@/composables/useWishlist'
-import { packages as demoPackages, services as demoServices } from '@/data/content.js'
+import { destinations as demoDestinations, packages as demoPackages, services as demoServices } from '@/data/content.js'
 
 import NavBar           from '@/components/home/NavBar.vue'
 import PageHero         from '@/components/shared/PageHero.vue'
@@ -190,6 +199,7 @@ import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal     from '@/components/search/BookingModal.vue'
 import DealCard from '@/components/search/DealCard.vue'
 import ServiceCard from '@/components/shared/ServiceCard.vue'
+import DestinationCard from '@/components/shared/DestinationCard.vue'
 import OfferDetailModal from '@/components/home/OfferDetailModal.vue'
 
 
@@ -258,13 +268,15 @@ function normalizeDestination(d) {
   return {
     id: d.id,
     category: 'dest',
+    name: d.name,
     title: d.name,
     desc: d.description || '',
     img: d.image,
     price: d.price || 0,
+    from: d.price || 0,
     rating: d.rating || 4.5,
-    reviews: d.review_count || 0,
-    duration: null,
+    reviews: d.reviews || 0,
+    type: d.type || 'City'
   }
 }
 
@@ -273,13 +285,15 @@ function normalizePackage(p) {
     id: p.id,
     category: 'package',
     title: p.title,
+    agency: p.agency_name || 'Agency',
     desc: p.description || '',
     img: p.img_url,
-    price: p.price,
-    rating: p.rating || 4.5,
-    reviews: p.review_count || 0,
+    price: Number(p.price || 0),
+    rating: Number(p.rating || 4.5),
+    reviews: Number(p.review_count || 0),
     duration: p.duration_days,
-    type: p.type,
+    type: p.type || 'Adventure',
+    spots: Number(p.spots_available || 0),
   }
 }
 
@@ -288,17 +302,17 @@ function normalizeService(s) {
     id: s.id,
     category: 'service',
     title: s.title,
+    provider: s.provider_name || 'Provider',
     desc: s.description || '',
-    img: null,
-
-    // ✅ ADD THESE
-    icon: '🛎️',
-    iconBg: 'svc-icon-teal',
-
-    price: s.price,
-    rating: s.rating || 4.5,
-    reviews: s.review_count || 0,
-    type: s.type,
+    img: null, // ✅ REMOVED image support for services (use icons only)
+    icon: s.icon || '🛎️',
+    iconBg: s.icon_bg || 'svc-icon-teal',
+    price: Number(s.price || 0),
+    unit: s.price_unit || 'trip',
+    rating: Number(s.rating || 4.5),
+    reviews: Number(s.review_count || 0),
+    type: s.type || 'Transport',
+    availability: !!Number(s.is_available),
   }
 }
 
@@ -349,61 +363,101 @@ async function runSearch() {
 
   try {
     const [destRes, pkgRes, svcRes] = await Promise.all([
-      fetch('http://localhost/arrivo-website/backend/api/v1/listings.php'),
-      fetch('http://localhost/arrivo-website/backend/api/v1/packages.php'),
-      fetch('http://localhost/arrivo-website/backend/api/v1/services.php'),
+      fetch('/arrivo-website/backend/api/v1/listings.php'),
+      fetch('/arrivo-website/backend/api/v1/packages.php'),
+      fetch('/arrivo-website/backend/api/v1/services.php'),
     ])
 
     const destData = await destRes.json()
     const pkgData  = await pkgRes.json()
     const svcData  = await svcRes.json()
 
-    const destinations = (destData.listings || []).map(normalizeDestination)
-const dbPackages = (pkgData.packages || []).map(normalizePackage)
+    // 1. Merge Destinations (Deduplicate by ID or Name)
+    const dbDests = (destData.listings || []).map(normalizeDestination)
+    const demoDests = (demoDestinations || []).map(d => ({ ...d, category: 'dest' }))
 
-// remove duplicates like packages page
-const demoTitles = new Set(demoPackages.map(p => p.title))
+    const finalDests = [...demoDests]
+    dbDests.forEach(dbItem => {
+      const dbName = String(dbItem.name || '').toLowerCase().trim()
+      const exists = finalDests.find(d => 
+        d.id === dbItem.id || 
+        String(d.name || '').toLowerCase().trim() === dbName
+      )
+      if (!exists) {
+        finalDests.push(dbItem)
+      } else {
+        // Merge: demo wins
+        const idx = finalDests.findIndex(d => 
+          d.id === dbItem.id || 
+          String(d.name || '').toLowerCase().trim() === dbName
+        )
+        finalDests[idx] = { ...dbItem, ...finalDests[idx] }
+      }
+    })
 
-const mergedPackages = [
-  ...demoPackages.map(p => ({
-    ...p,
-    category: 'package'
-  })),
-  ...dbPackages.filter(p => !demoTitles.has(p.title))
-]
-   const dbServices = (svcData.services || []).map(normalizeService)
+    // 2. Merge Packages (Deduplicate by ID or Title)
+    const dbPkgs = (pkgData.packages || []).map(normalizePackage)
+    const demoPkgs = (demoPackages || []).map(p => ({ ...p, category: 'package' }))
 
-const demoIds = new Set(demoServices.map(s => s.id))
+    const finalPkgs = [...demoPkgs]
+    dbPkgs.forEach(dbItem => {
+      const dbTitle = String(dbItem.title || '').toLowerCase().trim()
+      const exists = finalPkgs.find(p => 
+        p.id === dbItem.id || 
+        String(p.title || '').toLowerCase().trim() === dbTitle
+      )
+      if (!exists) {
+        finalPkgs.push(dbItem)
+      } else {
+        const idx = finalPkgs.findIndex(p => 
+          p.id === dbItem.id || 
+          String(p.title || '').toLowerCase().trim() === dbTitle
+        )
+        finalPkgs[idx] = { ...dbItem, ...finalPkgs[idx] }
+      }
+    })
 
-const mergedServices = [
-  ...demoServices.map(s => ({
-    ...s,
-    category: 'service'
-  })),
-  ...dbServices.map(s => ({
-    ...s,
-    icon: '🛎️',
-    iconBg: 'svc-icon-teal',
-    features: s.features || [],
-    provider: s.provider || 'Service Provider'
-  })).filter(s => !demoIds.has(s.id))
-]
+    // 3. Merge Services (Deduplicate by ID or Title)
+    // Filter out old services that use images (user request)
+    const dbSvcs = (svcData.services || [])
+      .filter(s => !s.img_url) // ✅ EXCLUDE services with images
+      .map(normalizeService)
+    
+    const demoSvcs = (demoServices || []).map(s => ({ ...s, category: 'service' }))
 
-    // 🔥 include offers from composable
+    const finalSvcs = [...demoSvcs]
+    dbSvcs.forEach(dbItem => {
+      const dbTitle = String(dbItem.title || '').toLowerCase().trim()
+      const exists = finalSvcs.find(s => 
+        s.id === dbItem.id || 
+        String(s.title || '').toLowerCase().trim() === dbTitle
+      )
+      if (!exists) {
+        finalSvcs.push(dbItem)
+      } else {
+        const idx = finalSvcs.findIndex(s => 
+          s.id === dbItem.id || 
+          String(s.title || '').toLowerCase().trim() === dbTitle
+        )
+        finalSvcs[idx] = { ...dbItem, ...finalSvcs[idx] }
+      }
+    })
+
+    // 4. Offers
     const offers = useOffers().activeOffers.value.map(o => ({
-      ...o, // Pass everything for consistency
+      ...o,
       id: o.offerID,
       category: 'offer',
       title: o.title,
       desc: o.description,
-      tag: o.discount + '% OFF'
+      tag: (o.discount_pct || o.discount) + '% OFF'
     }))
 
-   allResults.value = [
-  ...destinations,
-  ...mergedPackages,
-  ...mergedServices,
-  ...offers
+    allResults.value = [
+      ...finalDests,
+      ...finalPkgs,
+      ...finalSvcs,
+      ...offers
     ]
 
   } catch (err) {

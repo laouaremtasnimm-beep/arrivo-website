@@ -80,6 +80,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useListPage } from '@/composables/useListPage'
+import { destinations } from '@/data/content.js'
 
 import NavBar           from '@/components/home/NavBar.vue'
 import PageHero         from '@/components/shared/PageHero.vue'
@@ -100,12 +101,25 @@ onMounted(async () => {
     const response = await fetch('http://localhost/arrivo-website/backend/api/v1/listings.php')
     const data = await response.json()
     if (data.listings) {
-      allItems.value = data.listings.map(dest => ({
+      const dbRows = data.listings.map(dest => ({
         ...dest,
         title: dest.name,
         price: dest.price,
-        image: dest.image
+        img:   dest.image,
       }))
+
+      const final = [...destinations]
+      dbRows.forEach(dbItem => {
+        const exists = final.find(d => d.id === dbItem.id || d.name === dbItem.name)
+        if (!exists) {
+          final.push(dbItem)
+        } else {
+          // Merge: demo wins
+          const idx = final.findIndex(d => d.id === dbItem.id || d.name === dbItem.name)
+          final[idx] = { ...dbItem, ...final[idx] }
+        }
+      })
+      allItems.value = final
     }
   } catch (error) {
     console.error('Failed to load destinations:', error)

@@ -23,24 +23,15 @@
         <h3 class="dest-card__name">{{ item.name }}</h3>
         <div class="dest-card__rating">
           <span class="star">★</span> {{ item.rating }}
-          <span class="dest-card__reviews">({{ item.reviews?.toLocaleString() }})</span>
+          <span class="dest-card__reviews">· {{ item.reviews?.toLocaleString() }} reviews</span>
         </div>
-      </div>
-
-      <p class="dest-card__desc" v-if="item.desc">{{ item.desc }}</p>
-
-      <div class="dest-card__tags" v-if="item.highlights?.length">
-        <span class="dest-tag" v-for="h in item.highlights.slice(0, 3)" :key="h">{{ h }}</span>
       </div>
 
       <div class="dest-card__footer">
-        <div>
-          <div class="dest-card__from-label">Packages from</div>
-          <div class="dest-card__price">${{ item.from?.toLocaleString() }}</div>
+        <div class="dest-card__from-wrap">
+          <span class="dest-card__from-label">Packages from</span>
+          <span class="dest-card__price">${{ item.from?.toLocaleString() || item.price?.toLocaleString() }}</span>
         </div>
-        <button class="btn btn-coral dest-card__cta" @click.stop="$emit('select', item)">
-          Explore
-        </button>
       </div>
     </div>
 
@@ -62,11 +53,12 @@ defineEmits(['select', 'toggle-wishlist'])
   box-shadow: var(--shadow); overflow: hidden;
   transition: transform var(--transition), box-shadow var(--transition);
   cursor: pointer;
+  display: flex; flex-direction: column; height: 420px; /* Unified height */
 }
 .dest-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); }
 
 /* Image */
-.dest-card__img { height: 220px; position: relative; overflow: hidden; }
+.dest-card__img { height: 210px; position: relative; overflow: hidden; flex-shrink: 0; }
 .dest-card__img img { height: 100%; transition: transform .5s ease; }
 .dest-card:hover .dest-card__img img { transform: scale(1.07); }
 
@@ -95,32 +87,21 @@ defineEmits(['select', 'toggle-wishlist'])
 }
 
 /* Body */
-.dest-card__body { padding: 18px 20px 20px; }
+.dest-card__body { padding: 20px; flex-grow: 1; display: flex; flex-direction: column; }
 
-.dest-card__top {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 8px; margin-bottom: 8px;
-}
-.dest-card__name    { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 700; }
-.dest-card__rating  { display: flex; align-items: center; gap: 4px; font-size: .82rem; font-weight: 600; color: var(--indigo); white-space: nowrap; }
+.dest-card__top { margin-bottom: 8px; }
+.dest-card__name    { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 600; margin-bottom: 4px; }
+.dest-card__rating  { display: flex; align-items: center; gap: 4px; font-size: .82rem; font-weight: 600; color: var(--indigo); }
 .dest-card__reviews { color: var(--gray-400); font-weight: 400; }
 
-.dest-card__desc {
-  font-size: .83rem; color: var(--gray-600); line-height: 1.6; margin-bottom: 12px;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-
-.dest-card__tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-.dest-tag {
-  background: rgba(46,196,182,.10); color: var(--teal-dk);
-  font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 50px;
-}
-
 .dest-card__footer {
-  display: flex; align-items: center; justify-content: space-between;
-  padding-top: 14px; border-top: 1px solid var(--gray-100);
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
-.dest-card__from-label { font-size: .72rem; color: var(--gray-400); }
-.dest-card__price      { font-family: 'Fraunces', serif; font-size: 1.25rem; font-weight: 700; color: var(--coral); }
-.dest-card__cta        { padding: 8px 18px; font-size: .84rem; }
+.dest-card__from-wrap { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.dest-card__from-label { font-size: .8rem; color: var(--gray-400); }
+.dest-card__price      { font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 700; color: var(--coral); }
 </style>

@@ -135,40 +135,49 @@ onMounted(async () => {
   }
 
   const id = Number(route.params.id)
-  const mockP = packages.find(p => p.id === id)
-
-  if (mockP) {
-    item.value = {
-      id: mockP.id, title: mockP.title, agency: mockP.agency || 'Unknown Agency',
-      img: mockP.img, type: mockP.type, duration: mockP.duration,
-      rating: Number(mockP.rating), reviews: Number(mockP.reviews),
-      spots: Number(mockP.spots), price: Number(mockP.price),
-      desc: mockP.desc, longDesc: mockP.desc,
-      includes: mockP.includes || [],
-      excludes: mockP.excludes || [],
-      itinerary: mockP.itinerary || [],
-    }
-  } else {
-    try {
-      const res  = await fetch(`${API}/packages.php?id=${id}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.package) {
-          const p = data.package
-          item.value = {
-            id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency',
-            img: p.img_url, type: p.type, duration: p.duration_days,
-            rating: Number(p.rating), reviews: Number(p.review_count),
-            spots: Number(p.spots_available), price: Number(p.price),
-            desc: p.description, longDesc: p.long_desc,
-            includes:  p.includes  && p.includes  !== 'null' ? JSON.parse(p.includes)  : [],
-            excludes:  p.excludes  && p.excludes  !== 'null' ? JSON.parse(p.excludes)  : [],
-            itinerary: p.itinerary && p.itinerary !== 'null' ? JSON.parse(p.itinerary) : [],
-          }
+  
+  // 1. Fetch from DB
+  try {
+    const res = await fetch(`${API}/packages.php?id=${id}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data.package) {
+        const p = data.package
+        const dbItem = {
+          id: p.id,
+          title: p.title,
+          agency: p.agency_name || 'Unknown Agency',
+          img: p.img_url,
+          type: p.type,
+          duration: p.duration_days,
+          rating: Number(p.rating || 4.5),
+          reviews: Number(p.review_count || 0),
+          spots: Number(p.spots_available || 0),
+          price: Number(p.price || 0),
+          longDesc: p.long_desc || p.description || '',
+          includes: p.includes && p.includes !== 'null' ? JSON.parse(p.includes) : [],
+          excludes: p.excludes && p.excludes !== 'null' ? JSON.parse(p.excludes) : [],
+          itinerary: p.itinerary && p.itinerary !== 'null' ? JSON.parse(p.itinerary) : [],
         }
+
+        const demo = packages.find(x => x.id === id)
+        item.value = demo ? { ...dbItem, ...demo } : dbItem
       }
-    } catch (e) {
-      console.error(e)
+    }
+  } catch (e) {
+    console.error('Failed to fetch package from DB:', e)
+  }
+
+  // 2. Fallback to mock if DB failed or returned nothing
+  if (!item.value) {
+    const mockP = packages.find(p => p.id === id)
+    if (mockP) {
+      item.value = {
+        ...mockP,
+        longDesc: mockP.desc,
+        reviews: Number(mockP.reviews),
+        rating: Number(mockP.rating)
+      }
     }
   }
 

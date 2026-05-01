@@ -132,38 +132,49 @@ onMounted(async () => {
   }
 
   const id = Number(route.params.id)
-  const mockS = services.find(s => s.id === id)
 
-  if (mockS) {
-    item.value = {
-      id: mockS.id, icon: mockS.icon, iconBg: 'svc-icon-teal',
-      title: mockS.title, provider: mockS.provider || 'Unknown Provider',
-      type: mockS.type, price: Number(mockS.price), unit: mockS.unit,
-      rating: Number(mockS.rating), reviews: Number(mockS.reviews),
-      availability: !!mockS.availability,
-      desc: mockS.desc, longDesc: mockS.desc, img: mockS.img,
-      features: mockS.features || [],
-    }
-  } else {
-    try {
-      const res  = await fetch(`${API}/services.php?id=${id}`)
-      if (res.ok) {
-        const data = await res.json()
-        if (data.service) {
-          const s = data.service
-          item.value = {
-            id: s.id, icon: s.icon, iconBg: 'svc-icon-teal',
-            title: s.title, provider: s.provider_name || 'Unknown Provider',
-            type: s.type, price: Number(s.price), unit: s.price_unit,
-            rating: Number(s.rating), reviews: Number(s.review_count),
-            availability: !!Number(s.is_available),
-            desc: s.description, longDesc: s.long_desc, img: s.img_url,
-            features: s.features && s.features !== 'null' ? JSON.parse(s.features) : [],
-          }
+  // 1. Fetch from DB
+  try {
+    const res = await fetch(`${API}/services.php?id=${id}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data.service) {
+        const s = data.service
+        const dbItem = {
+          id: s.id,
+          title: s.title,
+          provider: s.provider_name || 'Unknown Provider',
+          img: null, // ✅ Emoji only
+          icon: s.icon || '🛎️',
+          type: s.type,
+          price: Number(s.price || 0),
+          unit: s.price_unit || 'trip',
+          rating: Number(s.rating || 4.5),
+          reviews: Number(s.review_count || 0),
+          availability: s.is_available !== undefined ? !!Number(s.is_available) : true,
+          longDesc: s.long_desc || s.description || '',
+          features: s.features && s.features !== 'null' ? JSON.parse(s.features) : [],
         }
+
+        const demo = services.find(x => x.id === id)
+        item.value = demo ? { ...dbItem, ...demo } : dbItem
       }
-    } catch (e) {
-      console.error(e)
+    }
+  } catch (e) {
+    console.error('Failed to fetch service from DB:', e)
+  }
+
+  // 2. Fallback to mock
+  if (!item.value) {
+    const mockS = services.find(s => s.id === id)
+    if (mockS) {
+      item.value = {
+        ...mockS,
+        longDesc: mockS.desc,
+        reviews: Number(mockS.reviews),
+        rating: Number(mockS.rating),
+        availability: !!mockS.availability
+      }
     }
   }
 

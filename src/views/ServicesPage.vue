@@ -122,6 +122,7 @@ function normalizeService(s) {
     reviews:      s.review_count  ?? s.reviews      ?? 0,
     availability: s.is_available  == 1,
     desc:         s.description   ?? s.desc         ?? '',
+    img:          null, // ✅ Legacy image removal
     features:     typeof s.features === 'string'
                     ? JSON.parse(s.features || '[]')
                     : (s.features ?? []),
@@ -132,9 +133,24 @@ onMounted(async () => {
   try {
     const res  = await fetch('/arrivo-website/backend/api/v1/services.php')
     const data = await res.json()
-    const dbRows = (data.services ?? []).map(normalizeService)
-    const newOnly = dbRows.filter(s => !DEMO_IDS.has(s.id))
-    allItems.value = [...services, ...newOnly]
+    
+    // Filter out old services with images
+    const dbRows = (data.services ?? [])
+      .filter(s => !s.img_url)
+      .map(normalizeService)
+
+    const final = [...services]
+    dbRows.forEach(dbItem => {
+      const exists = final.find(s => s.id === dbItem.id || s.title === dbItem.title)
+      if (!exists) {
+        final.push(dbItem)
+      } else {
+        // Merge: demo wins
+        const idx = final.findIndex(s => s.id === dbItem.id || s.title === dbItem.title)
+        final[idx] = { ...dbItem, ...final[idx] }
+      }
+    })
+    allItems.value = final
   } catch (e) {
     console.error('Failed to load services from API:', e)
   }

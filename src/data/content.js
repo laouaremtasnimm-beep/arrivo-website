@@ -44,4 +44,4 @@ export const services = [
   { id: 2013, icon: '🏄', iconBg: 'svc-icon-coral', title: 'Surf Lessons', provider: 'Ride The Wave', type: 'Adventure', price: 70, unit: 'session', rating: 4.7, reviews: 318, availability: true, desc: 'Learn to surf with certified instructors on the best beginner and intermediate breaks.', features: ['Board & wetsuit', 'Video analysis', '2-hour session'] },
   { id: 2014, icon: '🌿', iconBg: 'svc-icon-teal', title: 'Eco Nature Walk', provider: 'Green Paths', type: 'Wellness', price: 55, unit: 'person', rating: 4.8, reviews: 195, availability: true, desc: 'Guided nature walks through national parks, forests and wetlands with a naturalist.', features: ['Binoculars provided', 'Wildlife spotting', 'Photography tips'] },
 ]
-
+

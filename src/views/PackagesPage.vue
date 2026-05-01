@@ -133,11 +133,18 @@ onMounted(async () => {
     const data = await res.json()
     const dbRows = (data.packages ?? []).map(normalizePackage)
 
-    // Deduplicate by title — if a DB package has the same title as a demo
-    // one, the demo version wins (keeps the richer content.js data intact)
-    const demoTitles = new Set(packages.map(p => p.title))
-    const newOnly = dbRows.filter(p => !demoTitles.has(p.title))
-    allItems.value = [...packages, ...newOnly]
+    const final = [...packages]
+    dbRows.forEach(dbItem => {
+      const exists = final.find(p => p.id === dbItem.id || p.title === dbItem.title)
+      if (!exists) {
+        final.push(dbItem)
+      } else {
+        // Merge: demo wins
+        const idx = final.findIndex(p => p.id === dbItem.id || p.title === dbItem.title)
+        final[idx] = { ...dbItem, ...final[idx] }
+      }
+    })
+    allItems.value = final
   } catch (e) {
     console.error('Failed to load packages from API:', e)
   }
