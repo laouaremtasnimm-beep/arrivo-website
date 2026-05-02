@@ -27,11 +27,11 @@
         <div class="offer-dates">{{ offer.startDate }} → {{ offer.endDate }}</div>
         <p class="offer-desc">{{ offer.description }}</p>
         <button 
-          class="btn offer-btn" 
-          :class="isBooked('offer', offer.offerID) ? 'btn-outline-danger' : 'btn-teal'"
-          @click.stop="openOffer(offer)"
+          class="btn card-cta" 
+          :class="isOwner(offer) ? 'btn-manage' : (isBooked('offer', offer.offerID) ? 'btn-outline-danger' : 'btn-teal')"
+          @click.stop="isOwner(offer) ? router.push('/dashboard') : openOffer(offer)"
         >
-          {{ isBooked('offer', offer.offerID) ? 'Cancel booking' : 'Grab deal' }}
+          {{ isOwner(offer) ? 'Manage offer' : (isBooked('offer', offer.offerID) ? 'Cancel booking' : 'Grab deal') }}
         </button>
       </div>
 
@@ -49,13 +49,26 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
 import { useOffers } from '@/composables/useOffers'
 import { useBookings } from '@/composables/useBookings'
 import OfferDetailModal from '@/components/home/OfferDetailModal.vue'
 
 const { activeOffers } = useOffers()
 const { isBooked, getBookingId, cancelBooking } = useBookings()
-const visibleOffers = computed(() => activeOffers.value.slice(0, 6))
+const { user } = useAuth()
+const router = useRouter()
+
+function isOwner(offer) {
+  if (!user.value || !offer) return false
+  const uid = String(user.value.userID || user.value.id)
+  const oid = String(offer.agency_id || offer.userId || offer.provider_id || offer.owner_id || offer.item_owner_id || '')
+  return oid !== '' && oid === uid
+}
+const visibleOffers = computed(() => 
+  activeOffers.value.filter(o => String(o.offerID).startsWith('demo-')).slice(0, 6)
+)
 
 const modalOpen     = ref(false)
 const selectedOffer = ref(null)
@@ -119,16 +132,6 @@ async function openOffer(offer) {
 .offer-title { font-weight: 600; font-size: .97rem; margin: 6px 0 4px; color: var(--indigo); }
 .offer-dates { font-size: .78rem; color: var(--gray-400); }
 .offer-desc  { font-size: .82rem; color: var(--gray-600); margin-top: 10px; line-height: 1.5; flex: 1; }
-.offer-btn   { margin-top: 18px; padding: 8px 20px; font-size: .82rem; }
-
-.btn-outline-danger {
-  background: transparent;
-  border: 1.5px solid var(--coral);
-  color: var(--coral);
-}
-.btn-outline-danger:hover {
-  background: var(--coral-lt);
-}
 
 .offers-empty {
   display: flex; align-items: center; justify-content: center;

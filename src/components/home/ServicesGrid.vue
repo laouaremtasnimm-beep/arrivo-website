@@ -29,16 +29,37 @@
             ${{ svc.price }}<span class="svc-unit">/day</span>
           </div>
         </div>
+        <!-- Manage button for owners -->
+        <button
+          v-if="isOwner(svc)"
+          class="btn card-cta btn-manage"
+          @click.stop="router.push('/dashboard')"
+        >
+          Manage service
+        </button>
       </article>
     </div>
   </section>
 </template>
 
 <script setup>
-defineProps({
+import { useRouter } from 'vue-router'
+import { useAuth } from '@/composables/useAuth'
+
+const props = defineProps({
   services: { type: Array, default: () => [] },
 })
 defineEmits(['select']);
+
+const { user } = useAuth()
+const router = useRouter()
+
+function isOwner(svc) {
+  if (!user.value || !svc) return false
+  const uid = String(user.value.userID || user.value.id)
+  const oid = String(svc.provider_id || svc.userId || svc.owner_id || svc.item_owner_id || '')
+  return oid !== '' && oid === uid
+}
 
 </script>
 
@@ -83,4 +104,5 @@ defineEmits(['select']);
 }
 .svc-price { font-family: 'Fraunces', serif; font-size: 1rem; font-weight: 700; color: var(--coral); }
 .svc-unit  { font-size: .72rem; color: var(--gray-400); font-family: 'DM Sans', sans-serif; font-weight: 400; }
+
 </style>

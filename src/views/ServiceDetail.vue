@@ -76,8 +76,8 @@
               ref="entityCardRef"
               :name="item.provider"
               :bio="item.providerBio"
-              :rating="item.providerRating"
-              :reviews="item.providerReviews"
+              :rating="item.providerRating || 0"
+              :reviews="item.providerReviews || 0"
               :receiver-id="item.provider_id"
               entity-label="Provider"
               hide-card
@@ -94,11 +94,12 @@
           :rating="item.rating"
           :reviews="item.reviews"
           :facts="item.facts"
-          :cta-label="alreadyBooked ? 'Cancel Booking' : 'Book this service'"
-          :cta-danger="alreadyBooked"
+          :cta-label="ctaLabel"
+          :cta-danger="alreadyBooked && !isOwner"
+          :is-owner="isOwner"
           entity-label="Contact Provider"
           note="You won't be charged until confirmed."
-          @book="bookingOpen = true"
+          @book="handleCTAClick"
           @cancel="handleCancel"
           @message="handleContact"
         />
@@ -240,6 +241,32 @@ const isDemo = computed(() => {
 
 const isSavedVal    = computed(() => item.value ? isSaved.value('service', item.value.id) : false)
 const alreadyBooked = computed(() => item.value ? isBooked('service', item.value.id) : false)
+const isOwner = computed(() => {
+  if (!item.value || !user.value) return false
+  const uid = String(user.value.userID || user.value.id)
+  const oid = String(item.value.provider_id || item.value.userId || item.value.owner_id || item.value.item_owner_id || '')
+  
+  console.log('--- Service Ownership Check ---')
+  console.log('User ID (uid):', uid)
+  console.log('Service Owner ID (oid):', oid)
+  console.log('Is Owner:', oid !== '' && oid === uid)
+  console.log('Raw item data:', item.value)
+  
+  return oid !== '' && oid === uid
+})
+
+const ctaLabel = computed(() => {
+  if (isOwner.value) return 'Manage Service'
+  return alreadyBooked.value ? 'Cancel Booking' : 'Book this service'
+})
+
+function handleCTAClick() {
+  if (isOwner.value) {
+    router.push('/dashboard')
+  } else {
+    bookingOpen.value = true
+  }
+}
 
 function handleToggleWishlist() {
   if (!item.value) return

@@ -78,92 +78,87 @@
 
         <!-- Grid view -->
         <div v-else-if="viewMode === 'grid'" class="results-grid">
-  <template v-for="item in pagedResults" :key="item.id + '-' + item.category">
+          <template v-for="item in pagedResults" :key="item.id + '-' + item.category">
+            <!-- 🟠 Offers use DealCard -->
+            <DealCard
+              v-if="item.category === 'offer'"
+              :offer="item"
+              :saved="isSaved('offer', item.id)"
+              :booked="isBooked('offer', item.id)"
+              :is-owner="isItemOwner(item)"
+              @select="goToDetail"
+              @toggle-save="toggleWishlist('offer', item.id)"
+              @book="handleBook"
+              @manage="router.push('/dashboard')"
+            />
 
-    <!-- 🟠 Offers use DealCard -->
-    <DealCard
-      v-if="item.category === 'offer'"
-      :offer="item"
-      :saved="isSaved('offer', item.id)"
-      :booked="isBooked('offer', item.id)"
-      @select="goToDetail"
-      @toggle-save="toggleWishlist('offer', item.id)"
-      @book="handleBook"
-    />
+            <!-- 🔵 Everything else -->
+            <ServiceCard
+              v-else-if="item.category === 'service'"
+              :item="item"
+              :saved="isSaved('service', item.id)"
+              :booked="isBooked('service', item.id)"
+              :is-owner="isItemOwner(item)"
+              @select="goToDetail"
+              @book="handleBook"
+              @toggle-wishlist="toggleWishlist('service', item.id)"
+              @manage="router.push('/dashboard')"
+            />
 
-    <!-- 🔵 Everything else -->
-    <ServiceCard
-  v-else-if="item.category === 'service'"
-  :item="item"
-    :saved="isSaved('service', item.id)"
-    :booked="isBooked('service', item.id)"
-    @select="goToDetail"
-    @book="handleBook"
-    @toggle-wishlist="toggleWishlist('service', item.id)"
-  />
+            <!-- 🔵 DESTINATION -->
+            <DestinationCard
+              v-else-if="item.category === 'dest'"
+              :item="item"
+              :saved="isSaved('destination', item.id)"
+              @select="goToDetail"
+              @toggle-wishlist="toggleWishlist('dest', item.id)"
+            />
 
-    <!-- 🔵 DESTINATION -->
-    <DestinationCard
-      v-else-if="item.category === 'dest'"
-      :item="item"
-      :saved="isSaved('destination', item.id)"
-      @select="goToDetail"
-      @toggle-wishlist="toggleWishlist('dest', item.id)"
-    />
-
-    <!-- 🔵 PACKAGE / OTHER -->
-    <ResultCard
-      v-else
-      :item="item"
-      :saved="isSaved(item.category === 'dest' ? 'destination' : item.category, item.id)"
-      :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id)"
-      @select="goToDetail"
-      @book="handleBook"
-      @toggle-wishlist="toggleWishlist(item.category, item.id)"
-    />
-
-  
-  </template>
-</div>
+            <!-- 🔵 PACKAGE / OTHER -->
+            <ResultCard
+              v-else
+              :item="item"
+              :saved="isSaved(item.category === 'dest' ? 'destination' : item.category, item.id)"
+              :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id)"
+              :is-owner="isItemOwner(item)"
+              @select="goToDetail"
+              @book="handleBook"
+              @toggle-wishlist="toggleWishlist(item.category, item.id)"
+              @manage="router.push('/dashboard')"
+            />
+          </template>
+        </div>
 
         <!-- List view -->
-       <div v-else class="results-list">
-  <template v-for="item in pagedResults" :key="item.id + '-' + item.category">
+        <div v-else class="results-list">
+          <template v-for="item in pagedResults" :key="item.id + '-' + item.category">
+            <!-- 🟠 Offers -->
+            <DealCard
+              v-if="item.category === 'offer'"
+              :offer="item"
+              :saved="isSaved('offer', item.id)"
+              :booked="isBooked('offer', item.id)"
+              :is-owner="isItemOwner(item)"
+              @select="goToDetail"
+              @toggle-save="toggleWishlist('offer', item.id)"
+              @book="handleBook"
+              @manage="router.push('/dashboard')"
+            />
 
-    <!-- 🟠 Offers -->
-    <DealCard
-      v-if="item.category === 'offer'"
-      :offer="item"
-      :saved="isSaved('offer', item.id)"
-      :booked="isBooked('offer', item.id)"
-      @select="goToDetail"
-      @toggle-save="toggleWishlist('offer', item.id)"
-      @book="handleBook"
-    />
-
-    <!-- 🔵 Others -->
-  <ServiceListCard
-  v-else-if="item.category === 'service'"
-  :item="item"
-    :saved="isSaved('service', item.id)"
-    :booked="isBooked('service', item.id)"
-    @select="goToDetail"
-    @book="handleBook"
-    @toggle-wishlist="toggleWishlist('service', item.id)"
-  />
-
-  <ResultListCard
-    v-else
-    :item="item"
-    :saved="isSaved(item.category === 'dest' ? 'destination' : item.category, item.id)"
-    :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id)"
-    @select="goToDetail"
-    @book="handleBook"
-    @toggle-wishlist="toggleWishlist(item.category, item.id)"
-  />
-
-  </template>
-</div>
+            <!-- 🔵 Others (Packages & Services) -->
+            <ResultListCard
+              v-else
+              :item="item"
+              :saved="isSaved(item.category === 'dest' ? 'destination' : item.category, item.id)"
+              :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id)"
+              :is-owner="isItemOwner(item)"
+              @select="goToDetail"
+              @book="handleBook"
+              @toggle-wishlist="toggleWishlist(item.category, item.id)"
+              @manage="router.push('/dashboard')"
+            />
+          </template>
+        </div>
 
         <SearchPagination
           v-if="!loading && pagedResults.length > 0"
@@ -208,6 +203,13 @@ const router = useRouter()
 const { user, isLoggedIn } = useAuth()
 const { createBooking, isBooked, getBookingId, cancelBooking } = useBookings()
 const { toggle, isSaved }  = useWishlist()
+
+function isItemOwner(item) {
+  if (!user.value || !item) return false
+  const uid = String(user.value.userID || user.value.id)
+  const oid = String(item.agency_id || item.provider_id || item.userId || item.owner_id || item.item_owner_id || '')
+  return oid !== '' && oid === uid
+}
 
 
 
@@ -276,7 +278,9 @@ function normalizeDestination(d) {
     from: d.price || 0,
     rating: d.rating || 4.5,
     reviews: d.reviews || 0,
-    type: d.type || 'City'
+    type: d.type || 'City',
+    agency_id: d.agency_id || null,
+    provider_id: d.provider_id || null,
   }
 }
 
@@ -294,6 +298,7 @@ function normalizePackage(p) {
     duration: p.duration_days,
     type: p.type || 'Adventure',
     spots: Number(p.spots_available || 0),
+    agency_id: p.agency_id || p.userId || p.owner_id || null,
   }
 }
 
@@ -313,6 +318,7 @@ function normalizeService(s) {
     reviews: Number(s.review_count || 0),
     type: s.type || 'Transport',
     availability: !!Number(s.is_available),
+    provider_id: s.provider_id || s.userId || s.owner_id || null,
   }
 }
 
@@ -450,7 +456,9 @@ async function runSearch() {
       category: 'offer',
       title: o.title,
       desc: o.description,
-      tag: (o.discount_pct || o.discount) + '% OFF'
+      tag: (o.discount_pct || o.discount) + '% OFF',
+      agency_id: o.agency_id || o.userId || o.owner_id || null,
+      provider_id: o.provider_id || null,
     }))
 
     allResults.value = [

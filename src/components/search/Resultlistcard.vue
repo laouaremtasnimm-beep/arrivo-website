@@ -38,11 +38,11 @@
           <div class="list-card__price">${{ item.price.toLocaleString() }}</div>
         </div>
         <button
-          class="btn"
-          :class="booked ? 'btn-outline-danger' : 'btn-coral'"
-          @click.stop="$emit('book', item)"
+          class="btn card-cta"
+          :class="isOwner ? 'btn-manage' : (booked ? 'btn-outline-danger' : 'btn-coral')"
+          @click.stop="$emit(isOwner ? 'manage' : 'book', item)"
         >
-          {{ booked ? 'Cancel booking' : (item.ctaLabel || 'Book now') }}
+          {{ isOwner ? (item.category === 'service' ? 'Manage service' : 'Manage package') : (booked ? 'Cancel booking' : (item.ctaLabel || 'Book now')) }}
         </button>
       </div>
     </div>
@@ -52,11 +52,12 @@
 
 <script setup>
 defineProps({
-  item:   { type: Object,  required: true },
-  saved:  { type: Boolean, default: false },
-  booked: { type: Boolean, default: false },
+  item:    { type: Object,  required: true },
+  saved:   { type: Boolean, default: false },
+  booked:  { type: Boolean, default: false },
+  isOwner: { type: Boolean, default: false },
 })
-defineEmits(['select', 'book', 'toggle-wishlist'])
+defineEmits(['select', 'book', 'toggle-wishlist', 'manage'])
 </script>
 
 <style scoped>
@@ -121,12 +122,4 @@ defineEmits(['select', 'book', 'toggle-wishlist'])
   .list-card__img { min-height: 200px; }
 }
 
-.btn-outline-danger {
-  background: transparent;
-  border: 1.5px solid var(--coral);
-  color: var(--coral);
-}
-.btn-outline-danger:hover {
-  background: var(--coral-lt);
-}
 </style>

@@ -77,15 +77,15 @@ const filtered = computed(() => {
     ? props.bookings
     : props.bookings.filter(b => b.status === statusFilter.value)
   // Ensure every row has the fields the template accesses
-  return list.map(b => ({
-    reservationID: b.reservationID ?? b.id ?? '—',
-    guestName:     b.guestName     ?? 'Guest',
-    itemName:      b.itemName      ?? b.item_title ?? '—',
-    date:          b.date          ?? b.check_in   ?? '—',
-    totalPrice:    b.totalPrice    ?? 0,
-    status:        b.status        ?? 'confirmed',
-    ...b,
-  }))
+return list.map(b => ({
+  ...b,
+  reservationID: b.reservationID ?? b.id ?? '—',
+  guestName:     b.guestName ?? (b.guest_first ? `${b.guest_first} ${b.guest_last}` : 'Guest'),
+  itemName:      b.itemName ?? b.package_title ?? b.service_title ?? b.offer_title ?? b.destination_name ?? b.item_title ?? '—',
+  date:          b.date      ?? b.check_in ?? '—',
+  totalPrice:    Number(b.totalPrice ?? b.total_price ?? 0),
+  status:        b.status    ?? 'confirmed',
+}))
 })
 </script>
 

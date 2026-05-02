@@ -122,11 +122,11 @@
           <!-- Card footer -->
           <div class="deal-footer">
             <button 
-              class="btn deal-cta" 
-              :class="isBooked('offer', offer.offerID) ? 'btn-outline-danger' : 'btn-teal'"
-              @click.stop="handleSelect(offer)"
+              class="btn card-cta" 
+              :class="isOwner(offer) ? 'btn-manage' : (isBooked('offer', offer.offerID) ? 'btn-outline-danger' : 'btn-teal')"
+              @click.stop="isOwner(offer) ? router.push('/dashboard') : handleSelect(offer)"
             >
-              {{ isBooked('offer', offer.offerID) ? 'Cancel booking' : 'Grab deal →' }}
+              {{ isOwner(offer) ? 'Manage Offer' : (isBooked('offer', offer.offerID) ? 'Cancel booking' : 'Grab deal →') }}
             </button>
             <button
               class="deal-save"
@@ -156,9 +156,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useOffers } from '@/composables/useOffers'
 import { useWishlist } from '@/composables/useWishlist'
+import { useAuth }     from '@/composables/useAuth'
 import { useBookings } from '@/composables/useBookings'
-import NavBar    from '@/components/home/NavBar.vue'
-import SiteFooter from '@/components/home/SiteFooter.vue'
+import NavBar           from '@/components/home/NavBar.vue'
+import SiteFooter       from '@/components/home/SiteFooter.vue'
 import OfferDetailModal from '@/components/home/OfferDetailModal.vue'
 
 const { toggle, isSaved } = useWishlist()
@@ -169,6 +170,14 @@ const offerModalOpen = ref(false)
 const router = useRouter()
 const { activeOffers } = useOffers()
 const { isBooked, getBookingId, cancelBooking } = useBookings()
+const { user } = useAuth()
+
+function isOwner(offer) {
+  if (!user.value || !offer) return false
+  const uid = String(user.value.userID || user.value.id)
+  const oid = String(offer.agency_id || offer.userId || offer.provider_id || offer.owner_id || offer.item_owner_id || '')
+  return oid !== '' && oid === uid
+}
 
 // ── Fake load so the page doesn't pop in ──────────────────────────────────
 const loading = ref(true)
@@ -427,7 +436,7 @@ function toggleSave(id) {
   padding: 16px 22px 20px; margin-top: 8px;
   border-top: 1px solid var(--gray-100);
 }
-.deal-cta { padding: 9px 20px; font-size: .84rem; border-radius: 10px; }
+
 .deal-save {
   width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--gray-200);
   background: var(--white); font-size: 1.1rem; cursor: pointer; line-height: 1;
@@ -476,12 +485,4 @@ function toggleSave(id) {
   .deals-grid   { grid-template-columns: 1fr; }
 }
 
-.btn-outline-danger {
-  background: transparent;
-  border: 1.5px solid var(--coral);
-  color: var(--coral);
-}
-.btn-outline-danger:hover {
-  background: var(--coral-lt);
-}
 </style>

@@ -79,8 +79,8 @@ const props = defineProps({
   name:        { type: String,  required: true  },
   bio:         { type: String,  default: ''     },
   img:         { type: String,  default: ''     },
-  rating:      { type: Number,  required: true  },
-  reviews:     { type: Number,  required: true  },
+  rating:      { type: Number,  default: 0  },
+  reviews:     { type: Number,  default: 0  },
   entityLabel: { type: String,  default: 'Agency' },
   receiverId:  { type: Number,  default: null   },  // agency_id or provider_id
   hideCard:    { type: Boolean, default: false  },

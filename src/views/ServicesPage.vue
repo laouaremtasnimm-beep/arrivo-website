@@ -59,9 +59,11 @@
             :item="item"
             :saved="isItemSaved(item)"
             :booked="isBooked('service', item.id)"
+            :is-owner="isItemOwner(item)"
             @select="goToDetail"
             @book="openBooking"
             @cancel="handleCancel"
+            @manage="router.push('/dashboard')"
             @toggle-wishlist="toggleWishlist(item)"
           />
         </ItemGrid>
@@ -123,10 +125,18 @@ function normalizeService(s) {
     availability: s.is_available  == 1,
     desc:         s.description   ?? s.desc         ?? '',
     img:          null, // ✅ Legacy image removal
+    provider_id:  s.provider_id   ?? null,
     features:     typeof s.features === 'string'
                     ? JSON.parse(s.features || '[]')
                     : (s.features ?? []),
   }
+}
+
+function isItemOwner(item) {
+  if (!user.value || !item) return false
+  const uid = String(user.value.userID || user.value.id)
+  const oid = String(item.provider_id || item.userId || item.owner_id || item.item_owner_id || '')
+  return oid !== '' && oid === uid
 }
 
 onMounted(async () => {
@@ -145,9 +155,14 @@ onMounted(async () => {
       if (!exists) {
         final.push(dbItem)
       } else {
-        // Merge: demo wins
+        // Merge: demo wins for display fields, but DB always wins for ownership fields
         const idx = final.findIndex(s => s.id === dbItem.id || s.title === dbItem.title)
-        final[idx] = { ...dbItem, ...final[idx] }
+        final[idx] = {
+          ...dbItem,
+          ...final[idx],
+          // Always keep the real DB ownership ID so isItemOwner() works correctly
+          provider_id: dbItem.provider_id ?? final[idx].provider_id ?? null,
+        }
       }
     })
     allItems.value = final

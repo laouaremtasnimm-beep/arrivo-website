@@ -82,8 +82,8 @@
               :name="item.agency"
               :bio="item.agencyBio"
               :img="item.agencyImg"
-              :rating="item.agencyRating"
-              :reviews="item.agencyReviews"
+              :rating="item.agencyRating || 0"
+              :reviews="item.agencyReviews || 0"
               :receiver-id="item.agency_id"
               entity-label="Agency"
               hide-card
@@ -100,10 +100,11 @@
           :reviews="item.reviews"
           :spots="item.spots"
           :facts="item.facts"
-          :cta-label="alreadyBooked ? 'Cancel Booking' : 'Book this package'"
-          :cta-danger="alreadyBooked"
+          :cta-label="ctaLabel"
+          :cta-danger="alreadyBooked && !isOwner"
+          :is-owner="isOwner"
           entity-label="Contact Agency"
-          @book="bookingOpen = true"
+          @book="handleCTAClick"
           @cancel="handleCancel"
           @message="handleContact"
         />
@@ -253,6 +254,32 @@ const isDemo = computed(() => {
 
 const isSavedVal    = computed(() => item.value ? isSaved.value('package', item.value.id) : false)
 const alreadyBooked = computed(() => item.value ? isBooked('package', item.value.id) : false)
+const isOwner = computed(() => {
+  if (!item.value || !user.value) return false
+  const uid = String(user.value.userID || user.value.id)
+  const oid = String(item.value.agency_id || item.value.userId || item.value.owner_id || item.value.item_owner_id || '')
+  
+  console.log('--- Package Ownership Check ---')
+  console.log('User ID (uid):', uid)
+  console.log('Package Owner ID (oid):', oid)
+  console.log('Is Owner:', oid !== '' && oid === uid)
+  console.log('Raw item data:', item.value)
+  
+  return oid !== '' && oid === uid
+})
+
+const ctaLabel = computed(() => {
+  if (isOwner.value) return 'Manage Package'
+  return alreadyBooked.value ? 'Cancel Booking' : 'Book this package'
+})
+
+function handleCTAClick() {
+  if (isOwner.value) {
+    router.push('/dashboard')
+  } else {
+    bookingOpen.value = true
+  }
+}
 
 function handleToggleWishlist() {
   if (!item.value) return

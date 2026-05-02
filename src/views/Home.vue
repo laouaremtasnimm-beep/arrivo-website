@@ -112,28 +112,8 @@ const homePackages     = ref(demoPackages.slice(0, 6))
 const homeServices     = ref(demoServices.slice(0, 8))
 
 onMounted(async () => {
-  // Fetch dynamic destinations
-  try {
-    const res = await fetch('/arrivo-website/backend/api/v1/listings.php')
-    const data = await res.json()
-    if (data.listings?.length) {
-      const dbDests = data.listings.map(d => ({
-        ...d,
-        img: d.image,
-        from: d.price
-      }))
-      
-      // Merge: content.js takes precedence for images/titles if IDs match
-      const merged = dbDests.map(dbItem => {
-        const demo = demoDestinations.find(d => d.id === dbItem.id)
-        return demo ? { ...dbItem, ...demo } : dbItem
-      })
-      homeDestinations.value = merged.slice(0, 4)
-    }
-  } catch (e) { console.error('Home: Failed to fetch dests', e) }
-
-  // Dynamic destinations and services are still fetched, 
-  // but packages are kept static (demo only) per request.
+  // Homepage now strictly shows demo content as requested.
+  // Dynamic fetching moved to dedicated list pages.
 })
 
 const reviews = ref([

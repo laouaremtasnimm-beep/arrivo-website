@@ -7,10 +7,12 @@
  */
 import { ref, computed } from 'vue'
 
+import { destinations as demoDestinations, packages as demoPackages, services as demoServices, offers as demoOffers } from '@/data/content.js'
+
 const API = '/arrivo-website/backend/api/v1'
 
 // ── Module-level state (singleton) ───────────────────────────────────────────
-const _offers = ref([])
+const _offers = ref([...demoOffers])
 const _loading = ref(false)
 const _loaded = ref(false)
 
@@ -21,7 +23,14 @@ async function _bootstrap() {
   try {
     const res = await fetch(`${API}/offers.php`)
     const data = await res.json()
-    if (data.offers) _offers.value = data.offers
+    if (data.offers) {
+      // Merge: avoid duplicates if demo offers were somehow in the DB
+      data.offers.forEach(dbOff => {
+        if (!_offers.value.some(o => o.offerID === dbOff.offerID)) {
+          _offers.value.push(dbOff)
+        }
+      })
+    }
     _loaded.value = true
   } catch (e) {
     console.warn('[useOffers] Failed to load offers:', e)

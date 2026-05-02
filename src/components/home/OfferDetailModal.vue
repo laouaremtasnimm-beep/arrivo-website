@@ -101,10 +101,13 @@
             <div class="footer-note">🔥 Limited time — offer ends {{ offer?.endDate }}</div>
             <button 
               class="btn-book" 
-              :class="{'btn-outline-danger': alreadyBooked}"
-              @click="alreadyBooked ? handleCancel() : bookDeal()"
+              :class="{
+                'btn-outline-danger': alreadyBooked && !isOwner,
+                'btn-manage': isOwner
+              }"
+              @click="isOwner ? handleManage() : (alreadyBooked ? handleCancel() : bookDeal())"
             >
-              {{ alreadyBooked ? 'Cancel Booking' : 'Book this deal' }}
+              {{ isOwner ? 'Manage Offer' : (alreadyBooked ? 'Cancel Booking' : 'Book this deal') }}
             </button>
           </div>
 
@@ -144,6 +147,13 @@ const bookingTarget = ref(null)
 
 const alreadyBooked = computed(() => {
   return props.offer ? isBooked('offer', props.offer.offerID || props.offer.id) : false
+})
+
+const isOwner = computed(() => {
+  if (!props.offer || !user.value) return false
+  const uid = String(user.value.userID || user.value.id)
+  const oid = String(props.offer.agency_id || props.offer.userId || props.offer.provider_id || props.offer.owner_id || props.offer.item_owner_id || '')
+  return oid !== '' && oid === uid
 })
 
 // ── Match packages to this offer by keyword in title ────────────────────
@@ -250,6 +260,11 @@ async function handleCancel() {
   } else {
     alert('Failed to cancel: ' + res.error)
   }
+}
+
+function handleManage() {
+  close()
+  router.push('/dashboard')
 }
 
 function close() { emit('update:modelValue', false) }

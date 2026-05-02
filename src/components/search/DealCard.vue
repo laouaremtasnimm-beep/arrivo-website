@@ -37,11 +37,11 @@
     <!-- Card footer -->
     <div class="deal-footer">
       <button
-        class="btn deal-cta"
-        :class="booked ? 'btn-outline-danger' : 'btn-teal'"
-        @click.stop="$emit('book', offer)"
+        class="btn card-cta"
+        :class="isOwner ? 'btn-manage' : (booked ? 'btn-outline-danger' : 'btn-teal')"
+        @click.stop="$emit(isOwner ? 'manage' : 'book', offer)"
       >
-        {{ booked ? 'Cancel booking' : 'Grab deal →' }}
+        {{ isOwner ? 'Manage offer' : (booked ? 'Cancel booking' : 'Grab deal →') }}
       </button>
       <!-- Save button (keeping it consistent with search card actions if possible, 
            or just as a decorative element if wishlist logic differs) -->
@@ -63,8 +63,9 @@ defineProps({
   saved:    { type: Boolean, default: false },
   booked:   { type: Boolean, default: false },
   showSave: { type: Boolean, default: true },
+  isOwner:  { type: Boolean, default: false },
 })
-defineEmits(['select', 'toggle-save', 'book'])
+defineEmits(['select', 'toggle-save', 'book', 'manage'])
 </script>
 
 <style scoped>
@@ -147,7 +148,7 @@ defineEmits(['select', 'toggle-save', 'book'])
   padding: 16px 22px 20px; margin-top: 8px;
   border-top: 1px solid var(--gray-100);
 }
-.deal-cta { padding: 9px 20px; font-size: .84rem; border-radius: 10px; width: 100%; max-width: 140px; }
+
 .deal-save {
   width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--gray-200);
   background: var(--white); font-size: 1.1rem; cursor: pointer; line-height: 1;
@@ -157,12 +158,4 @@ defineEmits(['select', 'toggle-save', 'book'])
 .deal-save:hover  { border-color: var(--coral); color: var(--coral); }
 .deal-save.saved  { background: var(--coral-lt); border-color: var(--coral); color: var(--coral); }
 
-.btn-outline-danger {
-  background: transparent;
-  border: 1.5px solid var(--coral);
-  color: var(--coral);
-}
-.btn-outline-danger:hover {
-  background: var(--coral-lt);
-}
 </style>

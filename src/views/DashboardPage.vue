@@ -157,6 +157,17 @@
       @send="handleSendCollab"
     />
 
+    <BookingDetailModal
+      v-model="bookingDetailOpen"
+      :booking="activeBooking"
+      @confirm="handleConfirmBooking"
+    />
+
+    <OfferDetailModal
+      v-model="offerDetailOpen"
+      :offer="selectedOffer"
+    />
+
   </div>
 </template>
 
@@ -182,6 +193,8 @@ import PackageFormModal    from '@/components/dashboard/PackageFormModal.vue'
 import ServiceFormModal    from '@/components/dashboard/ServiceFormModal.vue'
 import CollaborationsPanel from '@/components/dashboard/CollaborationsPanel.vue'
 import CollabFormModal     from '@/components/dashboard/CollabFormModal.vue'
+import BookingDetailModal  from '@/components/dashboard/BookingDetailModal.vue'
+import OfferDetailModal    from '@/components/home/OfferDetailModal.vue'
 
 // ─────────────────────────────────────────────────────────────────────────
 // BASE URL — same pattern that fixed login/register
@@ -443,7 +456,49 @@ async function handleCancelBooking(b) {
   }
 }
 
-function handleViewBooking(b) { console.log('View booking:', b) }
+const bookingDetailOpen = ref(false)
+const activeBooking     = ref({})
+const offerDetailOpen   = ref(false)
+const selectedOffer     = ref(null)
+
+function handleViewBooking(b) {
+  const paths = {
+    package:     '/packages',
+    service:     '/services',
+    destination: '/destinations',
+  }
+  const type = b.booking_type
+  const id   = b.package_id ?? b.service_id ?? b.destination_id
+
+  if (id && type && paths[type]) {
+    router.push(`${paths[type]}/${id}`)
+    return
+  }
+
+  // If it's an offer, show the joint offer detail modal
+  if (type === 'offer') {
+    selectedOffer.value = {
+      id: b.item_id || b.offer_id,
+      title: b.itemName || b.offer_title,
+      description: b.description || b.notes || '',
+      discount: b.discount || 0,
+      startDate: b.start_date || '',
+      endDate: b.end_date || '',
+      owner_id: b.owner_id || b.agency_id || b.provider_id || b.item_owner_id,
+    }
+    offerDetailOpen.value = true
+    return
+  }
+
+  activeBooking.value = {
+    ...b,
+    itemName:   b.itemName   ?? b.offer_title ?? b.package_title ?? b.service_title ?? b.item_title ?? '—',
+    guestName:  b.guestName  ?? (b.guest_first ? `${b.guest_first} ${b.guest_last}` : 'Guest'),
+    totalPrice: Number(b.totalPrice ?? b.total_price ?? 0),
+    date:       b.date ?? b.check_in ?? null,
+  }
+  bookingDetailOpen.value = true
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // PACKAGE HANDLERS

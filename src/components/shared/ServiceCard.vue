@@ -60,11 +60,11 @@
       </div>
 
       <button
-        class="btn svc-card__cta"
-        :class="booked ? 'btn-outline-danger' : 'btn-teal'"
-        @click.stop="$emit(booked ? 'cancel' : 'book', item)"
+        class="btn card-cta"
+        :class="isOwner ? 'btn-manage' : (booked ? 'btn-outline-danger' : 'btn-teal')"
+        @click.stop="$emit(isOwner ? 'manage' : (booked ? 'cancel' : 'book'), item)"
       >
-        {{ booked ? 'Cancel Booking' : 'Book service' }}
+        {{ isOwner ? 'Manage service' : (booked ? 'Cancel Booking' : 'Book service') }}
       </button>
     </div>
 
@@ -74,11 +74,12 @@
 <script setup>
 
 defineProps({
-  item:   { type: Object,  required: true },
-  saved:  { type: Boolean, default: false },
-  booked: { type: Boolean, default: false },
+  item:    { type: Object,  required: true },
+  saved:   { type: Boolean, default: false },
+  booked:  { type: Boolean, default: false },
+  isOwner: { type: Boolean, default: false },
 })
-defineEmits(['select', 'book', 'cancel', 'toggle-wishlist'])
+defineEmits(['select', 'book', 'cancel', 'toggle-wishlist', 'manage'])
 </script>
 
 <style scoped>
@@ -107,14 +108,7 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist'])
   flex-direction: column; /* ✅ ADD */
   flex-grow: 1;           /* ✅ ADD */
 }
-.svc-card__cta {
-  width: 100%;
-  padding: 11px;
-  font-size: .88rem;
-  border-radius: 10px;
 
-  margin-top: 10px; /* ✅ THIS IS THE MAGIC */
-}
 .svc-card__features {
   display: -webkit-box;
   -webkit-line-clamp: 3; /* limit features */
@@ -203,13 +197,5 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist'])
 .svc-card__price      { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; color: var(--coral); }
 .svc-card__unit       { font-size: .75rem; color: var(--gray-400); font-family: 'DM Sans', sans-serif; font-weight: 400; }
 
-.svc-card__cta { width: 100%; padding: 11px; font-size: .88rem; border-radius: 10px; }
-.btn-outline-danger {
-  background: transparent;
-  border: 1px solid var(--coral);
-  color: var(--coral);
-}
-.btn-outline-danger:hover {
-  background: rgba(255, 90, 95, 0.1);
-}
+
 </style>
