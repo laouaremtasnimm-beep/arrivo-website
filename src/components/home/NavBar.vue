@@ -1,5 +1,8 @@
 <template>
-  <nav class="navbar" :class="{ 'navbar--scrolled': scrolled }">
+  <nav class="navbar" :class="{ 
+    'navbar--scrolled': scrolled || !isHome,
+    'navbar--home': isHome && !scrolled
+  }">
 
     <!-- Logo -->
     <RouterLink to="/" class="logo" @click="closeAll">Voya<span>go</span></RouterLink>
@@ -244,17 +247,20 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useNotifications } from '@/composables/useNotifications'
 import { useWishlist } from '@/composables/useWishlist.js'
 import NotificationPanel from '@/components/shared/NotificationPanel.vue'
 
 const router = useRouter()
+const route  = useRoute()
 const { user, isLoggedIn, canAccessDashboard, logout } = useAuth()
 const { unreadCount: getUnreadCount } = useNotifications()
 const { entries: wishlistEntries } = useWishlist()
 const wishlistCount = computed(() => wishlistEntries.value.length)
+
+const isHome = computed(() => route.path === '/')
 
 // ── Nav menu data ──────────────────────────────────────────────────────────
 const exploreLinks = [
@@ -317,7 +323,7 @@ function handleLogout() {
   router.push('/')
 }
 
-function onScroll() { scrolled.value = window.scrollY > 30 }
+function onScroll() { scrolled.value = window.scrollY > 50 }
 
 function onClickOutside(e) {
   if (menuRef.value && !menuRef.value.contains(e.target)) menuOpen.value = false
@@ -339,19 +345,31 @@ onUnmounted(() => {
   position: fixed; top: 0; left: 0; right: 0; z-index: 100;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 5%; height: 68px;
-  background: rgba(255,255,255,.94);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(0,0,0,.06);
-  transition: box-shadow var(--transition);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 12px rgba(0,0,0,0.06);
+  transition: all 0.3s ease;
 }
-.navbar--scrolled { box-shadow: var(--shadow); }
+.navbar--home {
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+}
+.navbar--scrolled {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 1px 12px rgba(0,0,0,0.06);
+}
 
 /* ── Logo ────────────────────────────────────────────────────────────────── */
 .logo {
   font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 700;
   color: var(--indigo); letter-spacing: -.5px; text-decoration: none;
   flex-shrink: 0;
+  transition: color 0.3s ease;
 }
+.navbar--home .logo { color: white; }
+.navbar--scrolled .logo { color: var(--indigo); }
 .logo span { color: var(--coral); }
 
 /* ── Nav links list ──────────────────────────────────────────────────────── */
@@ -373,12 +391,17 @@ onUnmounted(() => {
   border: none; background: none; cursor: pointer;
   font-family: 'DM Sans', sans-serif; font-size: .9rem; font-weight: 500;
   color: var(--gray-600); text-decoration: none;
-  transition: background var(--transition), color var(--transition);
+  transition: all 0.3s ease;
   white-space: nowrap; line-height: 1;
 }
+.navbar--home .nav-link { color: white; }
+.navbar--scrolled .nav-link { color: var(--gray-600); }
 .nav-link:hover,
 .nav-link.active,
 .nav-link.router-link-active { color: var(--coral); background: var(--coral-lt); }
+.navbar--home .nav-link:hover,
+.navbar--home .nav-link.active,
+.navbar--home .nav-link.router-link-active { color: var(--coral); background: rgba(255,255,255,0.1); }
 
 /* Hot deals badge */
 .nav-link--deals { font-weight: 600; }
@@ -481,10 +504,14 @@ onUnmounted(() => {
   width: 38px; height: 38px; border-radius: 10px; border: none;
   background: var(--gray-100); color: var(--indigo);
   cursor: pointer; display: flex; align-items: center; justify-content: center;
-  position: relative; transition: all var(--transition); text-decoration: none;
+  position: relative; transition: all 0.3s ease; text-decoration: none;
 }
+.navbar--home .navbar__icon-btn { background: rgba(255,255,255,0.1); color: white; }
+.navbar--scrolled .navbar__icon-btn { background: var(--gray-100); color: var(--indigo); }
 .navbar__icon-btn:hover,
 .navbar__icon-btn.active { background: var(--gray-200); }
+.navbar--home .navbar__icon-btn:hover,
+.navbar--home .navbar__icon-btn.active { background: rgba(255,255,255,0.2); }
 .navbar__notif-badge {
   position: absolute; top: 5px; right: 5px;
   min-width: 15px; height: 15px; padding: 0 3px;
@@ -500,9 +527,13 @@ onUnmounted(() => {
   display: flex; align-items: center; gap: 8px;
   background: none; border: 1.5px solid var(--gray-200);
   border-radius: 50px; padding: 4px 12px 4px 4px;
-  cursor: pointer; transition: border-color var(--transition);
+  cursor: pointer; transition: all 0.3s ease;
+  color: var(--indigo);
 }
+.navbar--home .avatar-btn { border-color: rgba(255,255,255,0.3); color: white; }
+.navbar--scrolled .avatar-btn { border-color: var(--gray-200); color: var(--indigo); }
 .avatar-btn:hover { border-color: var(--teal); }
+.navbar--home .avatar-btn:hover { border-color: white; }
 .nav-avatar {
   width: 30px; height: 30px; border-radius: 50%;
   background: var(--teal-lt, rgba(46,196,182,.10)); color: var(--teal, #2EC4B6);
@@ -549,8 +580,10 @@ onUnmounted(() => {
 .navbar__burger span {
   display: block; width: 24px; height: 2px;
   background: var(--indigo); border-radius: 2px;
-  transition: transform .22s ease, opacity .22s ease;
+  transition: transform .22s ease, opacity .22s ease, background 0.3s ease;
 }
+.navbar--home .navbar__burger span { background: white; }
+.navbar--scrolled .navbar__burger span { background: var(--indigo); }
 .navbar__burger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
 .navbar__burger.open span:nth-child(2) { opacity: 0; }
 .navbar__burger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }

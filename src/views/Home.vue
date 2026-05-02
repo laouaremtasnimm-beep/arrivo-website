@@ -10,10 +10,10 @@
       @search="handleSearch"
     />
 
-    <HotOffers @select="handleOfferSelect" />
+    <HotOffers id="offers" @select="handleOfferSelect" />
 
     <DestinationGrid :destinations="homeDestinations" @select="handleDestSelect" />
-    <TravelPackages  :packages="homePackages"         @select="handlePackageSelect" @book="openBooking" @cancel="handleCancel" />
+    <TravelPackages id="packages" :packages="homePackages"         @select="handlePackageSelect" @book="openBooking" @cancel="handleCancel" />
     <ServicesGrid    :services="homeServices"         @select="handleServiceSelect" />
     <HowItWorks />
     <ReviewsSection  :reviews="reviews" />
@@ -146,5 +146,5 @@ const reviews = ref([
 </script>
 
 <style scoped>
-.home { padding-top: 72px; }
+
 </style>
