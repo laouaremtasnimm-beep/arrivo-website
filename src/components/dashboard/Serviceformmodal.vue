@@ -77,14 +77,6 @@
               />
             </div>
 
-            <!-- Image URL -->
-            <div class="form-group">
-              <label class="form-label">Image URL <span class="form-hint">(optional)</span></label>
-              <input class="form-input" v-model="form.img" placeholder="https://…" />
-              <div class="img-preview" v-if="form.img">
-                <img :src="form.img" alt="Preview" @error="form.img = ''" />
-              </div>
-            </div>
 
             <!-- Availability -->
             <div class="form-group">
@@ -137,7 +129,7 @@ const types = ['Transport', 'Adventure', 'Food', 'Wellness', 'Photography', 'Tou
 
 const defaultForm = () => ({
   title: '', type: '', icon: '🛎️', price: null, unit: 'day',
-  desc: '', img: '', availability: true, features: [],
+  desc: '', availability: true, features: [],
 })
 
 const form        = ref(defaultForm())
@@ -146,16 +138,22 @@ const featuresRaw = ref('')
 watch(() => props.service, (svc) => {
   if (svc) {
     form.value = {
+      id:           svc.id,
       title:        svc.title        || '',
       type:         svc.type         || '',
       icon:         svc.icon         || '🛎️',
       price:        svc.price        || null,
-      unit:         svc.unit         || 'day',
-      desc:         svc.desc         || '',
-      img:          svc.img          || '',
-      availability: svc.availability ?? true,
+      unit:         svc.price_unit   || svc.unit || 'day',
+      desc:         svc.description  || svc.desc || '',
+      availability: Number(svc.is_available) === 1,
     }
-    featuresRaw.value = (svc.features || []).join('\n')
+    
+    // Handle features - might be JSON string or array
+    let feat = []
+    try {
+      feat = typeof svc.features === 'string' ? JSON.parse(svc.features) : (svc.features || [])
+    } catch { feat = [] }
+    featuresRaw.value = feat.join('\n')
   } else {
     form.value    = defaultForm()
     featuresRaw.value = ''
@@ -165,10 +163,10 @@ watch(() => props.service, (svc) => {
 
 function validate() {
   const e = {}
-  if (!form.value.title.trim()) e.title = 'Title is required.'
+  if (!form.value.title?.trim()) e.title = 'Title is required.'
   if (!form.value.type)         e.type  = 'Please select a category.'
   if (!form.value.price || form.value.price < 0) e.price = 'Enter a valid price.'
-  if (!form.value.desc.trim())  e.desc  = 'Description is required.'
+  if (!form.value.desc?.trim())  e.desc  = 'Description is required.'
   errors.value = e
   return Object.keys(e).length === 0
 }
@@ -176,23 +174,19 @@ function validate() {
 async function submit() {
   if (!validate()) return
   loading.value = true
-  await new Promise(r => setTimeout(r, 600))
+  await new Promise(r => setTimeout(r, 400))
   loading.value = false
 
-  const iconBgMap = {
-    Transport: 'svc-icon-coral', Adventure: 'svc-icon-teal', Food: 'svc-icon-sand',
-    Wellness: 'svc-icon-teal', Photography: 'svc-icon-coral', Tours: 'svc-icon-sand',
-    'City Break': 'svc-icon-coral',
-  }
-
   const payload = {
-    ...form.value,
-    features:  featuresRaw.value.split('\n').map(s => s.trim()).filter(Boolean),
-    iconBg:    iconBgMap[form.value.type] || 'svc-icon-teal',
-    serviceID: props.service?.serviceID ?? Date.now(),
-    rating:    props.service?.rating    ?? 0,
-    reviews:   props.service?.reviews   ?? 0,
-    bookings:  props.service?.bookings  ?? 0,
+    id:           props.service?.id,
+    title:        form.value.title,
+    type:         form.value.type,
+    icon:         form.value.icon,
+    price:        form.value.price,
+    price_unit:   form.value.unit,
+    description:  form.value.desc,
+    is_available: form.value.availability ? 1 : 0,
+    features:     featuresRaw.value.split('\n').map(s => s.trim()).filter(Boolean),
   }
 
   emit('save', payload)

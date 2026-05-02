@@ -139,17 +139,24 @@ const includesRaw = ref('')
 watch(() => props.package, (pkg) => {
   if (pkg) {
     form.value = {
-      title:       pkg.title       || '',
-      destination: pkg.destination || '',
-      type:        pkg.type        || '',
-      duration:    pkg.duration    || null,
-      price:       pkg.price       || null,
-      groupSize:   pkg.groupSize   || null,
-      spots:       pkg.spots       || null,
-      desc:        pkg.desc        || '',
-      img:         pkg.img         || '',
+      id:          pkg.id,
+      title:       pkg.title           || '',
+      destination: pkg.destination     || '',
+      type:        pkg.type            || '',
+      duration:    pkg.duration_days   || pkg.duration || null,
+      price:       pkg.price           || null,
+      groupSize:   pkg.group_size_max  || pkg.groupSize || null,
+      spots:       pkg.spots_available || pkg.spots || null,
+      desc:        pkg.description     || pkg.desc || '',
+      img:         pkg.img_url         || pkg.img || '',
     }
-    includesRaw.value = (pkg.includes || []).join('\n')
+    
+    // Handle includes - might be JSON string or array
+    let inc = []
+    try {
+      inc = typeof pkg.includes === 'string' ? JSON.parse(pkg.includes) : (pkg.includes || [])
+    } catch { inc = [] }
+    includesRaw.value = inc.join('\n')
   } else {
     form.value    = defaultForm()
     includesRaw.value = ''
@@ -160,12 +167,12 @@ watch(() => props.package, (pkg) => {
 // ── Validation ─────────────────────────────────────────────────────────────
 function validate() {
   const e = {}
-  if (!form.value.title.trim())       e.title       = 'Title is required.'
-  if (!form.value.destination.trim()) e.destination = 'Destination is required.'
+  if (!form.value.title?.trim())       e.title       = 'Title is required.'
+  if (!form.value.destination?.trim()) e.destination = 'Destination is required.'
   if (!form.value.type)               e.type        = 'Please select a type.'
   if (!form.value.duration || form.value.duration < 1) e.duration = 'Enter a valid duration.'
   if (!form.value.price    || form.value.price    < 0) e.price    = 'Enter a valid price.'
-  if (!form.value.desc.trim())        e.desc        = 'Description is required.'
+  if (!form.value.desc?.trim())        e.desc        = 'Description is required.'
   errors.value = e
   return Object.keys(e).length === 0
 }
@@ -174,16 +181,22 @@ function validate() {
 async function submit() {
   if (!validate()) return
   loading.value = true
-  await new Promise(r => setTimeout(r, 600))
+  // Small delay for UX
+  await new Promise(r => setTimeout(r, 400))
   loading.value = false
 
   const payload = {
-    ...form.value,
-    includes: includesRaw.value.split('\n').map(s => s.trim()).filter(Boolean),
-    // Assign a new ID if creating; keep existing if editing
-    packageID: props.package?.packageID ?? Date.now(),
-    rating:    props.package?.rating    ?? 0,
-    bookings:  props.package?.bookings  ?? 0,
+    id:              props.package?.id,
+    title:           form.value.title,
+    destination:     form.value.destination,
+    type:            form.value.type,
+    duration_days:   form.value.duration,
+    price:           form.value.price,
+    group_size_max:  form.value.groupSize,
+    spots_available: form.value.spots,
+    description:     form.value.desc,
+    img_url:         form.value.img,
+    includes:        includesRaw.value.split('\n').map(s => s.trim()).filter(Boolean),
   }
 
   emit('save', payload)

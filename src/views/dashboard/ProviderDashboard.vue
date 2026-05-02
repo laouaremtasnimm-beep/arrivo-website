@@ -109,6 +109,12 @@
       @save="handleSaveOffer"
     />
 
+    <BookingDetailModal
+      v-model="bookingDetailOpen"
+      :booking="activeBooking"
+      @confirm="handleConfirmBooking"
+    />
+
   </div>
 </template>
 
@@ -118,6 +124,7 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useOffers } from '@/composables/useOffers'
 import { useWishlist } from '@/composables/useWishlist'
+import { useNotifications } from '@/composables/useNotifications'
 
 import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardHeader  from '@/components/dashboard/DashboardHeader.vue'
@@ -129,6 +136,7 @@ import DashboardReviews from '@/components/dashboard/DashboardReviews.vue'
 import OffersPanel      from '@/components/dashboard/OffersPanel.vue'
 import OfferFormModal   from '@/components/dashboard/OfferFormModal.vue'
 import ServiceFormModal from '@/components/dashboard/ServiceFormModal.vue'
+import BookingDetailModal from '@/components/dashboard/BookingDetailModal.vue'
 
 const API = '/arrivo-website/backend/api/v1'
 
@@ -136,6 +144,7 @@ const router = useRouter()
 const { user, logout } = useAuth()
 const { saveOffer, saveOfferToDB } = useOffers()
 const { toggle: toggleWishlist } = useWishlist()
+const { push: pushNotification } = useNotifications()
 
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
@@ -233,8 +242,22 @@ async function handleConfirmBooking(b) {
       body: JSON.stringify({ id: b.id, status: 'confirmed' }),
     })
     if (!res.ok) throw new Error('Update failed')
+    
     const idx = bookings.value.findIndex(x => x.id === b.id)
-    if (idx !== -1) bookings.value[idx].status = 'confirmed'
+    if (idx !== -1) {
+      bookings.value[idx].status = 'confirmed'
+      
+      // Notify tourist
+      pushNotification({
+        roles: ['tourist'],
+        targetUserId: b.user_id,
+        type: 'booking',
+        icon: '✅',
+        title: 'Booking Confirmed!',
+        body: `Your reservation for "${b.service_title || b.itemName}" has been confirmed.`,
+        link: '/bookings'
+      })
+    }
   } catch (e) { loadError.value = e.message }
 }
 
@@ -246,12 +269,51 @@ async function handleCancelBooking(b) {
       body: JSON.stringify({ id: b.id, status: 'cancelled' }),
     })
     if (!res.ok) throw new Error('Update failed')
+    
     const idx = bookings.value.findIndex(x => x.id === b.id)
-    if (idx !== -1) bookings.value[idx].status = 'cancelled'
+    if (idx !== -1) {
+      bookings.value[idx].status = 'cancelled'
+      
+      // Notify tourist
+      pushNotification({
+        roles: ['tourist'],
+        targetUserId: b.user_id,
+        type: 'booking',
+        icon: '🚫',
+        title: 'Booking Cancelled',
+        body: `Your reservation for "${b.service_title || b.itemName}" has been cancelled.`,
+        link: '/bookings'
+      })
+    }
   } catch (e) { loadError.value = e.message }
 }
 
-function handleViewBooking(b) { console.log('View booking:', b) }
+const bookingDetailOpen = ref(false)
+const activeBooking     = ref({})
+
+function handleViewBooking(b) {
+  console.log('Viewing booking:', b)
+  const paths = { 
+    package:     '/packages', 
+    service:     '/services', 
+    destination: '/destinations', 
+    offer:       '/deals' 
+  }
+  
+  // Use snake_case as returned by API
+  const type = b.booking_type
+  const id   = b.package_id ?? b.service_id ?? b.destination_id ?? b.offer_id
+  
+  if (id && type && type !== 'offer' && paths[type]) {
+    const target = `${paths[type]}/${id}`
+    console.log('Navigating to:', target)
+    router.push(target)
+  } else {
+    console.log('Opening detail card modal')
+    activeBooking.value     = b
+    bookingDetailOpen.value = true
+  }
+}
 
 // ── Service handlers ──────────────────────────────────────────────────────
 const serviceFormOpen = ref(false)

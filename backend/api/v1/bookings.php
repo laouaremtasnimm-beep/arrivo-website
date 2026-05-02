@@ -101,7 +101,7 @@ try {
             $data['guests']         ?? 1,
             $data['total_price']    ?? 0.00,
             $data['notes']          ?? null,
-            'confirmed',
+            'pending',
         ]);
 
      $bookingId = $pdo->lastInsertId();

@@ -45,11 +45,11 @@ try {
         if ($q !== null) {
             $sql  = "SELECT id, title, description, price, img_url, type, duration_days, rating, review_count
                      FROM packages
-                     WHERE title LIKE ? OR description LIKE ? OR type LIKE ?";
+                     WHERE is_active = 1 AND (title LIKE ? OR description LIKE ? OR type LIKE ?)";
             $stmt = $pdo->prepare($sql);
             $stmt->execute(["%$q%", "%$q%", "%$q%"]);
         } else {
-            $stmt = $pdo->query("SELECT id, title, description, price, img_url, type, duration_days, rating, review_count FROM packages");
+            $stmt = $pdo->query("SELECT id, title, description, price, img_url, type, duration_days, rating, review_count FROM packages WHERE is_active = 1");
         }
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $results[] = [
@@ -72,11 +72,11 @@ try {
         if ($q !== null) {
             $sql  = "SELECT id, title, description, price, img_url, rating, review_count
                      FROM services
-                     WHERE title LIKE ? OR description LIKE ?";
+                     WHERE is_available = 1 AND (title LIKE ? OR description LIKE ?)";
             $stmt = $pdo->prepare($sql);
             $stmt->execute(["%$q%", "%$q%"]);
         } else {
-            $stmt = $pdo->query("SELECT id, title, description, price, img_url, rating, review_count FROM services");
+            $stmt = $pdo->query("SELECT id, title, description, price, img_url, rating, review_count FROM services WHERE is_available = 1");
         }
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $results[] = [

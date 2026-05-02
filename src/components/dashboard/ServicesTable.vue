@@ -41,7 +41,7 @@
   <td>
     <button
       class="avail-toggle"
-      :class="{ available: Number(svc.is_available) === 1 }"   <!-- is_available not availability -->
+      :class="{ available: Number(svc.is_available) === 1 }"
       @click="$emit('toggle-availability', svc)"
     >
       {{ Number(svc.is_available) === 1 ? '✓ Available' : '✕ Unavailable' }}

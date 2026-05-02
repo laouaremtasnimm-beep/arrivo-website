@@ -61,7 +61,7 @@ export function useBookings() {
             const newBooking = {
                 id: data.booking_id ?? Date.now(),
                 booking_type: payload.type,
-                status: 'confirmed',
+                status: 'pending',
                 total_price: payload.price,
                 check_in: payload.check_in,
                 guests: payload.guests,
@@ -84,8 +84,8 @@ export function useBookings() {
                     targetUserId: data.owner_id,
                     type: 'booking',
                     icon: '📋',
-                    title: 'New booking received',
-                    body: `A new booking has been made for "${payload.title}".`,
+                    title: 'New pending booking',
+                    body: `A new reservation for "${payload.title}" is awaiting your confirmation.`,
                     link: '/dashboard',
                     section: 'bookings',
                 })
