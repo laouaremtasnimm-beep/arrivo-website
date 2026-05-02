@@ -96,11 +96,12 @@ const filteredLinks = computed(() =>
 
 <style scoped>
 .sidebar {
-  width: 256px; min-height: 100vh;
+  width: 256px; height: 100vh;
   background: var(--indigo);
   display: flex; flex-direction: column;
   transition: width .25s ease;
-  position: relative; flex-shrink: 0;
+  position: sticky; top: 0; flex-shrink: 0;
+  z-index: 50;
 }
 .sidebar--collapsed { width: 72px; }
 
@@ -149,7 +150,12 @@ const filteredLinks = computed(() =>
 .role--provider { background: rgba(255,90,95,.18);  color: #ff8a8d; }
 
 /* Nav */
-.sidebar__nav       { flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; }
+.sidebar__nav       { 
+  flex: 1; padding: 16px 12px; display: flex; flex-direction: column; gap: 2px; 
+  overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+}
+.sidebar__nav::-webkit-scrollbar { width: 4px; }
+.sidebar__nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
 .sidebar__nav-label { font-size: .68rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; color: rgba(255,255,255,.3); padding: 0 8px; margin-bottom: 6px; }
 
 .sidebar__link {
