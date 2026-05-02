@@ -239,6 +239,7 @@
     <NotificationPanel
       v-model="notifOpen"
       :role="user?.role"
+      :current-user-id="user?.userID ?? user?.id"
       :anchor="bellAnchor"
     />
 
@@ -300,7 +301,7 @@ function closeAll() {
   mobileOpen.value = false
 }
 
-const unreadCount = computed(() => getUnreadCount(user.value?.role).value)
+const unreadCount = computed(() => getUnreadCount(user.value?.role, user.value?.userID ?? user.value?.id).value)
 const initials    = computed(() => {
   if (!user.value?.name) return '?'
   return user.value.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)

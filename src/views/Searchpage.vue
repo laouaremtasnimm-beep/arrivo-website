@@ -504,7 +504,6 @@ async function handleBook(item) {
   const type = typeMap[item.category] || item.category
 
   if (isBooked(type, item.id)) {
-    if (!confirm('Are you sure you want to cancel this booking?')) return
     const bid = getBookingId(type, item.id)
     if (bid) {
       const res = await cancelBooking(bid)
@@ -538,7 +537,6 @@ async function handleBookingSubmit(payload) {
   if (result.ok) {
     bookingOpen.value = false
     alert('Booked successfully!')
-    router.push('/bookings')
   } else {
     alert('Failed to book: ' + result.error)
   }

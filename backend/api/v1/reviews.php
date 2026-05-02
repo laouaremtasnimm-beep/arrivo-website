@@ -89,9 +89,22 @@ try {
 
         $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
 
+        // Resolve Owner for Notification
+        $ownerId = null;
+        if ($itemType === 'package') {
+            $s = $pdo->prepare('SELECT agency_id FROM packages WHERE id = ?');
+            $s->execute([$data['item_id']]);
+            $ownerId = $s->fetchColumn();
+        } elseif ($itemType === 'service') {
+            $s = $pdo->prepare('SELECT provider_id FROM services WHERE id = ?');
+            $s->execute([$data['item_id']]);
+            $ownerId = $s->fetchColumn();
+        }
+
         echo json_encode([
             "message"   => "Review submitted successfully",
             "review_id" => $pdo->lastInsertId(),
+            "owner_id"  => $ownerId ? (int)$ownerId : null,
         ]);
 
     } elseif ($method === 'PUT') {

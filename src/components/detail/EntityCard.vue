@@ -73,6 +73,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useAuth } from '@/composables/useAuth.js'
+import { useNotifications } from '@/composables/useNotifications'
 
 const props = defineProps({
   name:        { type: String,  required: true  },
@@ -88,6 +89,7 @@ const props = defineProps({
 defineEmits(['contact'])
 
 const { user, isLoggedIn } = useAuth()
+const { push: pushNotification } = useNotifications()
 const API = '/arrivo-website/backend/api/v1'
 
 const modalOpen = ref(false)
@@ -127,6 +129,19 @@ async function send() {
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed to send')
     sent.value = true
+
+    // ── Notify Recipient ──────────────────────────────────────────
+    const targetRole = props.entityLabel === 'Provider' ? 'provider' : 'agency'
+    pushNotification({
+      roles: [targetRole],
+      targetUserId: props.receiverId,
+      type: 'message',
+      icon: '✉️',
+      title: 'New inquiry received',
+      body: `${user.value?.name || 'A traveler'} sent a message: "${subject.value.trim() || 'No subject'}"`,
+      link: '/dashboard',
+      section: 'messages'
+    })
   } catch (e) {
     error.value = e.message
   } finally {

@@ -81,6 +81,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useNotifications } from '@/composables/useNotifications'
 
 const props = defineProps({
   modelValue:    { type: Boolean, default: false },
@@ -90,6 +91,7 @@ const props = defineProps({
   replyTo:       { type: Object,  default: null  },
 })
 const emit = defineEmits(['update:modelValue', 'send'])
+const { push: pushNotification } = useNotifications()
 
 const API = '/arrivo-website/backend/api/v1'
 
@@ -215,10 +217,22 @@ async function submit() {
       title:     form.value.subject,
       content:   form.value.body,
       date:      'Just now',
-      read:      true,
       sent:      true,
       replies:   [],
     })
+
+    // ── Notify Recipient ──────────────────────────────────────────
+    pushNotification({
+      roles: ['agency', 'provider'], 
+      targetUserId: resolvedId.value,
+      type: 'message',
+      icon: '✉️',
+      title: isReply.value ? 'New reply received' : 'New message received',
+      body: `You have a new message: "${form.value.subject}"`,
+      link: '/dashboard',
+      section: 'messages'
+    })
+
     close()
   } catch (err) {
     errors.value.body = err.message

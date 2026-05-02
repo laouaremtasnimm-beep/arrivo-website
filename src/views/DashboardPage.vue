@@ -166,6 +166,7 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useOffers } from '@/composables/useOffers'
 import { useWishlist } from '@/composables/useWishlist'
+import { useNotifications } from '@/composables/useNotifications'
 
 import DashboardSidebar    from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardHeader     from '@/components/dashboard/DashboardHeader.vue'
@@ -191,6 +192,7 @@ const router = useRouter()
 const { user, isAgency, isProvider, logout } = useAuth()
 const { saveOffer, deleteOffer, saveOfferToDB, deleteOfferFromDB, allOffers } = useOffers()
 const { toggle: toggleWishlist } = useWishlist()
+const { unreadCount: getUnreadCount } = useNotifications()
 
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
@@ -219,7 +221,7 @@ function setSection(s) {
 // ── Counts ────────────────────────────────────────────────────────────────
 const unreadMessages = computed(() => messages.value.filter(m => !m.read && !m.sent).length)
 const pendingCollabs    = computed(() => collaborations.value.filter(c => c.direction === 'incoming' && c.status === 'pending').length)
-const notificationCount = computed(() => unreadMessages.value + pendingCollabs.value)
+const notificationCount = computed(() => getUnreadCount(user.value?.role, user.value?.userID).value)
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 function handleLogout() { logout(); router.push('/') }

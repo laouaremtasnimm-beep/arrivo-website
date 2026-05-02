@@ -168,8 +168,7 @@ const bookingOpen  = ref(false)
 
 function handleToggleWishlist() {
   if (!item.value) return
-  const wasAdded = toggle('destination', item.value.id)
-  if (wasAdded) router.push('/wishlist')
+  toggle('destination', item.value.id)
 }
 
 const moreLike = computed(() =>
@@ -203,14 +202,12 @@ async function handleBooking(payload) {
   if (result.ok) {
     bookingOpen.value = false
     alert('Destination booked successfully!')
-    router.push('/bookings')
   } else {
     alert('Failed to book destination: ' + result.error)
   }
 }
 
 async function handleCancel() {
-  if (!confirm('Are you sure you want to cancel this booking?')) return
   const id = getBookingId('destination', item.value.id)
   if (!id) return
   const res = await cancelBooking(id)

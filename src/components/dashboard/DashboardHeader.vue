@@ -42,6 +42,7 @@
     <NotificationPanel
       v-model="notifOpen"
       :role="user.role"
+      :current-user-id="user.userID"
       :anchor="bellAnchor"
       @navigate="handleNavigate"
     />

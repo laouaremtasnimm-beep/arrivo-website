@@ -191,7 +191,6 @@ function canCancel(b)   { return b.status === 'pending' || (role.value === 'tour
 
 async function handleConfirm(b) { await updateStatus(b.id, 'confirmed') }
 async function handleCancel(b) {
-  if (!confirm('Are you sure you want to cancel this booking? This action cannot be undone.')) return
   await cancelBooking(b.id)
 }
 function handleView(b) {

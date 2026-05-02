@@ -19,12 +19,6 @@
       <div class="notif-item__time">{{ notification.time }}</div>
     </div>
 
-    <!-- Delete -->
-    <button
-      class="notif-item__del"
-      title="Dismiss"
-      @click.stop="$emit('delete', notification.id)"
-    >✕</button>
   </div>
 </template>
 

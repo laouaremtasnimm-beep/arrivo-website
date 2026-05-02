@@ -114,6 +114,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useAuth } from '@/composables/useAuth'
+import { useNotifications } from '@/composables/useNotifications'
 
 const props = defineProps({
   modelValue: Boolean,
@@ -121,6 +122,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'send'])
 
 const { user, isAgency } = useAuth()
+const { push: pushNotification } = useNotifications()
 
 // Partners list — agencies see providers, providers see agencies
 const allPartners = [
@@ -178,6 +180,20 @@ function submit() {
     ...form.value,
     sentDate:    new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
   })
+
+  // ── Notify Partner ──────────────────────────────────────────────
+  const targetRole = partner.role === 'Service Provider' ? 'provider' : 'agency'
+  pushNotification({
+    roles: [targetRole],
+    targetUserId: partner.id,
+    type: 'collab',
+    icon: '🤝',
+    title: 'New collaboration request',
+    body: `${user.value?.name || 'A partner'} wants to collaborate on "${form.value.title}".`,
+    link: '/dashboard',
+    section: 'collaborations'
+  })
+
   close()
 }
 

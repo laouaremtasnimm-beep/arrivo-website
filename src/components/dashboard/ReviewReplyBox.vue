@@ -25,12 +25,14 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
+import { useNotifications } from '@/composables/useNotifications'
 
 const props = defineProps({
   open:         { type: Boolean, default: false },
   reviewerName: { type: String,  default: 'Guest' },
 })
 const emit = defineEmits(['submit', 'cancel'])
+const { push: pushNotification } = useNotifications()
 
 const text     = ref('')
 const inputRef = ref(null)
@@ -45,6 +47,17 @@ watch(() => props.open, v => {
 function submit() {
   if (!text.value.trim()) return
   emit('submit', text.value.trim())
+
+  // ── Notify Tourist ──────────────────────────────────────────────
+  pushNotification({
+    roles: ['tourist'],
+    type: 'review',
+    icon: '💬',
+    title: 'New reply to your review',
+    body: `A provider has replied to your review: "${text.value.slice(0, 40)}..."`,
+    link: '/bookings' // Or wherever reviews are shown to tourists
+  })
+
   text.value = ''
 }
 

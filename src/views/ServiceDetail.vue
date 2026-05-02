@@ -243,8 +243,7 @@ const alreadyBooked = computed(() => item.value ? isBooked('service', item.value
 
 function handleToggleWishlist() {
   if (!item.value) return
-  const wasAdded = toggle('service', item.value.id)
-  if (wasAdded) router.push('/wishlist')
+  toggle('service', item.value.id)
 }
 
 const entityCardRef = ref(null)
@@ -269,19 +268,18 @@ async function handleBooking(payload) {
     check_in: payload.checkin,
     guests:   parseInt(payload.guests) || 1,
     notes:    payload.notes,
+    target_user_id: item.value.provider_id
   })
 
   if (result.ok) {
     bookingOpen.value = false
     alert('Service booked successfully!')
-    router.push('/bookings')
   } else {
     alert('Failed to book service: ' + result.error)
   }
 }
 
 async function handleCancel() {
-  if (!confirm('Are you sure you want to cancel this booking?')) return
   const id = getBookingId('service', item.value.id)
   if (!id) return
   const res = await cancelBooking(id)

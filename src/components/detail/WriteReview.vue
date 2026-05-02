@@ -74,6 +74,7 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
+import { useNotifications } from '@/composables/useNotifications'
 
 const props = defineProps({
   itemType: { type: String, required: true },   // 'package' | 'service' | 'destination'
@@ -82,6 +83,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['submitted'])
+const { push: pushNotification } = useNotifications()
 
 const API_BASE = 'http://localhost/arrivo-website/backend/api/v1/reviews.php'
 
@@ -151,6 +153,22 @@ async function submit() {
         comment:    form.comment,
         created_at: new Date().toISOString(),
       })
+
+      // ── Notify Agency/Provider ────────────────────────────────────
+      const targetRole = props.itemType === 'service' ? 'provider' : 'agency'
+      if (data.owner_id) {
+        pushNotification({
+          roles: [targetRole],
+          targetUserId: data.owner_id,
+          type: 'review',
+          icon: '⭐',
+          title: 'New review received',
+          body: `A user gave you ${form.rating} stars: "${form.comment.slice(0, 40)}${form.comment.length > 40 ? '...' : ''}"`,
+          link: '/dashboard',
+          section: 'reviews'
+        })
+      }
+
       setTimeout(() => {
         cancel()
       }, 2200)

@@ -15,7 +15,7 @@
             <button
               v-if="unread > 0"
               class="notif-panel__mark-all"
-              @click="markAllRead(role)"
+              @click="markAllRead(role, currentUserId)"
             >
               Mark all read
             </button>
@@ -23,29 +23,16 @@
           </div>
         </div>
 
-        <!-- Filter tabs -->
-        <div class="notif-panel__tabs">
-          <button
-            v-for="tab in tabs"
-            :key="tab.id"
-            class="notif-panel__tab"
-            :class="{ active: activeTab === tab.id }"
-            @click="activeTab = tab.id"
-          >
-            {{ tab.label }}
-            <span v-if="tab.count" class="notif-tab-count">{{ tab.count }}</span>
-          </button>
-        </div>
+        <!-- (Tabs removed for simplicity/visibility) -->
 
         <!-- List -->
         <div class="notif-panel__list" ref="listRef">
-          <template v-if="filtered.length">
+          <template v-if="roleNotifications.length">
             <NotificationItem
-              v-for="n in filtered"
+              v-for="n in roleNotifications"
               :key="n.id"
               :notification="n"
               @click="handleItemClick"
-              @delete="deleteNotification"
             />
           </template>
           <div v-else class="notif-panel__empty">
@@ -74,8 +61,8 @@ import NotificationItem from '@/components/shared/NotificationItem.vue'
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
   role:       { type: String,  default: null  },
-  // anchor: bounding rect of the trigger button, for positioning
   anchor:     { type: Object,  default: null  },
+  currentUserId: { type: [Number, String], default: null },
 })
 const emit = defineEmits(['update:modelValue', 'navigate'])
 
@@ -86,42 +73,12 @@ const activeTab  = ref('all')
 
 const { forRole, unreadCount, markRead, markAllRead, deleteNotification } = useNotifications()
 
-const roleNotifications = computed(() => forRole(props.role))
+const roleNotifications = computed(() => forRole(props.role, props.currentUserId))
 const unread            = computed(() => roleNotifications.value.filter(n => !n.read).length)
 
-// ── Tabs ──────────────────────────────────────────────────────────────────
-const tabDefs = computed(() => {
-  const all    = roleNotifications.value
-  const unreadList = all.filter(n => !n.read)
-
-  const base = [
-    { id: 'all',    label: 'All',      count: null },
-    { id: 'unread', label: 'Unread',   count: unreadList.length || null },
-  ]
-
-  // Role-specific type tabs
-  const hasCollab  = all.some(n => n.type === 'collab')
-  const hasBooking = all.some(n => n.type === 'booking')
-  if (hasBooking) base.push({ id: 'booking', label: 'Bookings', count: null })
-  if (hasCollab)  base.push({ id: 'collab',  label: 'Collabs',  count: null })
-
-  return base
-})
-
-const tabs = computed(() => tabDefs.value)
-
-const filtered = computed(() => {
-  const all = roleNotifications.value
-  if (activeTab.value === 'all')    return all
-  if (activeTab.value === 'unread') return all.filter(n => !n.read)
-  return all.filter(n => n.type === activeTab.value)
-})
-
-// Reset tab when panel opens
+// Reset scroll when panel opens
 watch(() => props.modelValue, v => {
   if (v) {
-    activeTab.value = 'all'
-    // Scroll list to top
     if (listRef.value) listRef.value.scrollTop = 0
   }
 })

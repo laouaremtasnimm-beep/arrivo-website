@@ -235,14 +235,12 @@ async function handleBookingSubmit(payload) {
     bookingOpen.value = false
     close()
     alert('Offer booked successfully!')
-    router.push('/bookings')
   } else {
     alert('Failed to book offer: ' + result.error)
   }
 }
 
 async function handleCancel() {
-  if (!confirm('Are you sure you want to cancel this booking?')) return
   const id = getBookingId('offer', props.offer?.offerID || props.offer?.id)
   if (!id) return
   const res = await cancelBooking(id)

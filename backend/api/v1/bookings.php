@@ -104,10 +104,35 @@ try {
             'confirmed',
         ]);
 
-        echo json_encode([
-            "message"    => "Booking created successfully",
-            "booking_id" => $pdo->lastInsertId(),
-        ]);
+     $bookingId = $pdo->lastInsertId();
+
+// Resolve the owner of the booked item
+$ownerId   = null;
+$ownerRole = null;
+
+if (!empty($data['package_id'])) {
+    $s = $pdo->prepare('SELECT agency_id FROM packages WHERE id = ?');
+    $s->execute([$data['package_id']]);
+    $ownerId   = $s->fetchColumn();
+    $ownerRole = 'agency';
+} elseif (!empty($data['offer_id'])) {
+    $s = $pdo->prepare('SELECT agency_id FROM special_offers WHERE id = ?');
+    $s->execute([$data['offer_id']]);
+    $ownerId   = $s->fetchColumn();
+    $ownerRole = 'agency';
+} elseif (!empty($data['service_id'])) {
+    $s = $pdo->prepare('SELECT provider_id FROM services WHERE id = ?');
+    $s->execute([$data['service_id']]);
+    $ownerId   = $s->fetchColumn();
+    $ownerRole = 'provider';
+}
+
+echo json_encode([
+    "message"    => "Booking created successfully",
+    "booking_id" => $bookingId,
+    "owner_id"   => $ownerId ? (int)$ownerId : null,
+    "owner_role" => $ownerRole,
+]);
 
     } elseif ($method === 'PATCH') {
         // Update status: confirm or cancel
@@ -139,10 +164,40 @@ try {
             exit();
         }
 
+        // Resolve Owner BEFORE cancelling
+        $s = $pdo->prepare('SELECT package_id, service_id, offer_id, booking_type FROM bookings WHERE id = ?');
+        $s->execute([$data['id']]);
+        $b = $s->fetch();
+
+        $ownerId   = null;
+        $ownerRole = null;
+        if ($b) {
+            if ($b['package_id']) {
+                $s2 = $pdo->prepare('SELECT agency_id FROM packages WHERE id = ?');
+                $s2->execute([$b['package_id']]);
+                $ownerId = $s2->fetchColumn();
+                $ownerRole = 'agency';
+            } elseif ($b['service_id']) {
+                $s2 = $pdo->prepare('SELECT provider_id FROM services WHERE id = ?');
+                $s2->execute([$b['service_id']]);
+                $ownerId = $s2->fetchColumn();
+                $ownerRole = 'provider';
+            } elseif ($b['offer_id']) {
+                $s2 = $pdo->prepare('SELECT agency_id FROM special_offers WHERE id = ?');
+                $s2->execute([$b['offer_id']]);
+                $ownerId = $s2->fetchColumn();
+                $ownerRole = 'agency';
+            }
+        }
+
         $stmt = $pdo->prepare('UPDATE bookings SET status = "cancelled" WHERE id = ?');
         $stmt->execute([$data['id']]);
 
-        echo json_encode(["message" => "Booking marked as cancelled"]);
+        echo json_encode([
+            "message"    => "Booking marked as cancelled",
+            "owner_id"   => $ownerId ? (int)$ownerId : null,
+            "owner_role" => $ownerRole
+        ]);
 
     } else {
         http_response_code(405);

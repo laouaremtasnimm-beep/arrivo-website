@@ -80,14 +80,12 @@ async function handleBookingSubmit(payload) {
   if (result.ok) {
     bookingOpen.value = false
     alert('Package booked successfully!')
-    router.push('/bookings')
   } else {
     alert('Failed to book: ' + result.error)
   }
 }
 
 async function handleCancel(pkg) {
-  if (!confirm('Are you sure you want to cancel this booking?')) return
   const id = getBookingId('package', pkg.id)
   if (!id) return
   const res = await cancelBooking(id)
