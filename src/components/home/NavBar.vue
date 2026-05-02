@@ -121,6 +121,23 @@
       <template v-else>
         <RouterLink v-if="canAccessDashboard" to="/dashboard" class="btn btn-outline">Dashboard</RouterLink>
 
+        <!-- Messages -->
+        <div class="notif-trigger" ref="msgRef">
+          <button
+            class="navbar__icon-btn"
+            :class="{ active: msgOpen }"
+            @click="toggleMsgPanel"
+            title="Messages"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span class="navbar__notif-badge" v-if="unreadMsgCount > 0">
+              {{ unreadMsgCount > 9 ? '9+' : unreadMsgCount }}
+            </span>
+          </button>
+        </div>
+
         <!-- Notification bell -->
         <div class="notif-trigger" ref="bellRef">
           <button
@@ -133,7 +150,9 @@
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
-            <span class="navbar__notif-badge" v-if="unreadCount > 0">{{ unreadCount }}</span>
+            <span class="navbar__notif-badge" v-if="unreadNotifCount > 0">
+              {{ unreadNotifCount > 9 ? '9+' : unreadNotifCount }}
+            </span>
           </button>
         </div>
 
@@ -243,6 +262,14 @@
       :anchor="bellAnchor"
     />
 
+    <!-- Message panel -->
+    <MessagePanel
+      v-model="msgOpen"
+      :role="user?.role"
+      :current-user-id="user?.userID ?? user?.id"
+      :anchor="msgAnchor"
+    />
+
   </nav>
 </template>
 
@@ -253,12 +280,17 @@ import { useAuth } from '@/composables/useAuth'
 import { useNotifications } from '@/composables/useNotifications'
 import { useWishlist } from '@/composables/useWishlist.js'
 import NotificationPanel from '@/components/shared/NotificationPanel.vue'
+import MessagePanel from '@/components/shared/MessagePanel.vue'
 
 const router = useRouter()
 const route  = useRoute()
 const { user, isLoggedIn, canAccessDashboard, logout } = useAuth()
 const { unreadCount: getUnreadCount } = useNotifications()
 const { entries: wishlistEntries } = useWishlist()
+
+const unreadNotifCount = getUnreadCount(user.value?.role, user.value?.userID ?? user.value?.id, 'notification')
+const unreadMsgCount   = getUnreadCount(user.value?.role, user.value?.userID ?? user.value?.id, 'message')
+
 const wishlistCount = computed(() => wishlistEntries.value.length)
 
 const isHome = computed(() => route.path === '/')
@@ -292,8 +324,11 @@ const menuOpen   = ref(false)
 const activeMenu = ref(null)   // 'explore' | 'tools' | 'partners' | null
 const menuRef    = ref(null)
 const bellRef    = ref(null)
+const msgRef     = ref(null)
 const notifOpen  = ref(false)
+const msgOpen    = ref(false)
 const bellAnchor = ref(null)
+const msgAnchor  = ref(null)
 
 function closeAll() {
   activeMenu.value = null
@@ -315,6 +350,14 @@ const roleLabel = computed(() => ({
 function toggleNotifPanel() {
   if (bellRef.value) bellAnchor.value = bellRef.value.getBoundingClientRect()
   notifOpen.value = !notifOpen.value
+  if (notifOpen.value) msgOpen.value = false
+  if (menuOpen.value) menuOpen.value = false
+}
+
+function toggleMsgPanel() {
+  if (msgRef.value) msgAnchor.value = msgRef.value.getBoundingClientRect()
+  msgOpen.value = !msgOpen.value
+  if (msgOpen.value) notifOpen.value = false
   if (menuOpen.value) menuOpen.value = false
 }
 

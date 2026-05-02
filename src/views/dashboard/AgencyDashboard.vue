@@ -228,16 +228,18 @@ async function fetchPackages() {
 
 // Normalize raw DB row → shape expected by MessagesPanel / MessageThread
 function normalizeMessage(m) {
+  const isSent = String(m.sender_id) === String(user.value?.userID ?? user.value?.id)
   return {
     messageID: m.id,
     id:        m.id,
     sender_id: parseInt(m.sender_id) || null,
-    from:      (`${m.sender_first ?? ''} ${m.sender_last ?? ''}`).trim() || 'Unknown',
+    from:      isSent ? 'You' : (`${m.sender_first ?? ''} ${m.sender_last ?? ''}`).trim() || 'Unknown',
+    to:        isSent ? (`${m.receiver_first ?? ''} ${m.receiver_last ?? ''}`).trim() || 'Recipient' : 'You',
     title:     m.subject  ?? '(no subject)',
     content:   m.content  ?? '',
     date:      m.created_at ?? '',
     read:      !!parseInt(m.is_read),
-    sent:      false,
+    sent:      isSent,
     replies:   [],
   }
 }

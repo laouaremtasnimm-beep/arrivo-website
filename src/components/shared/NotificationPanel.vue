@@ -71,9 +71,9 @@ const panelRef   = ref(null)
 const listRef    = ref(null)
 const activeTab  = ref('all')
 
-const { forRole, unreadCount, markRead, markAllRead, deleteNotification } = useNotifications()
+const { forType, unreadCount, markRead, markAllRead, deleteNotification } = useNotifications()
 
-const roleNotifications = computed(() => forRole(props.role, props.currentUserId))
+const roleNotifications = forType(props.role, 'notification', props.currentUserId)
 const unread            = computed(() => roleNotifications.value.filter(n => !n.read).length)
 
 // Reset scroll when panel opens

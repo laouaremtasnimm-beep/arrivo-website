@@ -43,14 +43,17 @@ try {
 
         $stmt = $pdo->prepare('
             SELECT m.*,
-                   u.first_name AS sender_first,
-                   u.last_name  AS sender_last
+                   u_s.first_name AS sender_first,
+                   u_s.last_name  AS sender_last,
+                   u_r.first_name AS receiver_first,
+                   u_r.last_name  AS receiver_last
             FROM   messages m
-            JOIN   users    u ON m.sender_id = u.id
-            WHERE  m.receiver_id = ?
-            ORDER  BY m.created_at DESC
+            JOIN   users    u_s ON m.sender_id   = u_s.id
+            JOIN   users    u_r ON m.receiver_id = u_r.id
+            WHERE  m.receiver_id = ? OR m.sender_id = ?
+            ORDER  BY m.created_at ASC
         ');
-        $stmt->execute([$userId]);
+        $stmt->execute([$userId, $userId]);
         $messages = $stmt->fetchAll();
 
         echo json_encode(["messages" => $messages]);

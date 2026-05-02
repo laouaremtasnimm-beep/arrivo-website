@@ -83,10 +83,10 @@ const allLinks = [
   { section: 'bookings',       icon: '📋', label: 'Bookings',         roles: ['agency', 'provider'] },
   { section: 'packages',       icon: '✈️', label: 'Travel Packages',  roles: ['agency'] },
   { section: 'services',       icon: '🛎️', label: 'My Services',      roles: ['provider'] },
-  { section: 'messages',       icon: '💬', label: 'Messages',          roles: ['agency', 'provider'], get badge() { return props.unreadMessages || null } },
+  { section: 'messages',       icon: '💬', label: 'Messages',          roles: ['agency', 'provider'], get badge() { return props.unreadMessages > 9 ? '9+' : (props.unreadMessages || null) } },
   { section: 'reviews',        icon: '⭐', label: 'Reviews',           roles: ['agency', 'provider'] },
   { section: 'offers',         icon: '🏷️', label: 'Special Offers',    roles: ['agency', 'provider']  },
-  { section: 'collaborations', icon: '🤝', label: 'Collaborations',    roles: ['agency', 'provider'], get badge() { return props.pendingCollabs || null } },
+  { section: 'collaborations', icon: '🤝', label: 'Collaborations',    roles: ['agency', 'provider'], get badge() { return props.pendingCollabs > 9 ? '9+' : (props.pendingCollabs || null) } },
 ]
 
 const filteredLinks = computed(() =>

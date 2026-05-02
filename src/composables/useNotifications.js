@@ -62,8 +62,21 @@ export function useNotifications() {
     })
   }
 
-  function unreadCount(role, currentUserId = null) {
-    return computed(() => forRole(role, currentUserId).filter(n => !n.read).length)
+  function forType(role, type, currentUserId = null) {
+    return computed(() => {
+      const all = forRole(role, currentUserId)
+      if (type === 'message') return all.filter(n => n.type === 'message')
+      return all.filter(n => n.type !== 'message')
+    })
+  }
+
+  function unreadCount(role, currentUserId = null, type = 'all') {
+    return computed(() => {
+      let list = forRole(role, currentUserId)
+      if (type === 'message') list = list.filter(n => n.type === 'message')
+      else if (type === 'notification') list = list.filter(n => n.type !== 'message')
+      return list.filter(n => !n.read).length
+    })
   }
 
   function markRead(id) {
@@ -99,6 +112,7 @@ export function useNotifications() {
   return {
     notifications,
     forRole,
+    forType,
     unreadCount,
     markRead,
     markAllRead,

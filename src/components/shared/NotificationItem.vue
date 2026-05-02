@@ -63,6 +63,7 @@ function handleClick() {
 .icon-type--review  { background: rgba(255,193,7,.13);  }
 .icon-type--offer   { background: rgba(46,196,182,.10); }
 .icon-type--system  { background: var(--gray-100);      }
+.icon-type--message { background: rgba(99,102,241,.12); }
 
 /* Text */
 .notif-item__body   { flex: 1; min-width: 0; }
