@@ -6,63 +6,64 @@
       <p class="form-sub">Join thousands of travellers discovering the world through Voyago.</p>
     </div>
 
-    <!-- Role selector is shown but agency/provider are pre-selected and highlighted
-         when arriving from the partner pages -->
+    <!-- Role selector -->
     <AccountTypeSelector v-model="form.role" />
 
-    <div class="form-row">
+    <SocialLoginButtons @social-login="handleSocialLogin" label="or register with email" />
+
+    <div class="form-fields">
+      <div class="form-row">
+        <FormInput
+          v-model="form.firstName"
+          label="First name"
+          icon="👤"
+          placeholder="Sarah"
+          :error="errors.firstName"
+        />
+        <FormInput
+          v-model="form.lastName"
+          label="Last name"
+          icon="👤"
+          placeholder="Connor"
+          :error="errors.lastName"
+        />
+      </div>
+
       <FormInput
-        v-model="form.firstName"
-        label="First name"
-        icon="👤"
-        placeholder="Sarah"
-        autocomplete="given-name"
-        :error="errors.firstName"
+        v-model="form.email"
+        label="Email address"
+        icon="✉️"
+        type="email"
+        placeholder="hello@example.com"
+        :error="errors.email"
       />
-      <FormInput
-        v-model="form.lastName"
-        label="Last name"
-        icon="👤"
-        placeholder="Connor"
-        autocomplete="family-name"
-        :error="errors.lastName"
-      />
+
+      <div class="password-group">
+        <FormInput
+          v-model="form.password"
+          label="Password"
+          icon="🔒"
+          type="password"
+          placeholder="Min. 8 characters"
+          :error="errors.password"
+        />
+        <PasswordStrengthBar :password="form.password" />
+      </div>
     </div>
 
-    <FormInput
-      v-model="form.email"
-      label="Email address"
-      icon="✉️"
-      type="email"
-      placeholder="hello@example.com"
-      autocomplete="email"
-      :error="errors.email"
-    />
-
-    <FormInput
-      v-model="form.password"
-      label="Password"
-      icon="🔒"
-      type="password"
-      placeholder="Min. 8 characters"
-      autocomplete="new-password"
-      :error="errors.password"
-    />
-    <PasswordStrengthBar :password="form.password" />
-
-    <label class="checkbox-row" :class="{ 'checkbox-row--error': errors.terms }">
-      <input type="checkbox" v-model="form.terms" class="checkbox" />
-      <span class="checkbox-label">
-        I agree to the
-        <a href="#">Terms of Service</a> and
-        <a href="#">Privacy Policy</a>
-      </span>
-    </label>
-    <p class="field-error" v-if="errors.terms">{{ errors.terms }}</p>
+    <div class="form-options">
+      <label class="checkbox-row" :class="{ 'checkbox-row--error': errors.terms }">
+        <input type="checkbox" v-model="form.terms" class="checkbox" />
+        <span class="checkbox-label">
+          I agree to the <a href="#">Terms</a> & <a href="#">Privacy Policy</a>
+        </span>
+      </label>
+      <p class="field-error" v-if="errors.terms">{{ errors.terms }}</p>
+    </div>
 
     <button type="submit" class="btn btn-coral submit-btn" :disabled="loading">
-      <span class="spinner" v-if="loading" />
-      <span v-else>Create account</span>
+      <div v-if="loading" class="spinner" />
+      <span v-else>Create Account</span>
     </button>
 
     <p class="switch-hint">
@@ -80,6 +81,7 @@ import { useAuth } from '@/composables/useAuth'
 import FormInput           from './FormInput.vue'
 import AccountTypeSelector from './AccountTypeSelector.vue'
 import PasswordStrengthBar from './PasswordStrengthBar.vue'
+import SocialLoginButtons from './SocialLoginButtons.vue'
 
 const props = defineProps({
   defaultRole: {
@@ -92,7 +94,6 @@ const props = defineProps({
 defineEmits(['switch-mode'])
 
 const router = useRouter()
-// 1. Get login from useAuth
 const { login } = useAuth() 
 
 const loading = ref(false)
@@ -103,11 +104,14 @@ const form    = ref({
 })
 const errors = ref({})
 
+async function handleSocialLogin(provider) {
+  console.log('Social login clicked:', provider)
+}
+
 async function submit() {
   errors.value = {}
   let valid = true
 
-  // Validation logic...
   if (!form.value.firstName) { errors.value.firstName = 'Required.'; valid = false }
   if (!form.value.lastName)  { errors.value.lastName  = 'Required.'; valid = false }
   if (!form.value.email.includes('@')) { errors.value.email = 'Enter a valid email.'; valid = false }
@@ -134,9 +138,7 @@ async function submit() {
     const data = await response.json()
 
     if (response.ok) {
-      // 2. Use the login function here, inside the success block
       login(data.user)
-
       if (data.user.role === 'agency' || data.user.role === 'provider') {
         router.push('/dashboard')
       } else {
@@ -147,7 +149,7 @@ async function submit() {
     }
   } catch (error) {
     console.error('Registration error:', error)
-    errors.value.email = 'An error occurred during registration'
+    errors.value.email = 'An error occurred'
   } finally {
     loading.value = false
   }
@@ -155,37 +157,42 @@ async function submit() {
 </script>
 
 <style scoped>
-.form-header { margin-bottom: 28px; }
-.form-title  { font-family: 'Fraunces', serif; font-size: 2rem; font-weight: 700; margin-bottom: 8px; }
-.form-sub    { font-size: .92rem; color: var(--gray-600); line-height: 1.6; }
+.form-header { margin-bottom: 12px; text-align: left; }
+.form-title  { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; color: var(--indigo); margin-bottom: 2px; }
+.form-sub    { font-size: 0.82rem; color: var(--gray-500); line-height: 1.3; }
 
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-fields { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
+.password-group { display: flex; flex-direction: column; gap: 6px; }
+
+.form-options { margin-bottom: 20px; }
 .checkbox-row {
-  display: flex; align-items: flex-start; gap: 10px;
-  margin-top: 16px; margin-bottom: 10px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
 }
-.checkbox-row--error .checkbox-label { color: #e74c3c; }
-.checkbox       { width: 18px; height: 18px; border-radius: 5px; accent-color: var(--coral); cursor: pointer; flex-shrink: 0; margin-top: 1px; }
-.checkbox-label { font-size: .88rem; color: var(--gray-600); line-height: 1.5; }
-.checkbox-label a { color: var(--coral); font-weight: 600; text-decoration: none; }
-.checkbox-label a:hover { text-decoration: underline; }
+.checkbox-row--error .checkbox-label { color: #e11d48; }
+.checkbox       { width: 14px; height: 14px; border-radius: 4px; accent-color: var(--coral); cursor: pointer; }
+.checkbox-label { font-size: 0.8rem; color: var(--gray-500); line-height: 1.2; font-weight: 500; }
+.checkbox-label a { color: var(--coral); font-weight: 700; text-decoration: none; }
 
-.field-error { font-size: .78rem; color: #e74c3c; margin-bottom: 14px; }
+.field-error { font-size: 0.68rem; color: #e11d48; margin-top: 2px; font-weight: 600; }
 
-.submit-btn { width: 100%; padding: 15px; font-size: 1rem; margin-top: 8px; margin-bottom: 20px; }
-.submit-btn:disabled { opacity: .7; cursor: not-allowed; transform: none !important; }
+.submit-btn { 
+  width: 100%; padding: 11px; font-size: 0.9rem; font-weight: 700; margin-bottom: 12px;
+}
+.submit-btn:hover { transform: translateY(-1px); }
 
 .spinner {
-  display: inline-block; width: 18px; height: 18px; border-radius: 50%;
-  border: 2.5px solid rgba(255,255,255,.4); border-top-color: #fff;
-  animation: spin .7s linear infinite;
+  width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff; animation: spin 0.8s linear infinite; margin: 0 auto;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.switch-hint   { text-align: center; font-size: .88rem; color: var(--gray-400); }
-.switch-hint a { color: var(--coral); font-weight: 600; cursor: pointer; }
-.switch-hint a:hover { text-decoration: underline; }
+.switch-hint   { text-align: center; font-size: 0.82rem; color: var(--gray-500); }
+.switch-hint a { color: var(--coral); font-weight: 700; cursor: pointer; text-decoration: none; margin-left: 4px; }
 
-@media (max-width: 480px) { .form-row { grid-template-columns: 1fr; } }
+@media (max-width: 480px) {
+  .form-row { grid-template-columns: 1fr; }
+  .form-title { font-size: 1.4rem; }
+}
 </style>
