@@ -17,6 +17,23 @@
         + {{ user.role === 'agency' ? 'New Package' : 'New Service' }}
       </button>
 
+      <!-- Message icon -->
+      <div class="notif-trigger" ref="msgRef">
+        <button
+          class="dash-header__icon-btn"
+          :class="{ active: msgOpen }"
+          @click="toggleMsgPanel"
+          title="Messages"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span class="dash-header__notif-dot" v-if="messageCount > 0">
+            {{ messageCount > 9 ? '9+' : messageCount }}
+          </span>
+        </button>
+      </div>
+
       <!-- Notifications bell -->
       <div class="notif-trigger" ref="bellRef">
         <button
@@ -49,6 +66,15 @@
       @navigate="handleNavigate"
     />
 
+    <!-- Message panel — floats below the icon -->
+    <MessagePanel
+      v-model="msgOpen"
+      :role="user.role"
+      :current-user-id="user.userID"
+      :anchor="msgAnchor"
+      @navigate="handleNavigate"
+    />
+
   </header>
 </template>
 
@@ -57,10 +83,12 @@ import { useRouter } from 'vue-router'
 import { ref, computed } from 'vue'
 import { useNotifications } from '@/composables/useNotifications'
 import NotificationPanel from '@/components/shared/NotificationPanel.vue'
+import MessagePanel from '@/components/shared/MessagePanel.vue'
 const router = useRouter()
 const props = defineProps({
   user:              { type: Object, required: true },
   notificationCount: { type: Number, default: 0 },
+  messageCount:      { type: Number, default: 0 },
 })
 
 const emit = defineEmits(['open-mobile-sidebar', 'quick-action', 'navigate-section'])
@@ -68,8 +96,11 @@ const emit = defineEmits(['open-mobile-sidebar', 'quick-action', 'navigate-secti
 const { unreadCount: getUnreadCount } = useNotifications()
 
 const bellRef    = ref(null)
+const msgRef     = ref(null)
 const notifOpen  = ref(false)
+const msgOpen    = ref(false)
 const bellAnchor = ref(null)
+const msgAnchor  = ref(null)
 
 function goToProfile() {
   router.push('/profile')
@@ -78,12 +109,20 @@ function goToProfile() {
 function toggleNotifPanel() {
   if (bellRef.value) bellAnchor.value = bellRef.value.getBoundingClientRect()
   notifOpen.value = !notifOpen.value
+  if (notifOpen.value) msgOpen.value = false
+}
+
+function toggleMsgPanel() {
+  if (msgRef.value) msgAnchor.value = msgRef.value.getBoundingClientRect()
+  msgOpen.value = !msgOpen.value
+  if (msgOpen.value) notifOpen.value = false
 }
 
 // Re-emit navigate so DashboardPage can call setSection
 function handleNavigate(section) {
   emit('navigate-section', section)
   notifOpen.value = false
+  msgOpen.value = false
 }
 
 const firstName = computed(() => props.user.name?.split(' ')[0] || '')

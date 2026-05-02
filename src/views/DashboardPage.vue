@@ -36,6 +36,7 @@
       <DashboardHeader
         :user="user"
         :notification-count="notificationCount"
+        :message-count="unreadMessages"
         @open-mobile-sidebar="mobileSidebarOpen = true"
         @quick-action="handleQuickAction"
         @navigate-section="setSection"
@@ -178,6 +179,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useOffers } from '@/composables/useOffers'
 import { useWishlist } from '@/composables/useWishlist'
 import { useNotifications } from '@/composables/useNotifications'
+import { useMessages } from '@/composables/useMessages'
 
 import DashboardSidebar    from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardHeader     from '@/components/dashboard/DashboardHeader.vue'
@@ -206,6 +208,7 @@ const { user, isAgency, isProvider, logout } = useAuth()
 const { saveOffer, deleteOffer, saveOfferToDB, deleteOfferFromDB, allOffers } = useOffers()
 const { toggle: toggleWishlist } = useWishlist()
 const { unreadCount: getUnreadCount } = useNotifications()
+const { fetchMessages, getUnreadCount: getMsgUnreadCount, messages: dbMessages } = useMessages()
 
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
@@ -232,7 +235,7 @@ function setSection(s) {
 }
 
 // ── Counts ────────────────────────────────────────────────────────────────
-const unreadMessages = computed(() => messages.value.filter(m => !m.read && !m.sent).length)
+const unreadMessages    = getMsgUnreadCount(user.value?.userID ?? user.value?.id)
 const pendingCollabs    = computed(() => collaborations.value.filter(c => c.direction === 'incoming' && c.status === 'pending').length)
 const notificationCount = computed(() => getUnreadCount(user.value?.role, user.value?.userID).value)
 
@@ -249,7 +252,7 @@ function handleQuickAction() {
 const bookings       = ref([])
 const packages       = ref([])
 const services       = ref([])
-const messages       = ref([])
+const messages       = dbMessages
 const collaborations = ref([
   // Collaborations are not yet stored in the DB, so we keep the demo seed here.
   // Replace with a real fetch when you add a collaborations table.
@@ -343,84 +346,15 @@ async function fetchServices() {
   }
 }
 
-// Demo messages to show even before DB loads
-const demoMessages = [
-  {
-   messageID: 9001, id: 9001, sender_id: 1, from: 'Alice Smith',
-    to:        null,
-    title:     'Question about Alpine package',
-    content:   'Hi, I had a question about the ski equipment rental included in the package. Is it full rental including boots?',
-    date:      'Jun 11, 2025',
-    read:      false,
-    sent:      false,
-    replies:   [],
-  },
-  {
-messageID: 9002, id: 9002, sender_id: 2, from: 'Bob Jones',
-    to:        null,
-    title:     'Booking confirmation request',
-    content:   'Could you please confirm my reservation for July 10th? I have not received a confirmation email yet.',
-    date:      'Jun 10, 2025',
-    read:      false,
-    sent:      false,
-    replies:   [],
-  },
-  {
-    messageID: 9003, id: 9003, sender_id: 1, from: 'Alice Smith',
-    to:        null,
-    title:     'Special dietary requirements',
-    content:   'I wanted to let you know that I have a vegetarian diet. What options are available?',
-    date:      'Jun 9, 2025',
-    read:      true,
-    sent:      false,
-    replies:   [],
-  },
-]
-
-const DEMO_MSG_IDS = new Set(demoMessages.map(m => m.messageID))
-
-function normalizeMessage(m, currentUserId) {
-  const isSent = m.sender_id == currentUserId
-  const senderName = m.sender_company
-    ? m.sender_company
-    : `${m.sender_first} ${m.sender_last}`.trim()
-  const receiverName = `${m.receiver_first} ${m.receiver_last}`.trim()
-
-  return {
-    messageID: m.id,
-    id:        m.id,
-    sender_id: parseInt(m.sender_id) || null,
-    from:      isSent ? 'You' : senderName,
-    to:        isSent ? receiverName : null,
-    title:     m.subject || '(no subject)',
-    content:   m.content,
-    date:      new Date(m.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-    read:      m.is_read == 1,
-    sent:      isSent,
-    replies:   [],
-  }
-}
-
-async function fetchMessages() {
-  // Seed with demo messages immediately
-  messages.value = [...demoMessages]
-  try {
-    const res  = await fetch(`${API}/messages.php?user_id=${user.value.userID}`)
-    const data = await res.json()
-    const dbRows = (data.messages ?? []).map(m => normalizeMessage(m, user.value.userID))
-    const newOnly = dbRows.filter(m => !DEMO_MSG_IDS.has(m.messageID))
-    messages.value = [...demoMessages, ...newOnly]
-  } catch (e) {
-    loadError.value = e.message
-  }
-}
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────
 onMounted(async () => {
+  if (!user.value) return
+  const uid = user.value.userID || user.value.id
   await fetchBookings()
   await fetchPackages()
   await fetchServices()
-  await fetchMessages()
+  await fetchMessages(uid)
 })
 
 // ─────────────────────────────────────────────────────────────────────────

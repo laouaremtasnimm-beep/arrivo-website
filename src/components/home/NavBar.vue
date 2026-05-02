@@ -278,6 +278,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useNotifications } from '@/composables/useNotifications'
+import { useMessages } from '@/composables/useMessages'
 import { useWishlist } from '@/composables/useWishlist.js'
 import NotificationPanel from '@/components/shared/NotificationPanel.vue'
 import MessagePanel from '@/components/shared/MessagePanel.vue'
@@ -286,10 +287,11 @@ const router = useRouter()
 const route  = useRoute()
 const { user, isLoggedIn, canAccessDashboard, logout } = useAuth()
 const { unreadCount: getUnreadCount } = useNotifications()
+const { fetchMessages, getUnreadCount: getMsgUnreadCount } = useMessages()
 const { entries: wishlistEntries } = useWishlist()
 
 const unreadNotifCount = getUnreadCount(user.value?.role, user.value?.userID ?? user.value?.id, 'notification')
-const unreadMsgCount   = getUnreadCount(user.value?.role, user.value?.userID ?? user.value?.id, 'message')
+const unreadMsgCount   = getMsgUnreadCount(user.value?.userID ?? user.value?.id)
 
 const wishlistCount = computed(() => wishlistEntries.value.length)
 
@@ -374,6 +376,9 @@ function onClickOutside(e) {
 }
 
 onMounted(() => {
+  if (isLoggedIn.value) {
+    fetchMessages(user.value.userID || user.value.id)
+  }
   window.addEventListener('scroll', onScroll)
   document.addEventListener('click', onClickOutside)
 })

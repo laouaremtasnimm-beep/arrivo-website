@@ -338,12 +338,6 @@ function close() { emit('update:modelValue', false) }
   display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   gap: 12px;
 }
-.btn-book {
-  padding: 14px 28px; font-family: 'Fraunces', serif; font-size: 1.1rem;
-  font-weight: 700; background: var(--coral); color: #fff; border: none;
-  border-radius: 14px; cursor: pointer; transition: all var(--transition);
-}
-.btn-book:hover { background: #ff4a50; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,90,95,.3); }
 
 .btn-book.btn-outline-danger {
   background: transparent;
@@ -422,11 +416,16 @@ function close() { emit('update:modelValue', false) }
 .footer-note { font-size: .78rem; color: var(--gray-400); }
 .btn-book {
   background: var(--coral); color: #fff; border: none;
-  padding: 12px 28px; border-radius: 50px; font-size: .92rem;
+  padding: 12px 28px; border-radius: 14px; font-size: .92rem;
   font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif;
-  transition: background var(--transition); white-space: nowrap;
+  transition: all var(--transition); white-space: nowrap;
 }
-.btn-book:hover { background: var(--coral-dk); }
+.btn-book:hover { background: var(--coral-dk); transform: translateY(-1px); }
+
+/* Manage override specific to this modal if needed, but we rely on main.css */
+.btn-manage {
+  border-radius: 14px !important;
+}
 
 /* Transition */
 .offer-modal-fade-enter-active, .offer-modal-fade-leave-active {

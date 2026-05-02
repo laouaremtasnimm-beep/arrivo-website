@@ -35,7 +35,7 @@
 
       <!-- CTA -->
       <button 
-        class="btn card-cta" 
+        class="btn detail-sidebar__cta" 
         :class="isOwner ? 'btn-manage' : (ctaDanger ? 'btn-outline-danger' : 'btn-coral')"
         @click="$emit(ctaDanger ? 'cancel' : 'book')"
       >
@@ -129,6 +129,13 @@ defineEmits(['book', 'cancel', 'message'])
 .detail-sidebar__fact-val  { font-size: .88rem; font-weight: 600; color: var(--indigo); }
 
 /* Buttons */
+/* Buttons */
+.detail-sidebar__cta {
+  width: 100%;
+  padding: 14px 28px;
+  margin-bottom: 12px;
+  border-radius: 14px;
+}
 
 .detail-sidebar__secondary {
   width: 100%; padding: 12px; font-size: .9rem; font-weight: 600;

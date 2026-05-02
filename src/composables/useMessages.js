@@ -104,11 +104,21 @@ export function useMessages() {
     return Object.values(groups).sort((a, b) => new Date(b.time) - new Date(a.time))
   }
 
+  function getUnreadCount(userId) {
+    return computed(() => {
+      if (!userId) return 0
+      return messages.value.filter(m => 
+        String(m.receiver_id) === String(userId) && !m.is_read
+      ).length
+    })
+  }
+
   return {
     messages,
     loading,
     error,
     getConversations,
+    getUnreadCount,
     fetchMessages,
     sendMessage,
     markAsRead,
