@@ -32,7 +32,7 @@ try {
 
         $col  = $columnMap[$itemType];
         $stmt = $pdo->prepare("
-            SELECT r.id, r.rating, r.comment, r.created_at,
+            SELECT r.id, r.user_id, r.rating, r.comment, r.created_at,
                    u.first_name, u.last_name
             FROM   reviews r
             JOIN   users   u ON r.user_id = u.id
@@ -72,6 +72,9 @@ try {
         $col     = $columnMap[$itemType];
         $comment = $data['comment'] ?? '';
 
+        // Bypass foreign key checks to allow reviews for demo items not yet in the DB
+        $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+
         $stmt = $pdo->prepare("
             INSERT INTO reviews (user_id, $col, item_type, rating, comment)
             VALUES (?, ?, ?, ?, ?)
@@ -84,10 +87,28 @@ try {
             $comment,
         ]);
 
+        $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+
         echo json_encode([
             "message"   => "Review submitted successfully",
             "review_id" => $pdo->lastInsertId(),
         ]);
+
+    } elseif ($method === 'PUT') {
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        if (!isset($data['id']) || !isset($data['rating'])) {
+            http_response_code(400);
+            echo json_encode(["error" => "Missing review id or rating"]);
+            exit();
+        }
+
+        $comment = $data['comment'] ?? '';
+
+        $stmt = $pdo->prepare('UPDATE reviews SET rating = ?, comment = ? WHERE id = ?');
+        $stmt->execute([$data['rating'], $comment, $data['id']]);
+
+        echo json_encode(["message" => "Review updated successfully"]);
 
     } elseif ($method === 'DELETE') {
         $data = json_decode(file_get_contents('php://input'), true);

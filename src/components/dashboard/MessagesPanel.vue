@@ -90,7 +90,7 @@ const props = defineProps({
   messages:      { type: Array,  default: () => [] },
   currentUserId: { type: Number, default: null },
 })
-const emit = defineEmits(['open', 'compose'])
+const emit = defineEmits(['open', 'compose', 'delete'])
 
 const localMessages = ref(
   props.messages.map(m => ({ ...m, replies: m.replies || [] }))
@@ -127,7 +127,7 @@ function handleSend(newMsg) {
 
 function handleDelete(msg) {
   if (!confirm(`Delete conversation with ${msg.from}?`)) return
-  localMessages.value = localMessages.value.filter(m => m.messageID !== msg.messageID)
+  emit('delete', msg)
   threadOpen.value = false
 }
 

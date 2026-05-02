@@ -18,7 +18,7 @@
 
       <!-- Title + meta -->
       <div class="detail-page__title-row">
-        <div>
+        <div class="detail-page__title-left">
           <div class="detail-page__type-tag">{{ item.type }}</div>
           <h1 class="detail-page__title">{{ item.name }}</h1>
           <div class="detail-page__subtitle">
@@ -50,21 +50,32 @@
             :reviews="mockReviews"
           />
 
+          <!-- Hidden EntityCard just for the contact modal -->
+          <EntityCard
+            ref="entityCardRef"
+            :name="item.name + ' Support'"
+            bio="Contact our support team for any questions about this destination."
+            :rating="5"
+            :reviews="100"
+            :receiver-id="1"
+            entity-label="Support"
+            hide-card
+          />
         </div>
 
         <!-- Right: sidebar -->
-      <DetailSidebar
-  :price="item.from"
-  price-label="Packages from"
-  :rating="item.rating"
-  :reviews="item.reviews"
-  :facts="item.facts?.slice(0, 4)"
-  cta-label="Find packages here"
-  entity-label="Find services here"
-  note="Browse packages and services for this destination."
-  @book="goToPackages"
-  @message="goToServices"
-/>
+        <DetailSidebar
+          :price="item.from"
+          price-label="Packages from"
+          :rating="item.rating"
+          :reviews="item.reviews"
+          :facts="item.facts?.slice(0, 4)"
+          cta-label="Find packages here"
+          entity-label="Contact Agency"
+          note="Browse packages and services for this destination."
+          @book="goToPackages"
+          @message="handleContact"
+        />
       </div>
 
       <!-- More like this -->
@@ -98,6 +109,7 @@ import DetailReviews           from '@/components/detail/DetailReviews.vue'
 import DetailMoreLike          from '@/components/detail/DetailMoreLike.vue'
 import DestinationHighlights   from '@/components/detail/dest/DestinationHighlights.vue'
 import BookingModal            from '@/components/BookingModal.vue'
+import EntityCard              from '@/components/detail/EntityCard.vue'
 
 const route  = useRoute()
 const router = useRouter()
@@ -105,6 +117,7 @@ const router = useRouter()
 const item = computed(() => destinations.find(d => d.id === Number(route.params.id)))
 const saved = ref(false)
 const bookingOpen = ref(false)
+const entityCardRef = ref(null)
 
 const moreLike = computed(() =>
   destinations.filter(d => d.id !== item.value?.id && d.type === item.value?.type).slice(0, 6)
@@ -118,6 +131,11 @@ function goToDestination(dest) {
 }
 function goToServices() {
   router.push({ path: '/services', query: { q: item.value?.name } })
+}
+function handleContact() {
+  if (entityCardRef.value) {
+    entityCardRef.value.modalOpen = true
+  }
 }
 function handleBooking(payload) { console.log('Booked:', payload) }
 
@@ -142,7 +160,7 @@ const mockReviews = [
 /* Title row */
 .detail-page__title-row {
   display: flex; align-items: flex-start; justify-content: space-between;
-  gap: 16px; margin-bottom: 40px; flex-wrap: wrap;
+  gap: 16px; margin: 28px 0 36px; flex-wrap: wrap;
 }
 .detail-page__type-tag {
   display: inline-block; background: var(--teal-lt); color: var(--teal-dk);
@@ -162,7 +180,7 @@ const mockReviews = [
 
 /* Two-column layout */
 .detail-page__body {
-  display: grid; grid-template-columns: 1fr 360px; gap: 48px;
+  display: grid; grid-template-columns: 1fr 360px; gap: 52px;
   align-items: flex-start;
 }
 .detail-page__content { min-width: 0; }

@@ -1,25 +1,23 @@
 <template>
-  <div class="entity-card">
-    <div class="entity-card__top">
-      <div class="entity-card__avatar">
-        <img v-if="img" :src="img" :alt="name" />
-        <span v-else>{{ name[0] }}</span>
-      </div>
-      <div class="entity-card__info">
-        <div class="entity-card__label">{{ entityLabel }}</div>
-        <div class="entity-card__name">{{ name }}</div>
-        <div class="entity-card__rating">
-          <span class="star">★</span> {{ rating }}
-          <span class="entity-card__reviews">· {{ reviews }} reviews</span>
+  <div class="entity-card-wrapper">
+    <div class="entity-card" v-if="!hideCard">
+      <div class="entity-card__top">
+        <div class="entity-card__avatar">
+          <img v-if="img" :src="img" :alt="name" />
+          <span v-else>{{ name[0] }}</span>
+        </div>
+        <div class="entity-card__info">
+          <div class="entity-card__label">{{ entityLabel }}</div>
+          <div class="entity-card__name">{{ name }}</div>
+          <div class="entity-card__rating">
+            <span class="star">★</span> {{ rating }}
+            <span class="entity-card__reviews">· {{ reviews }} reviews</span>
+          </div>
         </div>
       </div>
+
+      <p class="entity-card__bio">{{ bio }}</p>
     </div>
-
-    <p class="entity-card__bio">{{ bio }}</p>
-
-    <button class="entity-card__contact" @click="modalOpen = true">
-      💬 Contact {{ entityLabel }}
-    </button>
 
     <!-- ── Contact Modal ── -->
     <Teleport to="body">
@@ -84,6 +82,7 @@ const props = defineProps({
   reviews:     { type: Number,  required: true  },
   entityLabel: { type: String,  default: 'Agency' },
   receiverId:  { type: Number,  default: null   },  // agency_id or provider_id
+  hideCard:    { type: Boolean, default: false  },
 })
 
 defineEmits(['contact'])
@@ -97,6 +96,8 @@ const message   = ref('')
 const sending   = ref(false)
 const sent      = ref(false)
 const error     = ref('')
+
+defineExpose({ modalOpen })
 
 function close() {
   if (sending.value) return

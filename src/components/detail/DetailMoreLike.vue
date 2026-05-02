@@ -12,8 +12,9 @@
         :key="item.id"
         @click="$emit('select', item)"
       >
-        <div class="more-like__img">
-          <img :src="item.img" :alt="item.title || item.name" loading="lazy" />
+        <div class="more-like__img" :class="item.iconBg">
+          <img v-if="item.img" :src="item.img" :alt="item.title || item.name" loading="lazy" />
+          <div v-else-if="item.icon" class="more-like__emoji">{{ item.icon }}</div>
           <span class="more-like__badge" v-if="item.badge || item.type">
             {{ item.badge || item.type }}
           </span>
@@ -62,9 +63,22 @@ defineEmits(['select'])
 }
 .more-like__card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
 
-.more-like__img { height: 150px; position: relative; overflow: hidden; }
+.more-like__img { 
+  height: 150px; position: relative; overflow: hidden; 
+  display: flex; align-items: center; justify-content: center;
+  background: var(--gray-50);
+}
 .more-like__img img { height: 100%; transition: transform .5s ease; }
 .more-like__card:hover .more-like__img img { transform: scale(1.06); }
+
+.more-like__emoji { font-size: 3.5rem; }
+
+/* Icon Backgrounds for Services */
+.svc-icon-teal   { background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%) !important; }
+.svc-icon-coral  { background: linear-gradient(135deg, #fff5f5 0%, #fed7d7 100%) !important; }
+.svc-icon-indigo { background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%) !important; }
+.svc-icon-sand   { background: linear-gradient(135deg, #fffaf0 0%, #fef3c7 100%) !important; }
+.svc-icon-purple { background: linear-gradient(135deg, #faf5ff 0%, #e9d5ff 100%) !important; }
 
 .more-like__badge {
   position: absolute; top: 10px; left: 10px;

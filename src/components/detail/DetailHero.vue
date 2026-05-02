@@ -11,13 +11,13 @@
     <div class="detail-hero__thumbs" v-if="gallery?.length">
       <div
         class="detail-hero__thumb"
-        v-for="(img, i) in gallery.slice(0, 3)"
+        v-for="(img, i) in gallery.slice(0, 4)"
         :key="i"
         @click="lightboxIndex = i + 1"
       >
         <img :src="img" :alt="`${title} ${i + 2}`" />
-        <div class="detail-hero__thumb-more" v-if="i === 2 && gallery.length > 3">
-          +{{ gallery.length - 3 }} photos
+        <div class="detail-hero__thumb-more" v-if="i === 3 && gallery.length > 4">
+          +{{ gallery.length - 4 }} photos
         </div>
       </div>
     </div>
@@ -90,18 +90,16 @@ function handleShare() {
 
 <style scoped>
 .detail-hero {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  grid-template-rows: auto auto;
-  gap: 4px;
-  height: 480px;
+  display: flex;
+  gap: 8px;
+  height: 500px;
   position: relative;
   border-radius: var(--radius-xl);
   overflow: hidden;
 }
 
 .detail-hero__main {
-  grid-row: 1 / 3;
+  flex: 2;
   position: relative; overflow: hidden; cursor: pointer;
 }
 .detail-hero__main img {
@@ -115,7 +113,20 @@ function handleShare() {
   pointer-events: none;
 }
 
-.detail-hero__thumbs { grid-column: 2; display: contents; }
+.detail-hero__thumbs {
+  flex: 1.2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Handle fewer than 4 images */
+.detail-hero__thumb:only-child { grid-column: 1 / -1; grid-row: 1 / -1; }
+.detail-hero__thumb:nth-last-child(2):first-child,
+.detail-hero__thumb:nth-last-child(2):first-child ~ .detail-hero__thumb { grid-column: span 2; }
+.detail-hero__thumb:nth-last-child(3):first-child { grid-column: span 2; }
+
 .detail-hero__thumb {
   position: relative; overflow: hidden; cursor: pointer;
 }
@@ -128,7 +139,7 @@ function handleShare() {
   position: absolute; inset: 0;
   background: rgba(0,0,0,.5); color: #fff;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: .95rem;
+  font-weight: 700; font-size: 1.1rem;
 }
 
 /* Floating actions */

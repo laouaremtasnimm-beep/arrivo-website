@@ -22,7 +22,7 @@
       <div class="dest-card__top">
         <h3 class="dest-card__name">{{ item.name }}</h3>
         <div class="dest-card__rating">
-          <span class="star">★</span> {{ item.rating }}
+          <span class="star">★</span> {{ Number(item.rating).toFixed(1) }}
           <span class="dest-card__reviews">· {{ item.reviews?.toLocaleString() }} reviews</span>
         </div>
       </div>

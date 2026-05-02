@@ -22,32 +22,32 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="pkg in packages" :key="pkg.packageID">
-            <td>
-              <div class="pkg-cell">
-                <div class="pkg-img">
-                  <img :src="pkg.img" :alt="pkg.title" />
-                </div>
-                <div>
-                  <div class="pkg-title">{{ pkg.title }}</div>
-                  <div class="pkg-sub">{{ pkg.destination }}</div>
-                </div>
-              </div>
-            </td>
-            <td><span class="type-badge">{{ pkg.type }}</span></td>
-            <td class="pkg-duration">{{ pkg.duration }} days</td>
-            <td class="pkg-price">${{ pkg.price.toLocaleString() }}</td>
-            <td>
-              <div class="pkg-rating"><span class="star">★</span> {{ pkg.rating }}</div>
-            </td>
-            <td class="pkg-bookings">{{ pkg.bookings }}</td>
-            <td>
-              <div class="table-actions">
-                <button class="tbl-btn tbl-btn--edit" @click="$emit('edit', pkg)" title="Edit">✏️</button>
-                <button class="tbl-btn tbl-btn--delete" @click="$emit('delete', pkg)" title="Delete">🗑️</button>
-              </div>
-            </td>
-          </tr>
+          <tr v-for="pkg in packages" :key="pkg.id">   <!-- pkg.id not pkg.packageID -->
+  <td>
+    <div class="pkg-cell">
+      <div class="pkg-img">
+        <img :src="pkg.img_url || pkg.img" :alt="pkg.title" />   <!-- img_url -->
+      </div>
+      <div>
+        <div class="pkg-title">{{ pkg.title }}</div>
+        <div class="pkg-sub">{{ pkg.destination }}</div>
+      </div>
+    </div>
+  </td>
+  <td><span class="type-badge">{{ pkg.type }}</span></td>
+  <td class="pkg-duration">{{ pkg.duration_days || pkg.duration }} days</td>   <!-- duration_days -->
+  <td class="pkg-price">${{ Number(pkg.price).toLocaleString() }}</td>
+  <td>
+    <div class="pkg-rating"><span class="star">★</span> {{ pkg.rating ? Number(pkg.rating).toFixed(1) : '0.0' }}</div>
+  </td>
+  <td class="pkg-bookings">{{ pkg.booking_count || 0 }}</td>
+  <td>
+    <div class="table-actions">
+      <button class="tbl-btn tbl-btn--edit" @click="$emit('edit', pkg)" title="Edit">✏️</button>
+      <button class="tbl-btn tbl-btn--delete" @click="$emit('delete', pkg)" title="Delete">🗑️</button>
+    </div>
+  </td>
+</tr>
         </tbody>
       </table>
     </div>

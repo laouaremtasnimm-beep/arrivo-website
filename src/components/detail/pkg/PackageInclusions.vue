@@ -32,6 +32,8 @@ defineProps({
 </script>
 
 <style scoped>
+.inclusions { margin: 40px 0; }
+
 .inclusions__title {
   font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 700;
   color: var(--indigo); margin-bottom: 20px;

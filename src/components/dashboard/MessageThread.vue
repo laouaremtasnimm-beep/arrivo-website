@@ -33,7 +33,10 @@
               <div class="thread-msg__avatar thread-msg__avatar--you" v-if="reply.fromMe">You</div>
               <div class="thread-msg__avatar" v-else>{{ message?.from?.[0] }}</div>
               <div class="thread-msg__bubble" :class="{ 'bubble--you': reply.fromMe }">
-                <div class="thread-msg__name">{{ reply.fromMe ? 'You' : message?.from }}</div>
+                <div class="bubble-header">
+                  <div class="thread-msg__name">{{ reply.fromMe ? 'You' : message?.from }}</div>
+                  <button class="reply-del" @click="handleDeleteReply(reply)" title="Delete message">🗑️</button>
+                </div>
                 <p class="thread-msg__text">{{ reply.text }}</p>
                 <div class="thread-msg__time">{{ reply.time }}</div>
               </div>
@@ -72,7 +75,7 @@ const props = defineProps({
   modelValue: Boolean,
   message:    { type: Object, default: null },
 })
-const emit = defineEmits(['update:modelValue', 'delete'])
+const emit = defineEmits(['update:modelValue', 'delete', 'delete-reply'])
 
 const API          = '/arrivo-website/backend/api/v1'
 const { user }     = useAuth()
@@ -100,6 +103,22 @@ function scrollToBottom() {
   nextTick(() => {
     if (bodyRef.value) bodyRef.value.scrollTop = bodyRef.value.scrollHeight
   })
+}
+
+async function handleDeleteReply(reply) {
+  if (!confirm('Delete this message permanently?')) return
+  try {
+    const res = await fetch(`${API}/messages.php`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: reply.id }),
+    })
+    if (!res.ok) throw new Error('Delete failed')
+    localReplies.value = localReplies.value.filter(r => r.id !== reply.id)
+    emit('delete-reply', { messageID: props.message.messageID, replyID: reply.id })
+  } catch (e) {
+    replyError.value = e.message
+  }
 }
 
 async function sendReply() {
@@ -223,7 +242,17 @@ function close() { emit('update:modelValue', false) }
 .bubble--you .thread-msg__text,
 .bubble--you .thread-msg__time { color: rgba(255,255,255,.9); }
 .bubble--you .thread-msg__time { color: rgba(255,255,255,.5); }
-.thread-msg__name { font-size: .72rem; font-weight: 700; color: var(--gray-400); margin-bottom: 4px; }
+.bubble-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; gap: 8px; }
+.thread-msg__name { font-size: .72rem; font-weight: 700; color: var(--gray-400); }
+.reply-del {
+  background: none; border: none; cursor: pointer; font-size: .75rem;
+  padding: 2px; opacity: 0; transition: all var(--transition);
+  color: var(--gray-400);
+}
+.thread-msg__bubble:hover .reply-del { opacity: 1; }
+.reply-del:hover { color: #e74c3c; }
+.bubble--you .reply-del { color: rgba(255,255,255,.5); }
+.bubble--you .reply-del:hover { color: #fff; }
 .thread-msg__text { font-size: .86rem; color: var(--indigo); line-height: 1.55; margin: 0 0 6px; }
 .thread-msg__time { font-size: .7rem; color: var(--gray-400); }
 .thread__reply {

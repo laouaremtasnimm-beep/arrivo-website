@@ -5,7 +5,7 @@
       <div class="stat-card__body">
         <div class="stat-card__label">{{ stat.label }}</div>
         <div class="stat-card__value">{{ stat.value }}</div>
-        <div class="stat-card__trend" :class="stat.trend > 0 ? 'up' : 'down'">
+        <div class="stat-card__trend" v-if="stat.trend !== 0" :class="stat.trend > 0 ? 'up' : 'down'">
           {{ stat.trend > 0 ? '↑' : '↓' }} {{ Math.abs(stat.trend) }}% vs last month
         </div>
       </div>
@@ -17,24 +17,48 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  role: { type: String, required: true }, // 'agency' | 'provider'
+  role:     { type: String, required: true }, // 'agency' | 'provider'
+  bookings: { type: Array,  default: () => [] },
+  items:    { type: Array,  default: () => [] },
 })
 
-const agencyStats = [
-  { icon: '📋', iconBg: 'rgba(255,90,95,.10)',   label: 'Total Bookings',  value: '248',    trend: 12  },
-  { icon: '💰', iconBg: 'rgba(46,196,182,.10)',  label: 'Revenue',         value: '$38,400', trend: 8  },
-  { icon: '✈️', iconBg: 'rgba(45,49,66,.07)',    label: 'Active Packages', value: '14',      trend: -2 },
-  { icon: '⭐', iconBg: 'rgba(255,180,0,.10)',   label: 'Avg Rating',      value: '4.8',     trend: 3  },
-]
+const stats = computed(() => {
+  const isAgency = props.role === 'agency'
+  
+  // 1. Total Bookings
+  const totalBookings = props.bookings.length
+  
+  // 2. Revenue (Confirmed bookings only — handle both DB snake_case and normalized camelCase)
+  const revenue = props.bookings
+    .filter(b => b.status === 'confirmed')
+    .reduce((sum, b) => sum + (parseFloat(b.total_price ?? b.totalPrice) || 0), 0)
+    
+  // 3. Active Items (Packages or Services)
+ const activeItemsCount = Array.isArray(props.items) ? props.items.length : 0
+  
+  // 4. Avg Rating
+ const ratings = props.items
+  .map(i => parseFloat(i.rating))
+  .filter(r => !isNaN(r))
 
-const providerStats = [
-  { icon: '📋', iconBg: 'rgba(255,90,95,.10)',   label: 'Total Bookings',  value: '124',    trend: 9   },
-  { icon: '💰', iconBg: 'rgba(46,196,182,.10)',  label: 'Revenue',         value: '$12,200', trend: 14 },
-  { icon: '🛎️', iconBg: 'rgba(45,49,66,.07)',    label: 'Active Services', value: '6',       trend: 0  },
-  { icon: '⭐', iconBg: 'rgba(255,180,0,.10)',   label: 'Avg Rating',      value: '4.9',     trend: 1  },
-]
-
-const stats = computed(() => props.role === 'agency' ? agencyStats : providerStats)
+const avgRating = ratings.length
+  ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(1)
+  : '0.0'
+  const common = [
+    { icon: '📋', iconBg: 'rgba(255,90,95,.10)',   label: 'Total Bookings',  value: totalBookings.toLocaleString(), trend: 0 },
+    { icon: '💰', iconBg: 'rgba(46,196,182,.10)',  label: 'Revenue',         value: '$' + revenue.toLocaleString(), trend: 0 },
+    { 
+      icon: isAgency ? '✈️' : '🛎️', 
+      iconBg: 'rgba(45,49,66,.07)',    
+      label: isAgency ? 'Active Packages' : 'Active Services', 
+      value: activeItemsCount.toLocaleString(),      
+      trend: 0 
+    },
+    { icon: '⭐', iconBg: 'rgba(255,180,0,.10)',   label: 'Avg Rating',      value: avgRating, trend: 0 },
+  ]
+  
+  return common
+})
 </script>
 
 <style scoped>

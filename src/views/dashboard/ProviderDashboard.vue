@@ -39,6 +39,7 @@
             :role="user.role"
             :bookings="bookings"
             :messages="messages"
+            :items="services"
             @navigate="setSection"
             @open-message="handleOpenMessage"
           />
@@ -71,6 +72,7 @@
             :current-user-id="user.userID ? parseInt(user.userID) : null"
             @open="handleOpenMessage"
             @compose="handleCompose"
+            @delete="handlePermanentDeleteMessage"
           />
 
           <DashboardReviews
@@ -181,6 +183,9 @@ async function fetchServices() {
   try {
     const res  = await fetch(`${API}/services.php?provider_id=${user.value.userID}`)
     const data = await res.json()
+
+    console.log("SERVICES FROM API:", data.services) // ✅ AFTER
+
     if (!res.ok) throw new Error(data.error || 'Failed to load services')
     services.value = data.services ?? []
   } catch (e) { loadError.value = e.message }
@@ -255,6 +260,37 @@ function openServiceForm(svc) {
   serviceFormOpen.value = true
 }
 
+async function handleSavePackage(payload) {
+  try {
+    const isNew = !payload.id
+    const res = await fetch(`${API}/packages.php`, {
+      method: isNew ? 'POST' : 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(isNew ? { ...payload, agency_id: user.value.userID } : payload),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Save failed')
+    await fetchPackages()   // ← re-fetch instead of optimistic update
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+async function handleDeletePackage(pkg) {
+  if (!confirm(`Delete "${pkg.title}"? This cannot be undone.`)) return
+  try {
+    const res = await fetch(`${API}/packages.php`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: pkg.id }),
+    })
+    if (!res.ok) throw new Error('Delete failed')
+    await fetchPackages()   // ← re-fetch
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
 async function handleSaveService(payload) {
   try {
     const isNew = !payload.id
@@ -265,14 +301,10 @@ async function handleSaveService(payload) {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Save failed')
-    if (isNew) {
-      services.value.unshift({ ...payload, id: data.service_id })
-      toggleWishlist('service', data.service_id) // Add to wishlist
-    } else {
-      const idx = services.value.findIndex(s => s.id === payload.id)
-      if (idx !== -1) services.value[idx] = payload
-    }
-  } catch (e) { loadError.value = e.message }
+    await fetchServices()   // ← re-fetch
+  } catch (e) {
+    loadError.value = e.message
+  }
 }
 
 async function handleDeleteService(svc) {
@@ -284,7 +316,7 @@ async function handleDeleteService(svc) {
       body: JSON.stringify({ id: svc.id }),
     })
     if (!res.ok) throw new Error('Delete failed')
-    services.value = services.value.filter(s => s.id !== svc.id)
+   await fetchServices()
   } catch (e) { loadError.value = e.message }
 }
 
@@ -312,6 +344,18 @@ async function handleOpenMessage(msg) {
     if (!res.ok) throw new Error('Mark-read failed')
     const idx = messages.value.findIndex(m => m.id === msg.id)
     if (idx !== -1) messages.value[idx].is_read = 1
+  } catch (e) { loadError.value = e.message }
+}
+
+async function handlePermanentDeleteMessage(msg) {
+  try {
+    const res = await fetch(`${API}/messages.php`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: msg.id }),
+    })
+    if (!res.ok) throw new Error('Delete failed')
+    messages.value = messages.value.filter(m => m.id !== msg.id)
   } catch (e) { loadError.value = e.message }
 }
 

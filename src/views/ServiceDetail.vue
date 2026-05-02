@@ -1,72 +1,93 @@
 <template>
-  <div class="detail-page" v-if="item">
+  <!-- Loading State -->
+  <div class="svc-detail-loading" v-if="!item">
+    <NavBar />
+    <div class="svc-detail-loading__inner">
+      <div class="svc-loading-spinner"></div>
+      <p>Loading service details…</p>
+    </div>
+  </div>
+
+  <div class="svc-detail" v-else>
     <NavBar />
 
-    <div class="detail-page__inner">
+    <div class="svc-detail__inner">
       <DetailBreadcrumb parent-label="Services" parent-path="/services" :current="item.title" />
 
-      <div class="detail-page__hero-wrap">
-        <DetailHero
-          :main-img="item.img"
-          :gallery="item.gallery || []"
-          :title="item.title"
-          :saved="isSavedVal"
-          @toggle-wishlist="handleToggleWishlist"
-        />
-      </div>
-
-      <div class="detail-page__title-row">
-        <div>
-          <div class="detail-page__type-tag">{{ item.type }}</div>
-          <h1 class="detail-page__title">{{ item.title }}</h1>
-          <div class="detail-page__subtitle">
-            by <strong>{{ item.provider }}</strong>
-            <span class="detail-page__dot">·</span>
-            <span class="star">★</span> {{ item.rating }}
-            <span class="detail-page__reviews">({{ item.reviews }} reviews)</span>
-            <span class="detail-page__avail" :class="item.availability ? 'avail--yes' : 'avail--no'">
-              · {{ item.availability ? '● Available' : '○ Unavailable' }}
-            </span>
-            <span v-if="alreadyBooked" class="booked-badge">✓ Already booked</span>
+      <!-- Emoji Hero Banner -->
+      <div class="svc-hero" :class="item.iconBg || 'svc-icon-teal'">
+        <div class="svc-hero__glow"></div>
+        <div class="svc-hero__emoji">{{ item.icon || '🛎️' }}</div>
+        <div class="svc-hero__meta">
+          <span class="svc-hero__type">{{ item.type }}</span>
+          <div class="svc-hero__actions">
+            <button
+              class="svc-hero__btn"
+              :class="{ saved: isSavedVal }"
+              @click="handleToggleWishlist"
+            >{{ isSavedVal ? '❤️ Saved' : '🤍 Save' }}</button>
+            <button class="svc-hero__btn" @click="handleShare">🔗 Share</button>
           </div>
         </div>
       </div>
 
-      <div class="detail-page__body">
-        <div class="detail-page__content">
+      <!-- Title Row -->
+      <div class="svc-detail__title-row">
+        <div class="svc-detail__title-left">
+          <h1 class="svc-detail__title">{{ item.title }}</h1>
+          <div class="svc-detail__meta-row">
+            <span class="svc-detail__provider-badge">by <strong>{{ item.provider }}</strong></span>
+            <span class="svc-detail__dot">·</span>
+            <span class="svc-detail__rating">
+              <span class="svc-star">★</span>
+              {{ Number(item.rating).toFixed(1) }}
+              <span class="svc-detail__review-count">({{ item.reviews }} reviews)</span>
+            </span>
+            <span class="svc-detail__dot">·</span>
+            <span
+              class="svc-detail__avail"
+              :class="item.availability ? 'avail--yes' : 'avail--no'"
+            >
+              {{ item.availability ? '● Available now' : '○ Unavailable' }}
+            </span>
+            <span v-if="alreadyBooked" class="svc-detail__booked-badge">✓ Already booked</span>
+          </div>
+        </div>
+      </div>
 
-          <ServiceFeatures
-            :long-desc="item.longDesc"
+      <!-- Two-column body -->
+      <div class="svc-detail__body">
+        <div class="svc-detail__content">
+
+          <ServiceAbout :long-desc="item.longDesc" />
+
+          <ServiceFAQ :faqs="item.faqs" />
+
+          <ServiceInclusions
             :features="item.features"
+            :excludes="item.excludes"
             :options="item.vehicleOptions"
             :options-title="item.type === 'Transport' ? 'Vehicle options' : 'Options'"
             :unit="item.unit"
             @select-option="handleOptionSelect"
           />
 
-          <div style="margin-bottom:36px">
-            <div class="pkg-section-title" style="margin-bottom:16px">About the provider</div>
-           <EntityCard
-  :name="item.provider"
-  :bio="item.providerBio"
-  :rating="item.providerRating"
-  :reviews="item.providerReviews"
-  :receiver-id="item.provider_id" 
-  entity-label="Provider"
-  @contact="handleContact"
-/>
-          </div>
+            <EntityCard
+              ref="entityCardRef"
+              :name="item.provider"
+              :bio="item.providerBio"
+              :rating="item.providerRating"
+              :reviews="item.providerReviews"
+              :receiver-id="item.provider_id"
+              entity-label="Provider"
+              hide-card
+              @contact="handleContact"
+            />
 
-          <DetailReviews
-            :rating="item.rating"
-            :total-reviews="item.reviews"
-            :reviews="mockReviews"
-            item-type="service"
-            :item-id="item.id"
-          />
         </div>
 
         <DetailSidebar
+          class="sticky-sidebar"
           :price="item.price"
           price-label="from"
           :unit="item.unit"
@@ -75,7 +96,7 @@
           :facts="item.facts"
           :cta-label="alreadyBooked ? 'Cancel Booking' : 'Book this service'"
           :cta-danger="alreadyBooked"
-          entity-label="provider"
+          entity-label="Contact Provider"
           note="You won't be charged until confirmed."
           @book="bookingOpen = true"
           @cancel="handleCancel"
@@ -83,15 +104,19 @@
         />
       </div>
 
+      <DetailReviews
+        :rating="item.rating"
+        :total-reviews="item.reviews"
+        :reviews="isDemo ? mockReviews : []"
+        item-type="service"
+        :item-id="item.id"
+        @stats-update="updateStats"
+      />
+
       <DetailMoreLike :items="moreLike" see-all-path="/services" @select="goToService" />
     </div>
 
     <BookingModal v-model="bookingOpen" :pkg="item" @submit="handleBooking" />
-  </div>
-
-  <div class="not-found" v-else>
-    <h2>Service not found</h2>
-    <RouterLink to="/services" class="btn btn-coral">← Back to services</RouterLink>
   </div>
 </template>
 
@@ -110,7 +135,9 @@ import DetailSidebar    from '@/components/detail/DetailSidebar.vue'
 import DetailReviews    from '@/components/detail/DetailReviews.vue'
 import DetailMoreLike   from '@/components/detail/DetailMoreLike.vue'
 import EntityCard       from '@/components/detail/EntityCard.vue'
-import ServiceFeatures  from '@/components/detail/svc/ServiceFeatures.vue'
+import ServiceAbout      from '@/components/detail/svc/ServiceAbout.vue'
+import ServiceInclusions from '@/components/detail/svc/ServiceInclusions.vue'
+import ServiceFAQ        from '@/components/detail/svc/ServiceFAQ.vue'
 import BookingModal     from '@/components/home/BookingModal.vue'
 
 const route  = useRoute()
@@ -150,13 +177,23 @@ console.log('provider_id value:', data.service?.provider_id)
   id: s.id, title: s.title, provider: s.provider_name || 'Unknown Provider',
   img: null, icon: s.icon || '🛎️', type: s.type,
   price: Number(s.price || 0), unit: s.price_unit || 'trip',
-  rating: Number(s.rating || 4.5), reviews: Number(s.review_count || 0),
+  rating: Number(s.rating ?? 0), reviews: Number(s.review_count || 0),
   availability: s.is_available !== undefined ? !!Number(s.is_available) : true,
   longDesc: s.long_desc || s.description || '',
   features: s.features && s.features !== 'null' ? JSON.parse(s.features) : [],
 }
 const demo = services.find(x => x.id === id)
-item.value = demo ? { ...dbItem, ...demo, provider_id: dbItem.provider_id } : dbItem  // ← pin provider_id
+if (demo) {
+  item.value = {
+    ...dbItem,
+    ...demo,
+    rating: dbItem.rating > 0 ? dbItem.rating : demo.rating,
+    reviews: dbItem.review_count > 0 ? dbItem.review_count : demo.reviews,
+    provider_id: dbItem.provider_id
+  }
+} else {
+  item.value = dbItem
+}
       }
     }
   } catch (e) {
@@ -182,7 +219,9 @@ item.value = demo ? { ...dbItem, ...demo, provider_id: dbItem.provider_id } : db
     }))
     const allItems = [...services, ...newOnly]
     if (item.value) {
-      moreLike.value = allItems.filter(x => x.id !== item.value.id && x.type === item.value.type).slice(0, 6)
+      moreLike.value = allItems
+        .filter(x => String(x.id) !== String(item.value.id) && x.type === item.value.type)
+        .slice(0, 6)
     }
   } catch (e) { console.error(e) }
 
@@ -194,6 +233,10 @@ onMounted(() => {
   loadItem(route.params.id)
 })
 watch(() => route.params.id, (newId) => { if (newId) loadItem(newId) })
+const isDemo = computed(() => {
+  if (!item.value) return false
+  return services.some(s => s.id === item.value.id)
+})
 
 const isSavedVal    = computed(() => item.value ? isSaved.value('service', item.value.id) : false)
 const alreadyBooked = computed(() => item.value ? isBooked('service', item.value.id) : false)
@@ -204,8 +247,14 @@ function handleToggleWishlist() {
   if (wasAdded) router.push('/wishlist')
 }
 
+const entityCardRef = ref(null)
+
 function goToService(svc)       { router.push(`/services/${svc.id}`) }
-function handleContact()        { console.log('Contact provider') }
+function handleContact() {
+  if (entityCardRef.value) {
+    entityCardRef.value.modalOpen = true
+  }
+}
 function handleOptionSelect()   { bookingOpen.value = true }
 
 async function handleBooking(payload) {
@@ -246,26 +295,109 @@ const mockReviews = [
   { id:3, name:'Yuki T.',   location:'Tokyo, Japan',    rating:4, date:'Apr 2025', text:'Good service overall. The vehicle was clean and modern. Slightly difficult to find the driver at first but they were very helpful once we connected.' },
   { id:4, name:'Sophie L.', location:'Paris, France',   rating:5, date:'Mar 2025', text:"Worth every cent. No stress, no searching, just a friendly face with your name on a board. Makes such a difference after a long flight." },
 ]
+function updateStats(stats) {
+  if (item.value) {
+    item.value.rating = stats.rating
+    item.value.reviews = stats.count
+  }
+}
+
+function handleShare() {
+  if (navigator.share) {
+    navigator.share({ title: item.value?.title, url: window.location.href })
+  } else {
+    navigator.clipboard?.writeText(window.location.href)
+    alert('Link copied to clipboard!')
+  }
+}
 </script>
 
 <style scoped>
-.detail-page { min-height: 100vh; background: var(--gray-50); padding-top: 72px; }
-.detail-page__inner { max-width: 1200px; margin: 0 auto; padding: 0 5% 80px; }
-.detail-page__hero-wrap { margin: 24px 0 32px; }
-.detail-page__title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 40px; flex-wrap: wrap; }
-.detail-page__type-tag  { display: inline-block; background: var(--teal-lt); color: var(--teal-dk); font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 4px 12px; border-radius: 50px; margin-bottom: 10px; }
-.detail-page__title     { font-family: 'Fraunces', serif; font-size: clamp(1.8rem, 3.5vw, 2.8rem); font-weight: 700; color: var(--indigo); margin-bottom: 8px; }
-.detail-page__subtitle  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .92rem; color: var(--gray-600); }
-.detail-page__dot { color: var(--gray-200); }
-.detail-page__reviews { color: var(--gray-400); }
-.avail--yes { color: #27ae60; font-weight: 600; }
-.avail--no  { color: var(--gray-400); }
-.booked-badge { background: rgba(39,174,96,.12); color: #1a7a45; font-size: .78rem; font-weight: 700; padding: 3px 12px; border-radius: 50px; border: 1px solid rgba(39,174,96,.25); }
-.detail-page__body    { display: grid; grid-template-columns: 1fr 360px; gap: 48px; align-items: flex-start; }
-.detail-page__content { min-width: 0; }
-.pkg-section-title    { font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 700; color: var(--indigo); }
+/* ─── Page shell ─────────────────────────────────── */
+.svc-detail { min-height: 100vh; background: var(--gray-50); padding-top: 72px; }
+.svc-detail__inner { max-width: 1240px; margin: 0 auto; padding: 0 5% 100px; }
+
+/* ─── Spinner ────────────────────────────────────── */
+.svc-detail-loading { min-height: 100vh; background: var(--gray-50); }
+.svc-detail-loading__inner { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; min-height: 60vh; color: var(--gray-400); }
+.svc-loading-spinner { width: 36px; height: 36px; border: 3px solid var(--gray-200); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Emoji Hero Banner ──────────────────────────── */
+.svc-hero {
+  position: relative; margin: 24px 0 0;
+  height: 260px; border-radius: 24px; overflow: hidden;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: linear-gradient(135deg, rgba(46,196,182,.18) 0%, rgba(99,102,241,.14) 100%);
+  border: 1px solid rgba(46,196,182,.2);
+}
+.svc-icon-coral .svc-hero { background: linear-gradient(135deg, rgba(255,90,95,.14) 0%, rgba(255,170,80,.10) 100%); border-color: rgba(255,90,95,.2); }
+.svc-icon-sand  .svc-hero { background: linear-gradient(135deg, rgba(240,230,210,.6) 0%, rgba(200,185,160,.4) 100%); border-color: rgba(200,185,160,.4); }
+
+.svc-hero__glow {
+  position: absolute; width: 220px; height: 220px;
+  background: radial-gradient(circle, rgba(46,196,182,.22) 0%, transparent 70%);
+  border-radius: 50%; pointer-events: none;
+}
+.svc-hero__emoji { font-size: 5.5rem; line-height: 1; position: relative; z-index: 2; filter: drop-shadow(0 8px 24px rgba(0,0,0,.12)); }
+.svc-hero__meta {
+  position: absolute; top: 16px; left: 20px; right: 20px;
+  display: flex; align-items: center; justify-content: space-between; z-index: 3;
+}
+.svc-hero__type {
+  background: rgba(255,255,255,.88); backdrop-filter: blur(8px);
+  padding: 5px 14px; border-radius: 50px;
+  font-size: .74rem; font-weight: 700; color: var(--teal); text-transform: uppercase; letter-spacing: .06em;
+}
+.svc-hero__actions { display: flex; gap: 8px; }
+.svc-hero__btn {
+  background: rgba(255,255,255,.88); backdrop-filter: blur(8px);
+  border: none; border-radius: 50px; padding: 6px 16px;
+  font-family: 'DM Sans', sans-serif; font-size: .84rem; font-weight: 600;
+  color: var(--indigo); cursor: pointer; transition: all 0.2s;
+}
+.svc-hero__btn:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+.svc-hero__btn.saved { background: rgba(255,90,95,.1); color: var(--coral); }
+
+/* ─── Title Row ──────────────────────────────────── */
+.svc-detail__title-row { margin: 28px 0 36px; }
+.svc-detail__title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(1.9rem, 3.5vw, 2.8rem);
+  font-weight: 700; color: var(--indigo);
+  margin: 0 0 12px; line-height: 1.15;
+}
+.svc-detail__meta-row {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; font-size: .9rem; color: var(--gray-600);
+}
+.svc-detail__dot { color: var(--gray-300); }
+.svc-detail__provider-badge strong { color: var(--indigo); }
+.svc-detail__rating { display: flex; align-items: center; gap: 4px; font-weight: 600; color: var(--indigo); }
+.svc-star { color: #FFB400; }
+.svc-detail__review-count { color: var(--gray-400); font-weight: 400; }
+.avail--yes { color: #27ae60; font-weight: 700; }
+.avail--no  { color: var(--gray-400); font-weight: 600; }
+.svc-detail__booked-badge { background: rgba(39,174,96,.1); color: #1a7a45; font-size: .78rem; font-weight: 700; padding: 4px 12px; border-radius: 50px; border: 1px solid rgba(39,174,96,.2); }
+
+/* ─── Two-column body ────────────────────────────── */
+.svc-detail__body { display: grid; grid-template-columns: 1fr 360px; gap: 40px; align-items: start;}
+.svc-detail__content { min-width: 0; }
+
+/* ─── Section headings ───────────────────────────── */
+.svc-detail__section { margin-bottom: 40px; }
+.svc-detail__section-title { font-family: 'Fraunces', serif; font-size: 1.25rem; font-weight: 700; color: var(--indigo); margin: 0 0 18px; }
+
+/* ─── Not found ──────────────────────────────────── */
 .not-found { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
 .not-found h2 { font-family: 'Fraunces', serif; font-size: 1.8rem; }
-@media (max-width: 900px) { .detail-page__body { grid-template-columns: 1fr; } }
-@media (max-width: 640px) { .detail-page__inner { padding: 0 4% 60px; } }
+
+/* ─── Responsive ─────────────────────────────────── */
+@media (max-width: 960px) { .svc-detail__body { grid-template-columns: 1fr; } }
+@media (max-width: 640px)  {
+  .svc-detail__inner { padding: 0 4% 60px; }
+  .svc-hero { height: 200px; }
+  .svc-hero__emoji { font-size: 4rem; }
+}
 </style>

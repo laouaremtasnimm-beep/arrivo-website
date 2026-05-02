@@ -53,16 +53,16 @@
 
       <div class="dashboard__content">
         <Transition name="section-fade" mode="out-in">
-
-          <OverviewSection
-            v-if="activeSection === 'overview'"
-            key="overview"
-            :role="user.role"
-            :bookings="bookings"
-            :messages="messages"
-            @navigate="setSection"
-            @open-message="handleOpenMessage"
-          />
+<OverviewSection
+  v-if="activeSection === 'overview'"
+  key="overview"
+  :role="user.role"
+  :bookings="bookings"
+  :messages="messages"
+  :items="isAgency ? packages : services"
+  @navigate="setSection"
+  @open-message="handleOpenMessage"
+/>
 
           <BookingsTable
             v-else-if="activeSection === 'bookings'"
@@ -100,6 +100,7 @@
   :current-user-id="user.userID"
   @open="handleOpenMessage"
   @compose="handleCompose"
+  @delete="handlePermanentDeleteMessage"
 />
 
           <DashboardReviews
@@ -568,6 +569,28 @@ async function handleOpenMessage(msg) {
     if (!res.ok) throw new Error('Mark-read failed')
     const idx = messages.value.findIndex(m => m.messageID === msg.messageID)
     if (idx !== -1) messages.value[idx].read = 1
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+async function handlePermanentDeleteMessage(msg) {
+  try {
+    // If it's a demo message, just filter locally
+    if (DEMO_MSG_IDS.has(msg.messageID)) {
+      messages.value = messages.value.filter(m => m.messageID !== msg.messageID)
+      return
+    }
+
+    const res = await fetch(`${API}/messages.php`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: msg.id }),
+    })
+    if (!res.ok) throw new Error('Delete failed')
+    
+    // Remove from local state
+    messages.value = messages.value.filter(m => m.id !== msg.id)
   } catch (e) {
     loadError.value = e.message
   }

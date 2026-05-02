@@ -21,7 +21,7 @@
           <tr>
             <th>Booking ID</th>
             <th>Guest</th>
-            <th>{{ role === 'agency' ? 'Package' : 'Service' }}</th>
+            <th>Booked Item</th>
             <th>Date</th>
             <th>Amount</th>
             <th>Status</th>

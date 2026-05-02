@@ -80,8 +80,8 @@ defineEmits(['book', 'cancel', 'message'])
 
 <style scoped>
 .detail-sidebar {
-  position: sticky; top: 90px;
   display: flex; flex-direction: column; gap: 16px;
+  z-index: 10;
 }
 
 .detail-sidebar__card {

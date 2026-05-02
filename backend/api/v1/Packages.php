@@ -10,10 +10,14 @@ try {
     if ($method === 'GET') {
         if (isset($_GET['id'])) {
             $stmt = $pdo->prepare('
-                SELECT p.*, u.company_name AS agency_name
+                SELECT p.*, u.company_name AS agency_name,
+                       IFNULL(AVG(r.rating), 0) AS rating,
+                       COUNT(r.id) AS review_count
                 FROM packages p
                 LEFT JOIN users u ON u.id = p.agency_id
+                LEFT JOIN reviews r ON r.package_id = p.id
                 WHERE p.id = ?
+                GROUP BY p.id
             ');
             $stmt->execute([$_GET['id']]);
             $package = $stmt->fetch();
@@ -28,10 +32,12 @@ try {
         } elseif (isset($_GET['agency_id'])) {
             $stmt = $pdo->prepare('
                 SELECT p.*, u.company_name AS agency_name,
-                       COUNT(b.id) AS booking_count
+                       COUNT(DISTINCT b.id) AS booking_count,
+                       IFNULL(AVG(r.rating), 0) AS rating
                 FROM   packages p
                 LEFT   JOIN users u ON u.id = p.agency_id
                 LEFT   JOIN bookings b ON b.package_id = p.id
+                LEFT   JOIN reviews r ON r.package_id = p.id
                 WHERE  p.agency_id = ?
                 GROUP  BY p.id
                 ORDER  BY p.created_at DESC
@@ -42,10 +48,14 @@ try {
 
         } else {
             $stmt = $pdo->query('
-                SELECT p.*, u.company_name AS agency_name
+                SELECT p.*, u.company_name AS agency_name,
+                       IFNULL(AVG(r.rating), 0) AS rating,
+                       COUNT(r.id) AS review_count
                 FROM packages p
                 LEFT JOIN users u ON u.id = p.agency_id
+                LEFT JOIN reviews r ON r.package_id = p.id
                 WHERE p.is_active = 1
+                GROUP BY p.id
                 ORDER BY p.created_at DESC
             ');
             $packages = $stmt->fetchAll();

@@ -51,15 +51,17 @@ try {
     $stmt = $pdo->prepare('
         SELECT b.*,
                COALESCE(s.title, b.item_title) AS service_title,
+               COALESCE(o.title, b.item_title) AS offer_title,
                u.first_name AS guest_first,
                u.last_name  AS guest_last
         FROM   bookings b
-        JOIN   services s ON b.service_id = s.id
-        JOIN   users    u ON b.user_id    = u.id
-        WHERE  s.provider_id = ?
+        LEFT   JOIN services       s ON b.service_id = s.id
+        LEFT   JOIN special_offers o ON b.offer_id   = o.id
+        JOIN   users u ON b.user_id = u.id
+        WHERE  (s.provider_id = ? OR o.agency_id = ?)
         ORDER  BY b.created_at DESC
     ');
-    $stmt->execute([$_GET['provider_id']]);
+    $stmt->execute([$_GET['provider_id'], $_GET['provider_id']]);
 
         } else {
             http_response_code(400);
@@ -137,10 +139,10 @@ try {
             exit();
         }
 
-        $stmt = $pdo->prepare('DELETE FROM bookings WHERE id = ?');
+        $stmt = $pdo->prepare('UPDATE bookings SET status = "cancelled" WHERE id = ?');
         $stmt->execute([$data['id']]);
 
-        echo json_encode(["message" => "Booking deleted successfully"]);
+        echo json_encode(["message" => "Booking marked as cancelled"]);
 
     } else {
         http_response_code(405);

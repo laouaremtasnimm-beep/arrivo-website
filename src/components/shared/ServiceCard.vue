@@ -39,7 +39,7 @@
       <div class="svc-card__footer">
         <div class="svc-card__meta">
           <div class="svc-card__rating">
-            <span class="star">★</span> {{ item.rating }}
+            <span class="star">★</span> {{ Number(item.rating).toFixed(1) }}
             <span class="svc-card__reviews">({{ item.reviews }})</span>
           </div>
           <span

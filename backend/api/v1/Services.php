@@ -10,10 +10,14 @@ try {
     if ($method === 'GET') {
         if (isset($_GET['id'])) {
             $stmt = $pdo->prepare('
-                SELECT s.*, u.company_name AS provider_name
+                SELECT s.*, u.company_name AS provider_name,
+                       IFNULL(AVG(r.rating), 0) AS rating,
+                       COUNT(r.id) AS review_count
                 FROM services s
                 LEFT JOIN users u ON u.id = s.provider_id
+                LEFT JOIN reviews r ON r.service_id = s.id
                 WHERE s.id = ?
+                GROUP BY s.id
             ');
             $stmt->execute([$_GET['id']]);
             $service = $stmt->fetch();
@@ -27,9 +31,16 @@ try {
 
         } elseif (isset($_GET['provider_id'])) {
             $stmt = $pdo->prepare('
-                SELECT * FROM services
-                WHERE  provider_id = ?
-                ORDER  BY created_at DESC
+                SELECT s.*, u.company_name AS provider_name,
+                       COUNT(DISTINCT b.id) AS booking_count,
+                       IFNULL(AVG(r.rating), 0) AS rating
+                FROM   services s
+                LEFT   JOIN users u ON u.id = s.provider_id
+                LEFT   JOIN bookings b ON b.service_id = s.id
+                LEFT   JOIN reviews r ON r.service_id = s.id
+                WHERE  s.provider_id = ?
+                GROUP  BY s.id
+                ORDER  BY s.created_at DESC
             ');
             $stmt->execute([$_GET['provider_id']]);
             $services = $stmt->fetchAll();
@@ -37,10 +48,14 @@ try {
 
         } else {
             $stmt = $pdo->query('
-                SELECT s.*, u.company_name AS provider_name
+                SELECT s.*, u.company_name AS provider_name,
+                       IFNULL(AVG(r.rating), 0) AS rating,
+                       COUNT(r.id) AS review_count
                 FROM services s
                 LEFT JOIN users u ON u.id = s.provider_id
+                LEFT JOIN reviews r ON r.service_id = s.id
                 WHERE s.is_available = 1
+                GROUP BY s.id
                 ORDER BY s.created_at DESC
             ');
             $services = $stmt->fetchAll();

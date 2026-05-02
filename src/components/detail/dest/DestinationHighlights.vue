@@ -2,7 +2,7 @@
   <div class="dest-highlights">
 
     <!-- Quick facts strip -->
-    <div class="dest-facts">
+    <div class="dest-facts detail-card" v-if="facts?.length">
       <div class="dest-fact" v-for="f in facts" :key="f.label">
         <span class="dest-fact__icon">{{ f.icon }}</span>
         <div>
@@ -13,101 +13,161 @@
     </div>
 
     <!-- About -->
-    <div class="dest-section">
+    <div class="dest-section detail-card">
       <h3 class="dest-section__title">About {{ name }}</h3>
-      <p class="dest-section__text">{{ longDesc }}</p>
-    </div>
-
-    <!-- Highlights tags -->
-    <div class="dest-section">
-      <h3 class="dest-section__title">Highlights</h3>
-      <div class="dest-tags">
-        <span class="dest-tag" v-for="h in highlights" :key="h">{{ h }}</span>
+      <div class="dest-section__text">
+        <p v-if="longDesc.length > 350">
+          {{ longDesc.slice(0, 320) }}...
+          <button class="read-more-btn" @click="isModalOpen = true">Read more</button>
+        </p>
+        <p v-else>{{ longDesc }}</p>
+        
+        <p v-if="longDesc.length < 200" class="dest-section__text-secondary">
+          Experience the vibrant culture, rich history, and breathtaking landscapes that make this destination truly unique. Whether you're seeking adventure, relaxation, or culinary delights, you'll find an unforgettable journey waiting for you.
+        </p>
       </div>
     </div>
 
-    <!-- Things to do -->
-    <div class="dest-section">
-      <h3 class="dest-section__title">Top things to do</h3>
-      <div class="dest-things">
-        <div class="dest-thing" v-for="t in thingsToDo" :key="t.title">
-          <div class="dest-thing__icon">{{ t.icon }}</div>
-          <div>
-            <div class="dest-thing__title">{{ t.title }}</div>
-            <div class="dest-thing__desc">{{ t.desc }}</div>
+    <!-- ── Full Description Modal ── -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="isModalOpen" class="desc-modal-overlay" @click.self="isModalOpen = false">
+          <div class="desc-modal">
+            <div class="desc-modal__header">
+              <h3>About {{ name }}</h3>
+              <button class="desc-modal__close" @click="isModalOpen = false">✕</button>
+            </div>
+            <div class="desc-modal__content">
+              <p>{{ longDesc }}</p>
+              <p v-if="longDesc.length < 200" class="desc-modal__secondary">
+                Experience the vibrant culture, rich history, and breathtaking landscapes that make this destination truly unique. Whether you're seeking adventure, relaxation, or culinary delights, you'll find an unforgettable journey waiting for you.
+              </p>
+            </div>
           </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Highlights grid -->
+    <div class="dest-section detail-card" v-if="highlights?.length">
+      <h3 class="dest-section__title">Highlights</h3>
+      <div class="dest-highlights-grid">
+        <div class="highlight-card" v-for="h in highlights" :key="h">
+          <div class="highlight-card__icon">{{ getIcon(h) }}</div>
+          <div class="highlight-card__label">{{ h }}</div>
         </div>
       </div>
     </div>
 
-    <!-- Best time -->
-    <div class="dest-section dest-best-time">
-      <div class="dest-best-time__icon">🗓️</div>
-      <div>
-        <div class="dest-best-time__label">Best time to visit</div>
-        <div class="dest-best-time__value">{{ bestTime }}</div>
-      </div>
-    </div>
+
+
+
 
   </div>
 </template>
 
 <script setup>
+import { ref } from 'vue'
+
+const isModalOpen = ref(false)
 defineProps({
   name:        { type: String, required: true },
   longDesc:    { type: String, default: ''    },
   highlights:  { type: Array,  default: () => [] },
-  thingsToDo:  { type: Array,  default: () => [] },
+
   facts:       { type: Array,  default: () => [] },
   bestTime:    { type: String, default: ''    },
 })
+
+const iconMap = {
+  'sunsets': '🌅', 'volcanic beaches': '🌋', 'greek cuisine': '🥙',
+  'temples': '⛩️', 'tea ceremony': '🍵', 'bamboo forest': '🎋',
+  'souks': '🏺', 'riads': '🕌', 'desert day trips': '🐪',
+  'rice terraces': '🌾', 'surfing': '🏄', 'spiritual healing': '🧘',
+  'trekking': '🥾', 'glaciers': '🧊', 'wildlife': '🦅',
+  'boat trips': '🚤', 'hiking trails': '🥾', 'coastal villages': '🏘️',
+  'central park': '🌳', 'broadway': '🎭', 'food scene': '🍔',
+  'safari': '🚙', 'big five': '🦁', 'hot air balloon': '🎈',
+  'skiing': '⛷️', 'hiking': '🥾', 'scenic trains': '🚂',
+  'overwater villas': '🛖', 'snorkelling': '🤿', 'diving': '🤿',
+  'old town square': '🏰', 'castle district': '🏰', 'river cruises': '🛳️',
+  'jungle treks': '🌴', 'river boats': '🛶', 'wildlife spotting': '🦜'
+}
+
+function getIcon(h) {
+  const key = h.toLowerCase()
+  return iconMap[key] || '✨'
+}
 </script>
 
 <style scoped>
 /* Quick facts */
 .dest-facts {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px; margin-bottom: 36px;
+  gap: 12px;
 }
 .dest-fact {
-  background: var(--gray-50); border-radius: 12px; padding: 16px;
+  background: var(--white); border-radius: 12px; padding: 16px;
   display: flex; align-items: center; gap: 12px;
+  border: 1px solid var(--gray-200); box-shadow: var(--shadow-sm);
 }
 .dest-fact__icon  { font-size: 1.3rem; flex-shrink: 0; }
-.dest-fact__label { font-size: .72rem; color: var(--gray-400); font-weight: 500; margin-bottom: 3px; }
-.dest-fact__val   { font-size: .9rem; font-weight: 600; color: var(--indigo); }
+.dest-fact__label { font-size: .72rem; color: var(--gray-400); font-weight: 500; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+.dest-fact__val   { font-size: .95rem; font-weight: 700; color: var(--indigo); }
 
 /* Sections */
-.dest-section       { margin-bottom: 36px; }
+.dest-section       { }
 .dest-section__title{
-  font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 700;
-  color: var(--indigo); margin-bottom: 16px;
+  font-family: 'Fraunces', serif; font-size: 1.4rem; font-weight: 700;
+  color: var(--indigo); margin-bottom: 20px;
 }
-.dest-section__text { font-size: .95rem; color: var(--gray-600); line-height: 1.75; }
+.dest-section__text p { font-size: .98rem; color: var(--gray-600); line-height: 1.8; margin-bottom: 16px; }
+.dest-section__text-secondary { color: var(--gray-500); }
 
-/* Tags */
-.dest-tags { display: flex; flex-wrap: wrap; gap: 8px; }
-.dest-tag  {
-  background: rgba(46,196,182,.10); color: var(--teal-dk);
-  font-size: .82rem; font-weight: 700; padding: 6px 14px; border-radius: 50px;
+/* Highlights Grid */
+.dest-highlights-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.highlight-card {
+  background: var(--white); border: 1px solid var(--gray-200); border-radius: 16px;
+  padding: 16px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px;
+  box-shadow: var(--shadow-sm); transition: transform 0.3s ease, border-color 0.3s ease;
 }
+.highlight-card:hover { transform: translateY(-3px); border-color: var(--teal); box-shadow: var(--shadow-md); }
+.highlight-card__icon {
+  width: 40px; height: 40px; border-radius: 10px; background: var(--teal-lt);
+  display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+}
+.highlight-card__label { font-size: .88rem; font-weight: 700; color: var(--indigo); line-height: 1.2; }
 
-/* Things to do */
-.dest-things { display: flex; flex-direction: column; gap: 16px; }
-.dest-thing  { display: flex; align-items: flex-start; gap: 16px; }
-.dest-thing__icon {
-  width: 44px; height: 44px; border-radius: 12px; background: var(--sand);
-  display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0;
-}
-.dest-thing__title { font-weight: 700; font-size: .92rem; color: var(--indigo); margin-bottom: 4px; }
-.dest-thing__desc  { font-size: .84rem; color: var(--gray-600); line-height: 1.55; }
 
-/* Best time */
-.dest-best-time {
-  display: flex; align-items: center; gap: 16px;
-  background: var(--sand); border-radius: 14px; padding: 18px 20px;
+
+.read-more-btn {
+  background: none; border: none; padding: 0;
+  color: var(--coral); font-weight: 700; cursor: pointer;
+  margin-left: 5px; font-family: inherit; font-size: .95rem;
 }
-.dest-best-time__icon  { font-size: 1.6rem; }
-.dest-best-time__label { font-size: .78rem; color: var(--gray-600); font-weight: 500; }
-.dest-best-time__value { font-size: 1rem; font-weight: 700; color: var(--indigo); margin-top: 3px; }
+.read-more-btn:hover { text-decoration: underline; color: var(--coral-dk); }
+
+/* ── Modal Styles ── */
+.desc-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 2000;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.desc-modal {
+  background: var(--white); width: 100%; max-width: 650px;
+  max-height: 80vh; border-radius: 20px; overflow: hidden;
+  display: flex; flex-direction: column; box-shadow: var(--shadow-xl);
+}
+.desc-modal__header {
+  padding: 24px 32px; border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.desc-modal__header h3 { font-family: 'Fraunces', serif; font-size: 1.4rem; font-weight: 700; color: var(--indigo); }
+.desc-modal__close { background: none; border: none; font-size: 1.4rem; color: var(--gray-400); cursor: pointer; }
+.desc-modal__close:hover { color: var(--indigo); }
+.desc-modal__content { padding: 32px; overflow-y: auto; flex: 1; }
+.desc-modal__content p { font-size: 1rem; color: var(--gray-600); line-height: 1.8; margin-bottom: 16px; }
+.desc-modal__secondary { color: var(--gray-500); font-style: italic; }
+
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.3s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 </style>

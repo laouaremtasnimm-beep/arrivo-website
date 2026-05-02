@@ -83,7 +83,29 @@ a   { color:inherit; text-decoration:none; }
 .fade-enter-active,.fade-leave-active { transition:opacity .2s ease,transform .2s ease; }
 .fade-enter-from,.fade-leave-to       { opacity:0; transform:scale(.97); }
 
-@media (max-width:640px) {
+/* ── Detail Page Utilities ─────────────────── */
+.detail-card {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  padding: 32px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--gray-100);
+  margin-bottom: 32px; /* Consistent spacing between cards */
+  transition: box-shadow var(--transition);
+}
+.detail-card:hover { box-shadow: var(--shadow-md); }
+
+.sticky-sidebar {
+  position: sticky;
+  top: 92px; /* Header height + gap */
+  align-self: start;
+}
+
+@media (max-width: 640px) {
+  .detail-card { padding: 20px; margin-bottom: 24px; }
+}
+
+@media (max-width: 640px) {
   :root { --section-px:4%; --section-py:60px; }
   .section-header { flex-direction:column; align-items:flex-start; gap:14px; }
 }

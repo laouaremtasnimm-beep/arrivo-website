@@ -24,7 +24,7 @@
 
       <div class="pkg-card__meta">
         <span class="pkg-meta-item">📅 {{ item.duration }} days</span>
-        <span class="pkg-meta-item">⭐ {{ item.rating }}
+        <span class="pkg-meta-item">⭐ {{ Number(item.rating).toFixed(1) }}
           <span class="pkg-meta-reviews">({{ item.reviews }})</span>
         </span>
         <span class="pkg-meta-item" v-if="item.groupSize">👥 Max {{ item.groupSize }}</span>

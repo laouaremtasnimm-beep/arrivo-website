@@ -22,7 +22,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="svc in services" :key="svc.serviceID">
+          <tr v-for="svc in services" :key="svc.id">
             <td>
               <div class="svc-cell">
                 <div class="svc-icon">{{ svc.icon }}</div>
@@ -35,18 +35,18 @@
             <td><span class="type-badge">{{ svc.type }}</span></td>
             <td class="svc-price">${{ svc.price }}</td>
             <td>
-              <div class="svc-rating"><span class="star">★</span> {{ svc.rating }}</div>
+              <div class="svc-rating"><span class="star">★</span> {{ svc.rating ? Number(svc.rating).toFixed(1) : '0.0' }}</div>
             </td>
-            <td class="svc-bookings">{{ svc.bookings }}</td>
-            <td>
-              <button
-                class="avail-toggle"
-                :class="{ available: svc.availability }"
-                @click="$emit('toggle-availability', svc)"
-              >
-                {{ svc.availability ? '✓ Available' : '✕ Unavailable' }}
-              </button>
-            </td>
+             <td class="svc-bookings">{{ svc.booking_count || 0 }}</td>
+  <td>
+    <button
+      class="avail-toggle"
+      :class="{ available: Number(svc.is_available) === 1 }"   <!-- is_available not availability -->
+      @click="$emit('toggle-availability', svc)"
+    >
+      {{ Number(svc.is_available) === 1 ? '✓ Available' : '✕ Unavailable' }}
+    </button>
+  </td>
             <td>
               <div class="table-actions">
                 <button class="tbl-btn tbl-btn--edit"   @click="$emit('edit', svc)"   title="Edit">✏️</button>

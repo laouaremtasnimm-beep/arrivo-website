@@ -2,7 +2,7 @@
   <div class="overview">
 
     <!-- Stats -->
-    <StatsGrid :role="role" />
+    <StatsGrid :role="role" :bookings="bookings" :items="items" />
 
     <!-- Two-column: recent bookings + recent messages -->
     <div class="overview__cols">
@@ -112,6 +112,7 @@ const props = defineProps({
   role:     { type: String, required: true },
   bookings: { type: Array,  default: () => [] },
   messages: { type: Array,  default: () => [] },
+  items:    { type: Array,  default: () => [] },
 })
 
 defineEmits(['navigate', 'open-message'])

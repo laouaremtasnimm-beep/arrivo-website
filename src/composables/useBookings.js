@@ -93,8 +93,10 @@ export function useBookings() {
     }
 
     async function cancelBooking(id) {
-        const prev = [..._bookings.value]
-        _bookings.value = _bookings.value.filter(b => b.id !== id)
+        const b = _bookings.value.find(x => x.id === id)
+        const oldStatus = b?.status
+
+        if (b) b.status = 'cancelled'
 
         try {
             const res = await fetch(API, {
@@ -107,14 +109,14 @@ export function useBookings() {
             return { ok: true }
         } catch (e) {
             console.error('cancelBooking failed', e)
-            _bookings.value = prev
+            if (b) b.status = oldStatus
             return { ok: false, error: e.message }
         }
     }
 
     function isBooked(type, itemId) {
         return _bookings.value.some(b => {
-            if (b.booking_type !== type) return false
+            if (b.booking_type !== type || b.status === 'cancelled') return false
             if (type === 'package') return Number(b.package_id) === Number(itemId)
             if (type === 'service') return Number(b.service_id) === Number(itemId)
             if (type === 'destination') return Number(b.destination_id) === Number(itemId)
@@ -125,7 +127,7 @@ export function useBookings() {
 
     function getBookingId(type, itemId) {
         const b = _bookings.value.find(b => {
-            if (b.booking_type !== type) return false
+            if (b.booking_type !== type || b.status === 'cancelled') return false
             if (type === 'package') return Number(b.package_id) === Number(itemId)
             if (type === 'service') return Number(b.service_id) === Number(itemId)
             if (type === 'destination') return Number(b.destination_id) === Number(itemId)

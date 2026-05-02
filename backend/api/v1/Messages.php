@@ -98,6 +98,20 @@ try {
 
         echo json_encode(["message" => "Marked as read"]);
 
+    } elseif ($method === 'DELETE') {
+        $data = json_decode(file_get_contents('php://input'), true);
+
+        if (!isset($data['id'])) {
+            http_response_code(400);
+            echo json_encode(["error" => "Missing message id"]);
+            exit();
+        }
+
+        $stmt = $pdo->prepare('DELETE FROM messages WHERE id = ?');
+        $stmt->execute([$data['id']]);
+
+        echo json_encode(["message" => "Message deleted successfully"]);
+
     } else {
         http_response_code(405);
         echo json_encode(["error" => "Method not allowed"]);

@@ -1,12 +1,18 @@
 <template>
-  <div v-if="loading">Loading...</div>
-  <div class="detail-page" v-if="item">
+  <!-- Loading skeleton -->
+  <div class="pkg-loading" v-if="loading">
+    <NavBar />
+    <div class="pkg-loading__inner"><div class="pkg-spinner"></div><p>Loading package…</p></div>
+  </div>
+
+  <div class="pkg-detail" v-else-if="item">
     <NavBar />
 
-    <div class="detail-page__inner">
+    <div class="pkg-detail__inner">
       <DetailBreadcrumb parent-label="Packages" parent-path="/packages" :current="item.title" />
 
-      <div class="detail-page__hero-wrap">
+      <!-- Hero -->
+      <div class="pkg-detail__hero">
         <DetailHero
           :main-img="item.img"
           :gallery="item.gallery"
@@ -16,59 +22,78 @@
         />
       </div>
 
-      <div class="detail-page__title-row">
-        <div>
-          <div class="detail-page__type-tag">{{ item.type }}</div>
-          <h1 class="detail-page__title">{{ item.title }}</h1>
-          <div class="detail-page__subtitle">
-            by <strong>{{ item.agency }}</strong>
-            <span class="detail-page__dot">·</span>
-            {{ item.duration }} days
-            <span class="detail-page__dot">·</span>
-            <span class="star">★</span> {{ item.rating }}
-            <span class="detail-page__reviews">({{ item.reviews }} reviews)</span>
-            <span class="detail-page__spots" v-if="item.spots <= 5">
-              · 🔥 {{ item.spots }} spots left
+      <!-- Title Row -->
+      <div class="pkg-detail__title-row">
+        <div class="pkg-detail__title-left">
+          <div class="pkg-detail__badges">
+            <span class="pkg-badge pkg-badge--type">{{ item.type }}</span>
+            <span class="pkg-badge pkg-badge--duration">📅 {{ item.duration }} days</span>
+            <span class="pkg-badge pkg-badge--spots" v-if="item.spots <= 5">🔥 {{ item.spots }} spots left</span>
+            <span class="pkg-badge pkg-badge--booked" v-if="alreadyBooked">✓ Already booked</span>
+          </div>
+          <h1 class="pkg-detail__title">{{ item.title }}</h1>
+          <div class="pkg-detail__meta">
+            <span class="pkg-detail__agency">by <strong>{{ item.agency }}</strong></span>
+            <span class="pkg-detail__sep">·</span>
+            <span class="pkg-detail__rating">
+              <span class="pkg-detail__star">★</span>
+              {{ Number(item.rating).toFixed(1) }}
+              <span class="pkg-detail__rev-count">({{ item.reviews }} reviews)</span>
             </span>
-            <!-- Already booked badge -->
-            <span v-if="alreadyBooked" class="booked-badge">✓ Already booked</span>
           </div>
         </div>
       </div>
 
-      <div class="detail-page__body">
-        <div class="detail-page__content">
+      <!-- Two-column body -->
+      <div class="pkg-detail__body">
+        <div class="pkg-detail__content">
 
-          <div class="pkg-about">
+          <div class="pkg-detail__about detail-card">
             <h3 class="pkg-section-title">About this package</h3>
-            <p class="pkg-about__text">{{ item.longDesc }}</p>
+            <p v-if="item.longDesc?.length > 350" class="pkg-detail__about-text">
+              {{ item.longDesc.slice(0, 320) }}...
+              <button class="read-more-btn" @click="isAboutModalOpen = true">Read more</button>
+            </p>
+            <p v-else class="pkg-detail__about-text">{{ item.longDesc }}</p>
           </div>
 
+          <!-- ── Full Description Modal ── -->
+          <Teleport to="body">
+            <Transition name="modal-fade">
+              <div v-if="isAboutModalOpen" class="desc-modal-overlay" @click.self="isAboutModalOpen = false">
+                <div class="desc-modal">
+                  <div class="desc-modal__header">
+                    <h3>About this package</h3>
+                    <button class="desc-modal__close" @click="isAboutModalOpen = false">✕</button>
+                  </div>
+                  <div class="desc-modal__content">
+                    <p>{{ item.longDesc }}</p>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+          </Teleport>
+
           <PackageItinerary :itinerary="item.itinerary" />
-          <PackageInclusions :includes="item.includes" :excludes="item.excludes" />
+          <PackageInclusions class="detail-card" :includes="item.includes" :excludes="item.excludes" />
 
-          <div class="pkg-section-title" style="margin-bottom:16px">About the agency</div>
-          <EntityCard
-           :name="item.agency"
-  :bio="item.agencyBio"
-  :img="item.agencyImg"
-  :rating="item.agencyRating"
-  :reviews="item.agencyReviews"
-  :receiver-id="item.agency_id"   
-  entity-label="Agency"
-  @contact="handleContact"
-/>
+            <EntityCard
+              ref="entityCardRef"
+              :name="item.agency"
+              :bio="item.agencyBio"
+              :img="item.agencyImg"
+              :rating="item.agencyRating"
+              :reviews="item.agencyReviews"
+              :receiver-id="item.agency_id"
+              entity-label="Agency"
+              hide-card
+              @contact="handleContact"
+            />
 
-          <DetailReviews
-            :rating="item.rating"
-            :total-reviews="item.reviews"
-            :reviews="mockReviews"
-            item-type="package"
-            :item-id="item.id"
-          />
         </div>
 
         <DetailSidebar
+          class="sticky-sidebar"
           :price="item.price"
           price-label="per person"
           :rating="item.rating"
@@ -77,12 +102,21 @@
           :facts="item.facts"
           :cta-label="alreadyBooked ? 'Cancel Booking' : 'Book this package'"
           :cta-danger="alreadyBooked"
-          entity-label="agency"
+          entity-label="Contact Agency"
           @book="bookingOpen = true"
           @cancel="handleCancel"
           @message="handleContact"
         />
       </div>
+
+      <DetailReviews
+        :rating="item.rating"
+        :total-reviews="item.reviews"
+        :reviews="isDemo ? mockReviews : []"
+        item-type="package"
+        :item-id="item.id"
+        @stats-update="updateStats"
+      />
 
       <DetailMoreLike :items="moreLike" see-all-path="/packages" @select="goToPackage" />
     </div>
@@ -90,7 +124,7 @@
     <BookingModal v-model="bookingOpen" :pkg="item" @submit="handleBooking" />
   </div>
 
-  <div v-else-if="!loading" class="not-found">
+  <div v-else class="pkg-not-found">
     <h2>Package not found</h2>
     <RouterLink to="/packages" class="btn btn-coral">← Back to packages</RouterLink>
   </div>
@@ -118,25 +152,22 @@ import BookingModal       from '@/components/home/BookingModal.vue'
 const route  = useRoute()
 const router = useRouter()
 
-const { isSaved, toggle }             = useWishlist()
-const { user, isLoggedIn }            = useAuth()
+const { isSaved, toggle } = useWishlist()
+const { user, isLoggedIn } = useAuth()
 const { isBooked, createBooking, fetchBookings, loaded, getBookingId, cancelBooking } = useBookings()
 
-const item    = ref(null)
+const item = ref(null)
 const loading = ref(true)
 const moreLike = ref([])
 const bookingOpen = ref(false)
+const isAboutModalOpen = ref(false)
 
 const API = '/arrivo-website/backend/api/v1'
-
-
 
 async function loadItem(id) {
   window.scrollTo({ top: 0, behavior: 'smooth' })
   loading.value = true
-  item.value    = null
-  // inside loadItem, right after `item.value = demo ? ...`
-console.log('agency_id on item:', item.value?.agency_id)
+  item.value = null
   moreLike.value = []
   id = Number(id)
 
@@ -145,60 +176,80 @@ console.log('agency_id on item:', item.value?.agency_id)
     if (res.ok) {
       const data = await res.json()
       if (data.package) {
-        console.log('raw package from API:', data.package)
-console.log('agency_id value:', data.package?.agency_id)
-        const p      = data.package
+        const p = data.package
         const dbItem = {
           agency_id: p.agency_id,
           id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency',
           img: p.img_url || p.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
           type: p.type, duration: p.duration_days,
-          rating: Number(p.rating || 4.5), reviews: Number(p.review_count || 0),
+          rating: Number(p.rating ?? 0), reviews: Number(p.review_count || 0),
           spots: Number(p.spots_available || 0), price: Number(p.price || 0),
           longDesc: p.long_desc || p.description || '',
           includes:  p.includes  && p.includes  !== 'null' ? JSON.parse(p.includes)  : [],
           excludes:  p.excludes  && p.excludes  !== 'null' ? JSON.parse(p.excludes)  : [],
           itinerary: p.itinerary && p.itinerary !== 'null' ? JSON.parse(p.itinerary) : [],
         }
-       const demo = packages.find(x => x.id === id)
-item.value = demo ? { ...dbItem, ...demo, agency_id: dbItem.agency_id } : dbItem
+        const demo = packages.find(x => x.id === id)
+        if (demo) {
+          // Merge: demo provides static assets, but DB provides real-time stats
+          item.value = { 
+            ...dbItem, 
+            ...demo, 
+            rating: dbItem.rating > 0 ? dbItem.rating : demo.rating,
+            reviews: dbItem.review_count > 0 ? dbItem.review_count : demo.reviews,
+            agency_id: dbItem.agency_id 
+          }
+        } else {
+          item.value = dbItem
+        }
       }
     }
   } catch (e) {
     console.error('Failed to fetch package from DB:', e)
   }
 
+  // Fallback to static data if DB fails
   if (!item.value) {
     const mockP = packages.find(p => p.id === id)
     if (mockP) item.value = { ...mockP, longDesc: mockP.desc, reviews: Number(mockP.reviews), rating: Number(mockP.rating) }
   }
 
+  // Load "More Like This"
   try {
-    const allRes  = await fetch(`${API}/packages.php`)
+    const allRes = await fetch(`${API}/packages.php`)
     const allData = await allRes.json()
-    const dbRows  = allData.packages || []
+    const dbRows = allData.packages || []
     const demoTitles = new Set(packages.map(p => p.title))
     const newOnly = dbRows.filter(p => !demoTitles.has(p.title)).map(p => ({
       id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency',
-      img: p.img_url, type: p.type, duration: p.duration_days,
+      img: p.img_url || p.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
+      type: p.type, duration: p.duration_days,
       rating: Number(p.rating), reviews: Number(p.review_count),
       spots: Number(p.spots_available), price: Number(p.price)
     }))
     const allItems = [...packages, ...newOnly]
     if (item.value) {
-      moreLike.value = allItems.filter(x => x.id !== item.value.id && x.type === item.value.type).slice(0, 6)
+      moreLike.value = allItems
+        .filter(x => String(x.id) !== String(item.value.id) && x.type === item.value.type)
+        .slice(0, 6)
     }
   } catch (e) { console.error(e) }
 
   loading.value = false
 }
 
-
+// FIXED: Properly closed onMounted
 onMounted(() => {
   if (isLoggedIn.value && !loaded.value) fetchBookings(user.value)
   loadItem(route.params.id)
 })
 watch(() => route.params.id, (newId) => { if (newId) loadItem(newId) })
+
+// FIXED: Computed properties moved outside of onMounted
+const isDemo = computed(() => {
+  if (!item.value) return false
+  return packages.some(p => p.id === item.value.id)
+})
 
 const isSavedVal    = computed(() => item.value ? isSaved.value('package', item.value.id) : false)
 const alreadyBooked = computed(() => item.value ? isBooked('package', item.value.id) : false)
@@ -209,8 +260,14 @@ function handleToggleWishlist() {
   if (wasAdded) router.push('/wishlist')
 }
 
+const entityCardRef = ref(null)
+
 function goToPackage(pkg) { router.push(`/packages/${pkg.id}`) }
-function handleContact()  { console.log('Contact agency') }
+function handleContact() {
+  if (entityCardRef.value) {
+    entityCardRef.value.modalOpen = true
+  }
+}
 
 async function handleBooking(payload) {
   if (!isLoggedIn.value) { alert('Please log in to book.'); return }
@@ -245,32 +302,104 @@ async function handleCancel() {
 }
 
 const mockReviews = [
-  { id:1, name:'Amelia R.',  location:'London, UK',      rating:5, date:'May 2025', text:'The entire package was flawlessly organised. The chalet was stunning and the ski instructor was brilliant. Worth every penny.' },
-  { id:2, name:'Thomas K.',  location:'Munich, Germany', rating:5, date:'Feb 2025', text:"Best ski holiday I've ever had. The Zermatt day trip alone was worth the price. The off-piste guide knew the mountain perfectly." },
-  { id:3, name:'Maria S.',   location:'Rome, Italy',     rating:4, date:'Jan 2025', text:'Excellent organisation and beautiful location. The food was outstanding. Slightly more free time would have been nice but overall brilliant.' },
-  { id:4, name:'David C.',   location:'New York, USA',   rating:5, date:'Mar 2025', text:'Genuinely life-changing experience. The Swiss Alps in winter are something everyone should see. The team was professional and warm.' },
+  { id:1, name:'Amelia R.',  location:'London, UK',      rating:5, date:'May 2025', text:'The entire package was flawlessly organised.' },
+  { id:2, name:'Thomas K.',  location:'Munich, Germany', rating:5, date:'Feb 2025', text:"Best ski holiday I've ever had." },
 ]
+function updateStats(stats) {
+  if (item.value) {
+    item.value.rating = stats.rating
+    item.value.reviews = stats.count
+  }
+}
 </script>
 
 <style scoped>
-.detail-page { min-height: 100vh; background: var(--gray-50); padding-top: 72px; }
-.detail-page__inner { max-width: 1200px; margin: 0 auto; padding: 0 5% 80px; }
-.detail-page__hero-wrap { margin: 24px 0 32px; }
-.detail-page__title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 40px; flex-wrap: wrap; }
-.detail-page__type-tag  { display: inline-block; background: var(--teal-lt); color: var(--teal-dk); font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; padding: 4px 12px; border-radius: 50px; margin-bottom: 10px; }
-.detail-page__title     { font-family: 'Fraunces', serif; font-size: clamp(1.8rem, 3.5vw, 2.8rem); font-weight: 700; color: var(--indigo); margin-bottom: 8px; }
-.detail-page__subtitle  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .92rem; color: var(--gray-600); }
-.detail-page__dot { color: var(--gray-200); }
-.detail-page__reviews { color: var(--gray-400); }
-.detail-page__spots { color: var(--coral); font-weight: 600; }
-.booked-badge { background: rgba(39,174,96,.12); color: #1a7a45; font-size: .78rem; font-weight: 700; padding: 3px 12px; border-radius: 50px; border: 1px solid rgba(39,174,96,.25); }
-.detail-page__body    { display: grid; grid-template-columns: 1fr 360px; gap: 48px; align-items: flex-start; }
-.detail-page__content { min-width: 0; }
-.pkg-about { margin-bottom: 36px; }
-.pkg-section-title { font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 700; color: var(--indigo); margin-bottom: 16px; }
-.pkg-about__text { font-size: .95rem; color: var(--gray-600); line-height: 1.75; }
-.not-found { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
-.not-found h2 { font-family: 'Fraunces', serif; font-size: 1.8rem; }
-@media (max-width: 900px) { .detail-page__body { grid-template-columns: 1fr; } }
-@media (max-width: 640px) { .detail-page__inner { padding: 0 4% 60px; } }
+/* ─── Page shell ─────────────────────────────────── */
+.pkg-detail { min-height: 100vh; background: var(--gray-50); padding-top: 72px; }
+.pkg-detail__inner { max-width: 1240px; margin: 0 auto; padding: 0 5% 100px; }
+
+/* ─── Loading ─────────────────────────────────────── */
+.pkg-loading { min-height: 100vh; background: var(--gray-50); }
+.pkg-loading__inner { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; min-height: 60vh; color: var(--gray-400); }
+.pkg-spinner { width: 36px; height: 36px; border: 3px solid var(--gray-200); border-top-color: var(--coral); border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ─── Hero ───────────────────────────────────────── */
+.pkg-detail__hero { margin: 24px 0 0; }
+
+/* ─── Title Row ──────────────────────────────────── */
+.pkg-detail__title-row { margin: 28px 0 36px; }
+.pkg-detail__badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.pkg-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: .74rem; font-weight: 700; padding: 5px 13px;
+  border-radius: 50px; font-family: 'DM Sans', sans-serif;
+}
+.pkg-badge--type    { background: rgba(46,196,182,.12); color: var(--teal); }
+.pkg-badge--duration{ background: rgba(99,102,241,.09); color: var(--indigo); }
+.pkg-badge--spots   { background: rgba(255,90,95,.1);   color: var(--coral); }
+.pkg-badge--booked  { background: rgba(39,174,96,.1);   color: #1a7a45; }
+
+.pkg-detail__title {
+  font-family: 'Fraunces', serif;
+  font-size: clamp(1.9rem, 3.5vw, 2.8rem);
+  font-weight: 700; color: var(--indigo);
+  margin: 0 0 12px; line-height: 1.15;
+}
+.pkg-detail__meta {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; font-size: .9rem; color: var(--gray-600);
+}
+.pkg-detail__sep { color: var(--gray-300); }
+.pkg-detail__agency strong { color: var(--indigo); }
+.pkg-detail__rating { display: flex; align-items: center; gap: 4px; font-weight: 600; color: var(--indigo); }
+.pkg-detail__star { color: #FFB400; }
+.pkg-detail__rev-count { color: var(--gray-400); font-weight: 400; }
+
+/* ─── Two-column body ──────────────────────────────── */
+.pkg-detail__body { display: grid; grid-template-columns: 1fr 360px; gap: 40px; align-items: start; }
+.pkg-detail__content { min-width: 0; }
+
+/* ─── About ──────────────────────────────────────── */
+.pkg-detail__about-text { font-size: .98rem; color: var(--gray-600); line-height: 1.8; }
+
+/* ─── Section titles ──────────────────────────────── */
+.pkg-section-title { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; color: var(--indigo); margin-bottom: 24px; }
+
+/* ─── Not found ──────────────────────────────────── */
+.pkg-not-found { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; }
+.pkg-not-found h2 { font-family: 'Fraunces', serif; font-size: 1.8rem; }
+
+/* ─── Responsive ──────────────────────────────────── */
+@media (max-width: 960px) { .pkg-detail__body { grid-template-columns: 1fr; } }
+@media (max-width: 640px)  { .pkg-detail__inner { padding: 0 4% 60px; } }
+.read-more-btn {
+  background: none; border: none; padding: 0;
+  color: var(--coral); font-weight: 700; cursor: pointer;
+  margin-left: 5px; font-family: inherit; font-size: .95rem;
+}
+.read-more-btn:hover { text-decoration: underline; color: var(--coral-dk); }
+
+/* ── Modal Styles ── */
+.desc-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 2000;
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.desc-modal {
+  background: var(--white); width: 100%; max-width: 650px;
+  max-height: 80vh; border-radius: 20px; overflow: hidden;
+  display: flex; flex-direction: column; box-shadow: var(--shadow-xl);
+}
+.desc-modal__header {
+  padding: 24px 32px; border-bottom: 1px solid var(--gray-100);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.desc-modal__header h3 { font-family: 'Fraunces', serif; font-size: 1.4rem; font-weight: 700; color: var(--indigo); }
+.desc-modal__close { background: none; border: none; font-size: 1.4rem; color: var(--gray-400); cursor: pointer; }
+.desc-modal__close:hover { color: var(--indigo); }
+.desc-modal__content { padding: 32px; overflow-y: auto; flex: 1; }
+.desc-modal__content p { font-size: 1rem; color: var(--gray-600); line-height: 1.8; margin-bottom: 16px; }
+
+.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.3s ease; }
+.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 </style>

@@ -39,6 +39,7 @@
             :role="user.role"
             :bookings="bookings"
             :messages="messages"
+            :items="isAgency ? packages : services"
             @navigate="setSection"
             @open-message="handleOpenMessage"
           />
@@ -70,6 +71,7 @@
             :current-user-id="user.userID ? parseInt(user.userID) : null"
             @open="handleOpenMessage"
             @compose="handleCompose"
+            @delete="handlePermanentDeleteMessage"
           />
 
           <DashboardReviews
@@ -216,6 +218,9 @@ async function fetchPackages() {
   try {
     const res  = await fetch(`${API}/packages.php?agency_id=${user.value.userID}`)
     const data = await res.json()
+
+    console.log("PACKAGES FROM API:", data.packages) // ✅ AFTER
+
     if (!res.ok) throw new Error(data.error || 'Failed to load packages')
     packages.value = data.packages ?? []
   } catch (e) { loadError.value = e.message }
@@ -301,14 +306,10 @@ async function handleSavePackage(payload) {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Save failed')
-    if (isNew) {
-      packages.value.unshift({ ...payload, id: data.package_id })
-      toggleWishlist('package', data.package_id) // Add to wishlist
-    } else {
-      const idx = packages.value.findIndex(p => p.id === payload.id)
-      if (idx !== -1) packages.value[idx] = payload
-    }
-  } catch (e) { loadError.value = e.message }
+    await fetchPackages()   // ← re-fetch instead of optimistic update
+  } catch (e) {
+    loadError.value = e.message
+  }
 }
 
 async function handleDeletePackage(pkg) {
@@ -320,8 +321,26 @@ async function handleDeletePackage(pkg) {
       body: JSON.stringify({ id: pkg.id }),
     })
     if (!res.ok) throw new Error('Delete failed')
-    packages.value = packages.value.filter(p => p.id !== pkg.id)
-  } catch (e) { loadError.value = e.message }
+    await fetchPackages()   // ← re-fetch
+  } catch (e) {
+    loadError.value = e.message
+  }
+}
+
+async function handleSaveService(payload) {
+  try {
+    const isNew = !payload.id
+    const res = await fetch(`${API}/services.php`, {
+      method: isNew ? 'POST' : 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(isNew ? { ...payload, provider_id: user.value.userID } : payload),
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Save failed')
+    await fetchServices()   // ← re-fetch
+  } catch (e) {
+    loadError.value = e.message
+  }
 }
 
 // ── Message handlers ──────────────────────────────────────────────────────
@@ -335,6 +354,18 @@ async function handleOpenMessage(msg) {
     if (!res.ok) throw new Error('Mark-read failed')
     const idx = messages.value.findIndex(m => m.id === msg.id)
     if (idx !== -1) messages.value[idx].is_read = 1
+  } catch (e) { loadError.value = e.message }
+}
+
+async function handlePermanentDeleteMessage(msg) {
+  try {
+    const res = await fetch(`${API}/messages.php`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: msg.id }),
+    })
+    if (!res.ok) throw new Error('Delete failed')
+    messages.value = messages.value.filter(m => m.id !== msg.id)
   } catch (e) { loadError.value = e.message }
 }
 

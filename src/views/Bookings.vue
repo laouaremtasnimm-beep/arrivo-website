@@ -147,6 +147,12 @@ const tabs = [
   { key: 'offer',       label: 'Offers',       icon: '🏷️' },
 ]
 
+const statuses = [
+  { value: 'all',       label: 'All status' },
+  { value: 'confirmed', label: 'Booked'     },
+  { value: 'cancelled', label: 'Cancelled'  },
+]
+
 
 
 function tabCount(key) {

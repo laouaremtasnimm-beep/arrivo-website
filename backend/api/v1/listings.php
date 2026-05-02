@@ -9,8 +9,15 @@ $method = $_SERVER['REQUEST_METHOD'];
 try {
     if ($method === 'GET') {
         if (isset($_GET['id'])) {
-            // Fetch a single listing by ID (using destinations table)
-            $stmt = $pdo->prepare('SELECT id, name, price_from AS price, img_url AS image FROM destinations WHERE id = ?');
+            $stmt = $pdo->prepare('
+                SELECT d.id, d.name, d.price_from AS price, d.img_url AS image,
+                       IFNULL(AVG(r.rating), 0) AS rating,
+                       COUNT(r.id) AS review_count
+                FROM destinations d
+                LEFT JOIN reviews r ON r.destination_id = d.id
+                WHERE d.id = ?
+                GROUP BY d.id
+            ');
             $stmt->execute([$_GET['id']]);
             $listing = $stmt->fetch();
             
@@ -21,8 +28,14 @@ try {
                 echo json_encode(["error" => "Listing not found"]);
             }
         } else {
-            // Fetch all listings (using destinations table)
-            $stmt = $pdo->query('SELECT id, name, price_from AS price, img_url AS image FROM destinations');
+            $stmt = $pdo->query('
+                SELECT d.id, d.name, d.price_from AS price, d.img_url AS image,
+                       IFNULL(AVG(r.rating), 0) AS rating,
+                       COUNT(r.id) AS review_count
+                FROM destinations d
+                LEFT JOIN reviews r ON r.destination_id = d.id
+                GROUP BY d.id
+            ');
             $listings = $stmt->fetchAll();
             echo json_encode(["listings" => $listings]);
         }
