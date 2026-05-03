@@ -52,6 +52,20 @@ try {
             $pkgStmt->execute([$_GET['id']]);
             $offer['packages'] = $pkgStmt->fetchAll();
 
+            /* Fetch linked service if any */
+            $offer['services'] = [];
+            if (!empty($offer['service_id'])) {
+                $svcStmt = $pdo->prepare('
+                    SELECT s.*, u.company_name AS provider_name
+                    FROM   services s
+                    LEFT JOIN users u ON u.id = s.provider_id
+                    WHERE  s.id = ?
+                ');
+                $svcStmt->execute([$offer['service_id']]);
+                $svc = $svcStmt->fetch();
+                if ($svc) $offer['services'] = [$svc];
+            }
+
             echo json_encode(['offer' => $offer]);
 
         } elseif (isset($_GET['agency_id'])) {
@@ -98,8 +112,8 @@ try {
             $stmt = $pdo->prepare('
                 INSERT INTO special_offers
                     (agency_id, title, discount_pct, start_date, end_date,
-                     description, type, offer_type, is_active, source, includes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+                     description, type, offer_type, is_active, source, includes, service_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)
             ');
             $stmt->execute([
                 $data['agency_id'],
@@ -112,6 +126,7 @@ try {
                 $offerType,
                 $data['source'] ?? 'manual',
                 isset($data['includes']) ? json_encode($data['includes']) : null,
+                !empty($data['serviceId']) ? (int)$data['serviceId'] : null,
             ]);
             $offerId = (int) $pdo->lastInsertId();
 
@@ -186,7 +201,8 @@ try {
                     type         = ?,
                     offer_type   = ?,
                     is_active    = ?,
-                    includes     = ?
+                    includes     = ?,
+                    service_id   = ?
                 WHERE id = ?
             ');
             $stmt->execute([
@@ -199,6 +215,7 @@ try {
                 $offerType,
                 $data['is_active'] ?? 1,
                 isset($data['includes']) ? json_encode($data['includes']) : null,
+                !empty($data['serviceId']) ? (int)$data['serviceId'] : null,
                 $offerId,
             ]);
 

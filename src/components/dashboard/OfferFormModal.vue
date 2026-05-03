@@ -607,7 +607,7 @@ async function saveNewPackage() {
         itemType:        'package',
       }
       agencyPackages.value.unshift(created)
-      form.value.selectedPackageIds.push(data.package_id)
+      form.value.selectedPackageIds = [data.package_id]
 
       // Auto-fill offer fields from the new package's offer settings
       if (!form.value.title)    form.value.title    = newPkg.value.title

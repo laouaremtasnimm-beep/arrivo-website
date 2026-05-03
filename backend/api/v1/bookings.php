@@ -54,10 +54,11 @@ try {
         LEFT   JOIN packages       p ON b.package_id = p.id
         LEFT   JOIN special_offers o ON b.offer_id   = o.id
         JOIN   users u ON b.user_id = u.id
-        WHERE  (p.agency_id = ? OR o.agency_id = ?)
+        JOIN   users owner ON (p.agency_id = owner.id OR o.agency_id = owner.id)
+        WHERE  owner.id = ? AND owner.role = "agency"
         ORDER  BY b.created_at DESC
     ');
-    $stmt->execute([$_GET['agency_id'], $_GET['agency_id']]);
+    $stmt->execute([$_GET['agency_id']]);
 
 } elseif (isset($_GET['provider_id'])) {
     $stmt = $pdo->prepare('
@@ -74,10 +75,11 @@ try {
         LEFT   JOIN services       s ON b.service_id = s.id
         LEFT   JOIN special_offers o ON b.offer_id   = o.id
         JOIN   users u ON b.user_id = u.id
-        WHERE  (s.provider_id = ? OR o.agency_id = ?)
+        JOIN   users owner ON (s.provider_id = owner.id OR o.agency_id = owner.id)
+        WHERE  owner.id = ? AND owner.role = "provider"
         ORDER  BY b.created_at DESC
     ');
-    $stmt->execute([$_GET['provider_id'], $_GET['provider_id']]);
+    $stmt->execute([$_GET['provider_id']]);
 
         } else {
             http_response_code(400);
@@ -158,10 +160,16 @@ if (!empty($data['package_id'])) {
     $ownerId   = $s->fetchColumn();
     $ownerRole = 'agency';
 } elseif (!empty($data['offer_id'])) {
-    $s = $pdo->prepare('SELECT agency_id FROM special_offers WHERE id = ?');
+    $s = $pdo->prepare('
+        SELECT o.agency_id, u.role 
+        FROM special_offers o
+        JOIN users u ON o.agency_id = u.id
+        WHERE o.id = ?
+    ');
     $s->execute([$data['offer_id']]);
-    $ownerId   = $s->fetchColumn();
-    $ownerRole = 'agency';
+    $row = $s->fetch();
+    $ownerId   = $row['agency_id'] ?? null;
+    $ownerRole = $row['role']      ?? null;
 } elseif (!empty($data['service_id'])) {
     $s = $pdo->prepare('SELECT provider_id FROM services WHERE id = ?');
     $s->execute([$data['service_id']]);
@@ -225,10 +233,16 @@ echo json_encode([
                 $ownerId = $s2->fetchColumn();
                 $ownerRole = 'provider';
             } elseif ($b['offer_id']) {
-                $s2 = $pdo->prepare('SELECT agency_id FROM special_offers WHERE id = ?');
+                $s2 = $pdo->prepare('
+                    SELECT o.agency_id, u.role 
+                    FROM special_offers o
+                    JOIN users u ON o.agency_id = u.id
+                    WHERE o.id = ?
+                ');
                 $s2->execute([$b['offer_id']]);
-                $ownerId = $s2->fetchColumn();
-                $ownerRole = 'agency';
+                $row = $s2->fetch();
+                $ownerId   = $row['agency_id'] ?? null;
+                $ownerRole = $row['role']      ?? null;
             }
         }
 

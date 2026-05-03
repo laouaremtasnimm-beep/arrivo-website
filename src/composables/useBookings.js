@@ -156,7 +156,7 @@ export function useBookings() {
         return _bookings.value.some(b => {
             if (b.status === 'cancelled') return false
             
-            // Direct match
+            // 1. Direct match
             if (b.booking_type === type) {
                 if (type === 'package'     && Number(b.package_id)     === Number(itemId)) return true
                 if (type === 'service'     && Number(b.service_id)     === Number(itemId)) return true
@@ -164,16 +164,15 @@ export function useBookings() {
                 if (type === 'offer'       && Number(b.offer_id)       === Number(itemId)) return true
             }
             
-            // Cross-match (Package/Service/Dest <-> Offer)
-            if (linkedId) {
-                // If checking base type, see if booked as offer
-                if (b.booking_type === 'offer' && Number(b.offer_id) === Number(linkedId)) return true
-                // If checking offer, see if booked as base type
-                if (type === 'offer') {
-                    if (b.booking_type === 'package'     && Number(b.package_id)     === Number(linkedId)) return true
-                    if (b.booking_type === 'service'     && Number(b.service_id)     === Number(linkedId)) return true
-                    if (b.booking_type === 'destination' && Number(b.destination_id) === Number(linkedId)) return true
-                }
+            // 2. Cross-match: If we are checking a base item (service/package), see if it was booked via an offer
+            if (linkedId && b.booking_type === 'offer' && Number(b.offer_id) === Number(linkedId)) {
+                return true
+            }
+
+            // 3. Cross-match: If we are checking an offer, see if its linked base item was booked directly
+            if (type === 'offer' && linkedId) {
+                if (b.booking_type === 'package' && Number(b.package_id) === Number(linkedId)) return true
+                if (b.booking_type === 'service' && Number(b.service_id) === Number(linkedId)) return true
             }
             
             return false
@@ -184,24 +183,18 @@ export function useBookings() {
         const b = _bookings.value.find(b => {
             if (b.status === 'cancelled') return false
             
-            // Direct match
             if (b.booking_type === type) {
                 if (type === 'package'     && Number(b.package_id)     === Number(itemId)) return true
                 if (type === 'service'     && Number(b.service_id)     === Number(itemId)) return true
                 if (type === 'destination' && Number(b.destination_id) === Number(itemId)) return true
                 if (type === 'offer'       && Number(b.offer_id)       === Number(itemId)) return true
             }
-            
-            // Cross-match
-            if (linkedId) {
-                // If checking base type, see if booked as offer
-                if (b.booking_type === 'offer' && Number(b.offer_id) === Number(linkedId)) return true
-                // If checking offer, see if booked as base type
-                if (type === 'offer') {
-                    if (b.booking_type === 'package'     && Number(b.package_id)     === Number(linkedId)) return true
-                    if (b.booking_type === 'service'     && Number(b.service_id)     === Number(linkedId)) return true
-                    if (b.booking_type === 'destination' && Number(b.destination_id) === Number(linkedId)) return true
-                }
+
+            if (linkedId && b.booking_type === 'offer' && Number(b.offer_id) === Number(linkedId)) return true
+
+            if (type === 'offer' && linkedId) {
+                if (b.booking_type === 'package' && Number(b.package_id) === Number(linkedId)) return true
+                if (b.booking_type === 'service' && Number(b.service_id) === Number(linkedId)) return true
             }
             
             return false

@@ -102,13 +102,18 @@
             <button 
               class="btn-book" 
               :class="{
-                'btn-outline-teal': alreadyBooked && !isOwner,
+                'btn-booked': alreadyBooked && !isOwner,
                 'btn-teal': !alreadyBooked && !isOwner,
                 'btn-manage': isOwner
               }"
               @click="isOwner ? handleManage() : (alreadyBooked ? handleCancel() : bookDeal())"
             >
-              {{ isOwner ? 'Manage Offer' : (alreadyBooked ? 'Cancel Offer' : 'Grab this Deal') }}
+              <template v-if="alreadyBooked && !isOwner">
+                <span class="btn-icon">✓</span> Booked
+              </template>
+              <template v-else>
+                {{ isOwner ? 'Manage Offer' : 'Grab this Deal' }}
+              </template>
             </button>
           </div>
 
@@ -153,8 +158,12 @@ const alreadyBooked = computed(() => {
   if (!props.offer) return false
   const offerId = props.offer.offerID || props.offer.id
   const offBooked = isBooked('offer', offerId)
-  const anyPkgBooked = matchedPackages.value.some(p => isBooked('package', p.id))
-  return offBooked || anyPkgBooked
+  
+  // Check if any specific linked package or service was booked (either directly or via this offer)
+  const anyPkgBooked = matchedPackages.value.some(p => isBooked('package', p.id, offerId))
+  const anySvcBooked = matchedServices.value.some(s => isBooked('service', s.id, offerId))
+  
+  return offBooked || anyPkgBooked || anySvcBooked
 })
 
 import { calculateDays } from '@/utils/dateUtils.js'
@@ -183,28 +192,38 @@ const heroStyle = computed(() => {
 })
 
 const exactPackages   = ref([])
+const exactServices   = ref([])
 
 import { watch } from 'vue'
 
 watch(() => props.modelValue, async (isOpen) => {
   if (isOpen && props.offer) {
     exactPackages.value = []
+    exactServices.value = []
     const id = props.offer.offerID || props.offer.id
     if (id) {
       try {
         const res = await fetch(`/arrivo-website/backend/api/v1/offers.php?id=${id}`)
         const data = await res.json()
-        if (data.offer && data.offer.packages) {
-          exactPackages.value = data.offer.packages.map(p => ({
-             ...p,
-             img: p.img_url || p.img,
-             duration: p.duration_days || p.duration,
-             rating: p.rating || 4.5,
-             reviews: p.review_count || 0
-          }))
+        if (data.offer) {
+          if (data.offer.packages) {
+            exactPackages.value = data.offer.packages.map(p => ({
+               ...p,
+               img: p.img_url || p.img,
+               duration: p.duration_days || p.duration,
+               rating: p.rating || 4.5,
+               reviews: p.review_count || 0
+            }))
+          }
+          if (data.offer.services) {
+            exactServices.value = data.offer.services.map(s => ({
+              ...s,
+              provider: s.provider_name || s.provider
+            }))
+          }
         }
       } catch (e) {
-        console.error('Failed to fetch exact offer packages', e)
+        console.error('Failed to fetch exact offer details', e)
       }
     }
   }
@@ -228,6 +247,8 @@ const matchedPackages = computed(() => {
 
 // ── Match services similarly ──────────────────────────────────────────────
 const matchedServices = computed(() => {
+  if (exactServices.value.length > 0) return exactServices.value
+  
   if (!props.offer) return []
   const keywords = offerKeywords(props.offer.title)
   const svcs = allServices.value || []
@@ -269,8 +290,10 @@ function browsePackages() { close(); router.push('/packages') }
 function browseServices()  { close(); router.push('/services') }
 
 function bookDeal() {
-  // Book with the first matched package, or a synthetic offer object
-  bookingTarget.value = matchedPackages.value[0] ?? {
+  // Prioritize the specific item linked to this offer
+  const target = exactPackages.value[0] || exactServices.value[0] || matchedPackages.value[0] || matchedServices.value[0];
+  
+  bookingTarget.value = target ?? {
     title:    props.offer?.title,
     img:      null,
     duration: null,
@@ -411,14 +434,22 @@ function close() { emit('update:modelValue', false) }
   gap: 12px;
 }
 
-.btn-book.btn-outline-teal {
-  background: transparent;
-  border: 1.5px solid var(--teal);
-  color: var(--teal);
+.btn-book.btn-booked {
+  background: var(--gray-100);
+  border: 1.5px solid var(--gray-200);
+  color: var(--gray-400);
+  cursor: default;
 }
-.btn-book.btn-outline-teal:hover {
-  background: var(--teal-lt);
+.btn-book.btn-booked:hover {
+  background: rgba(255,90,95,.08);
+  border-color: var(--coral);
+  color: var(--coral);
+  cursor: pointer;
 }
+.btn-book.btn-booked:hover .btn-icon {
+  content: '✕';
+}
+.btn-icon { margin-right: 6px; font-weight: 800; }
 .mini-card {
   background: var(--white); border-radius: var(--radius-sm);
   border: 1.5px solid var(--gray-200); overflow: hidden;

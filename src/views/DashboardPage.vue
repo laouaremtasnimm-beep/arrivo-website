@@ -661,8 +661,8 @@ async function handleSaveOffer(payload) {
     }
   }
 
-  // Use the ID from the payload (if editing) or the editingOffer ref
-  const offerId = payload.id || editingOffer.value?.offerID || editingOffer.value?.id;
+  // Use the ID from the payload which the modal correctly identifies
+  const offerId = payload.offerID;
   
   await saveOfferToDB({ 
     ...payload, 
@@ -670,7 +670,8 @@ async function handleSaveOffer(payload) {
     owner_id: user.value?.userID || user.value?.id 
   })
   
-  offerFormOpen.value = false // Close the modal after saving
+  offerFormOpen.value = false
+  editingOffer.value  = null // Clear state after saving
 }
 // ─────────────────────────────────────────────────────────────────────────
 // COLLABORATION HANDLERS  (in-memory only until a DB table is added)
