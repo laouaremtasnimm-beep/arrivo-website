@@ -78,24 +78,27 @@ try {
             INSERT INTO packages
                 (agency_id, title, destination, type, duration_days, price,
                  spots_available, group_size_max, description, long_desc,
-                 img_url, includes, excludes, itinerary)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 img_url, includes, excludes, itinerary, offer_only, start_date, end_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ');
         $stmt->execute([
             $data['agency_id'],
             $data['title'],
             $data['destination'],
             $data['type']            ?? 'Adventure',
-            $data['start_date']  ?? null,
+            $data['duration_days']   ?? 1,
             $data['price'],
             $data['spots_available'] ?? 10,
-            $data['end_date']    ?? null,
+            $data['group_size_max']  ?? null,
             $data['description']     ?? null,
             $data['long_desc']       ?? null,
             $data['img_url']         ?? null,
             isset($data['includes'])  ? json_encode($data['includes'])  : null,
             isset($data['excludes'])  ? json_encode($data['excludes'])  : null,
             isset($data['itinerary']) ? json_encode($data['itinerary']) : null,
+            $data['offer_only']      ?? 0,
+            $data['start_date']      ?? null,
+            $data['end_date']        ?? null,
         ]);
 
         echo json_encode([
@@ -117,28 +120,30 @@ try {
                 title           = ?,
                 destination     = ?,
                 type            = ?,
-                start_date      = ?,
+                duration_days   = ?,
                 price           = ?,
                 spots_available = ?,
-                end_date        = ?,
+                group_size_max  = ?,
                 description     = ?,
                 long_desc       = ?,
                 img_url         = ?,
                 includes        = ?,
                 excludes        = ?,
                 itinerary       = ?,
-                is_active       = ?
+                is_active       = ?,
+                offer_only      = ?,
+                start_date      = ?,
+                end_date        = ?
             WHERE id = ?
         ');
         $stmt->execute([
             $data['title'],
             $data['destination'],
             $data['type']            ?? 'Adventure',
-            $data['start_date']  ?? null,
-
+            $data['duration_days']   ?? 1,
             $data['price'],
             $data['spots_available'] ?? 10,
-            $data['end_date']    ?? null,
+            $data['group_size_max']  ?? null,
             $data['description']     ?? null,
             $data['long_desc']       ?? null,
             $data['img_url']         ?? null,
@@ -146,6 +151,9 @@ try {
             isset($data['excludes'])  ? json_encode($data['excludes'])  : null,
             isset($data['itinerary']) ? json_encode($data['itinerary']) : null,
             $data['is_active']        ?? 1,
+            $data['offer_only']       ?? 0,
+            $data['start_date']       ?? null,
+            $data['end_date']         ?? null,
             $data['id'],
         ]);
 

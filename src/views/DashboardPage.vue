@@ -117,6 +117,7 @@
             v-else-if="activeSection === 'offers'"
             key="offers"
             :role="user.role"
+            :user-id="user.userID ?? user.id"
             @add="openOfferForm(null)"
             @edit="openOfferForm($event)"
           />
@@ -152,6 +153,7 @@
     <OfferFormModal
       v-model="offerFormOpen"
       :offer="editingOffer"
+      :agency-id="user.userID ?? user.id"
       @save="handleSaveOffer"
     />
 
