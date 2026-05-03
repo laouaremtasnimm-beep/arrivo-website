@@ -108,10 +108,36 @@ export function useNotifications() {
   }
 
   async function push(notification) {
-    // Add locally first for instant feedback
-    const localId = Date.now()
+    // ── Get current user to check if this notification belongs to them ──
+    let currentUserId = null
+    try {
+      const s = sessionStorage.getItem('user') || localStorage.getItem('user')
+      if (s) currentUserId = JSON.parse(s)?.userID ?? JSON.parse(s)?.id
+    } catch { /* ignore */ }
+
+    // Only add locally if this notification is for the current user
+    if (notification.targetUserId && String(notification.targetUserId) !== String(currentUserId)) {
+      // Still persist to DB for the target user — just don't show it locally
+      try {
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: notification.targetUserId,
+            type: notification.type,
+            title: notification.title,
+            body: notification.body,
+            icon: notification.icon,
+            link: notification.link,
+          })
+        })
+      } catch (e) { console.error('Push notification failed', e) }
+      return
+    }
+
+    // Notification is for the current user — add locally for instant feedback
     notifications.value.unshift({
-      id: localId,
+      id: Date.now(),
       read: false,
       time: 'Just now',
       ...notification,
@@ -124,11 +150,11 @@ export function useNotifications() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: notification.targetUserId,
-          type:    notification.type,
-          title:   notification.title,
-          body:    notification.body,
-          icon:    notification.icon,
-          link:    notification.link
+          type: notification.type,
+          title: notification.title,
+          body: notification.body,
+          icon: notification.icon,
+          link: notification.link,
         })
       })
     } catch (e) { console.error('Push notification failed', e) }
