@@ -48,21 +48,23 @@
   </div>
 </div>
 
-<div class="form-group">
-  <label class="form-label">Start date *</label>
-  <div class="date-input-wrap">
-    <input class="form-input" v-model="form.startDate" type="date" />
-    <span class="date-icon">🗓️</span>
+<div class="form-row">
+  <div class="form-group">
+    <label class="form-label">Start date *</label>
+    <div class="date-input-wrap">
+      <input class="form-input" v-model="form.startDate" type="date" />
+      <span class="date-icon">🗓️</span>
+    </div>
+    <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
   </div>
-  <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
-</div>
-<div class="form-group">
-  <label class="form-label">End date *</label>
-  <div class="date-input-wrap">
-    <input class="form-input" v-model="form.endDate" type="date" />
-    <span class="date-icon">🗓️</span>
+  <div class="form-group">
+    <label class="form-label">End date *</label>
+    <div class="date-input-wrap">
+      <input class="form-input" v-model="form.endDate" type="date" />
+      <span class="date-icon">🗓️</span>
+    </div>
+    <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
   </div>
-  <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
 </div>
 
             <!-- Description -->
