@@ -44,23 +44,23 @@
           <button class="dash-card__link" @click="$emit('navigate', 'messages')">View all →</button>
         </div>
         <div class="overview-list">
-          <div
-            class="overview-msg"
-            :class="{ unread: !msg.read }"
-            v-for="msg in recentMessages"
-            :key="msg.messageID"
-            @click="$emit('open-message', msg)"
-          >
-            <div class="overview-msg__avatar">{{ msg.from?.[0] ?? '?' }}</div>
-            <div class="overview-msg__body">
-              <div class="overview-msg__from">{{ msg.from }}</div>
-              <div class="overview-msg__preview">{{ msg.title }}</div>
-            </div>
-            <div class="overview-msg__meta">
-              <div class="overview-msg__date">{{ msg.date }}</div>
-              <div class="overview-msg__dot" v-if="!msg.read" />
-            </div>
-          </div>
+         <div
+  class="overview-msg"
+  :class="{ unread: conv.unread }"
+  v-for="conv in recentMessages"
+  :key="conv.id"
+  @click="$emit('open-message', conv)"
+>
+  <div class="overview-msg__avatar">{{ conv.name?.[0] ?? '?' }}</div>
+  <div class="overview-msg__body">
+    <div class="overview-msg__from">{{ conv.name }}</div>
+    <div class="overview-msg__preview">{{ conv.lastMessage }}</div>
+  </div>
+  <div class="overview-msg__meta">
+    <div class="overview-msg__date">{{ formatTime(conv.time) }}</div>
+    <div class="overview-msg__dot" v-if="conv.unread" />
+  </div>
+</div>
         </div>
       </div>
 
@@ -107,22 +107,37 @@
 <script setup>
 import { computed } from 'vue'
 import StatsGrid from './StatsGrid.vue'
+import { useMessages } from '@/composables/useMessages'
+
 
 const props = defineProps({
-  role:     { type: String, required: true },
-  bookings: { type: Array,  default: () => [] },
-  messages: { type: Array,  default: () => [] },
-  items:    { type: Array,  default: () => [] },
+  role:          { type: String,          required: true },
+  bookings:      { type: Array,           default: () => [] },
+  messages:      { type: Array,           default: () => [] },
+  items:         { type: Array,           default: () => [] },
+  currentUserId: { type: [Number, String], default: null },
 })
 
 defineEmits(['navigate', 'open-message'])
+
+function formatTime(t) {
+  if (!t) return ''
+  const d = new Date(t)
+  const now = new Date()
+  if (d.toDateString() === now.toDateString())
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short' })
+}
+
 
 const isAgency   = computed(() => props.role === 'agency')
 const isProvider = computed(() => props.role === 'provider')
 
 const recentBookings = computed(() => props.bookings.slice(0, 4))
-const recentMessages = computed(() => props.messages.slice(0, 4))
-const unreadCount    = computed(() => props.messages.filter(m => !m.read).length)
+const { getConversations } = useMessages()
+const conversations  = computed(() => getConversations(props.currentUserId))
+const recentMessages = computed(() => conversations.value.slice(0, 4))
+const unreadCount    = computed(() => conversations.value.filter(c => c.unread).length)
 </script>
 
 <style scoped>

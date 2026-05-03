@@ -61,10 +61,10 @@
   :bookings="bookings"
   :messages="messages"
   :items="isAgency ? packages : services"
+  :current-user-id="user.userID ?? user.id"
   @navigate="setSection"
   @open-message="handleOpenMessage"
 />
-
           <BookingsTable
             v-else-if="activeSection === 'bookings'"
             key="bookings"

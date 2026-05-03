@@ -3,17 +3,17 @@ import { ref, computed } from 'vue'
 const API_BASE = '/arrivo-website/backend/api/v1'
 
 const messages = ref([])
-const loading  = ref(false)
-const error    = ref(null)
+const loading = ref(false)
+const error = ref(null)
 
-  let pollInterval = null
+let pollInterval = null
 
 export function useMessages() {
 
   async function fetchMessages(userId) {
     if (!userId) return
     loading.value = true
-    error.value   = null
+    error.value = null
     try {
       const res = await fetch(`${API_BASE}/Messages.php?user_id=${userId}`)
       const data = await res.json()
@@ -82,7 +82,7 @@ export function useMessages() {
     messages.value.forEach(m => {
       const isSent = String(m.sender_id) === String(currentUserId)
       const otherId = isSent ? m.receiver_id : m.sender_id
-      const otherName = isSent 
+      const otherName = isSent
         ? `${m.receiver_first} ${m.receiver_last}`
         : `${m.sender_first} ${m.sender_last}`
 
@@ -107,13 +107,18 @@ export function useMessages() {
       groups[otherId].time = m.created_at
       if (!m.is_read && !isSent) groups[otherId].unread = true
     })
-    return Object.values(groups).sort((a, b) => new Date(b.time) - new Date(a.time))
+    return Object.values(groups)
+      .map(g => ({
+        ...g,
+        messages: g.messages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at)),
+      }))
+      .sort((a, b) => new Date(b.time) - new Date(a.time))
   }
 
   function getUnreadCount(userId) {
     return computed(() => {
       if (!userId) return 0
-      return messages.value.filter(m => 
+      return messages.value.filter(m =>
         String(m.receiver_id) === String(userId) && !m.is_read
       ).length
     })
