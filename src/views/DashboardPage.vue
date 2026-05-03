@@ -173,7 +173,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useOffers } from '@/composables/useOffers'
@@ -348,6 +348,8 @@ async function fetchServices() {
 
 
 onMounted(async () => {
+  // Wait one tick for useAuth to hydrate from storage
+  await nextTick()
   if (!user.value) return
   const uid = user.value.userID || user.value.id
   startNotifPolling(uid)

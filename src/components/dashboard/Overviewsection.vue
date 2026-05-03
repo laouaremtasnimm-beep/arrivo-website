@@ -18,7 +18,7 @@
         </div>
         <div class="overview-list">
           <div class="overview-booking" v-for="b in recentBookings" :key="b.reservationID">
-            <div class="overview-booking__avatar">{{ b.guestName[0] }}</div>
+           <div class="overview-booking__avatar">{{ b.guestName?.[0] ?? '?' }}</div>
             <div class="overview-booking__info">
               <div class="overview-booking__name">{{ b.guestName }}</div>
               <div class="overview-booking__item">{{ b.itemName }}</div>
@@ -51,7 +51,7 @@
             :key="msg.messageID"
             @click="$emit('open-message', msg)"
           >
-            <div class="overview-msg__avatar">{{ msg.from[0] }}</div>
+            <div class="overview-msg__avatar">{{ msg.from?.[0] ?? '?' }}</div>
             <div class="overview-msg__body">
               <div class="overview-msg__from">{{ msg.from }}</div>
               <div class="overview-msg__preview">{{ msg.title }}</div>
