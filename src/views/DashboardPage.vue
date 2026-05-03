@@ -94,14 +94,16 @@
             />
           </div>
 
-        <MessagesPanel
+       <MessagesPanel
   v-else-if="activeSection === 'messages'"
   key="messages"
   :messages="messages"
   :current-user-id="user.userID"
+  :auto-open-conversation="pendingOpenConversation"
   @open="handleOpenMessage"
   @compose="handleCompose"
   @delete="handlePermanentDeleteMessage"
+  @conversation-opened="pendingOpenConversation = null"
 />
 
           <DashboardReviews
@@ -173,7 +175,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth } from '@/composables/useAuth'
 import { useOffers } from '@/composables/useOffers'
@@ -360,7 +362,6 @@ onMounted(async () => {
   startPolling(uid)
 })
 
-import { onUnmounted } from 'vue'
 onUnmounted(() => {
   stopNotifPolling()
   stopPolling()
@@ -560,18 +561,14 @@ async function handleToggleAvailability(svc) {
 // MESSAGE HANDLERS
 // ─────────────────────────────────────────────────────────────────────────
 async function handleOpenMessage(msg) {
-  try {
-    const res = await fetch(`${API}/messages.php`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: msg.messageID }),
-    })
-    if (!res.ok) throw new Error('Mark-read failed')
-    const idx = messages.value.findIndex(m => m.messageID === msg.messageID)
-    if (idx !== -1) messages.value[idx].read = 1
-  } catch (e) {
-    loadError.value = e.message
-  }
+  // Navigate to messages section first
+  setSection('messages')
+
+  // Give the section time to mount, then open the thread
+  await nextTick()
+
+  // Store which conversation to auto-open
+  pendingOpenConversation.value = msg
 }
 
 async function handlePermanentDeleteMessage(msg) {
@@ -623,6 +620,7 @@ async function handleDeleteReview(r) {
 // ─────────────────────────────────────────────────────────────────────────
 const offerFormOpen = ref(false)
 const editingOffer  = ref(null)
+const pendingOpenConversation = ref(null)
 
 function openOfferForm(offer) {
   if (offer?.source === 'collab') return

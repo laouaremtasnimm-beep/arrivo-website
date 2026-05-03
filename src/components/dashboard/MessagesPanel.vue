@@ -81,24 +81,24 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import MessageThread from '@/components/dashboard/MessageThread.vue'
 import ComposeModal  from '@/components/dashboard/ComposeModal.vue'
-
 import { useMessages } from '@/composables/useMessages'
 
 const props = defineProps({
-  messages:      { type: Array,  default: () => [] },
-  currentUserId: { type: Number, default: null },
+  messages:             { type: Array,  default: () => [] },
+  currentUserId:        { type: Number, default: null },
+  autoOpenConversation: { type: Object, default: null },
 })
-const emit = defineEmits(['open', 'compose', 'delete'])
+
+const emit = defineEmits(['open', 'compose', 'delete', 'conversation-opened'])
 
 const { getConversations, markAsRead } = useMessages()
 
-// ── Conversations ──────────────────────────────────────────────────────────
 const conversations = computed(() => getConversations(props.currentUserId))
 
-const activeTab = ref('all')
+const activeTab          = ref('all')
 const threadOpen         = ref(false)
 const composeOpen        = ref(false)
 const activeConversation = ref(null)
@@ -107,14 +107,12 @@ const unreadCount = computed(() => conversations.value.filter(c => c.unread).len
 
 const filteredConversations = computed(() => {
   if (activeTab.value === 'unread') return conversations.value.filter(c => c.unread)
-  // 'sent' tab becomes 'active conversations' or we can hide it for now as chat is bi-directional
   return conversations.value
 })
 
 function openThread(conv) {
   activeConversation.value = conv
   threadOpen.value = true
-  // Mark all unread messages in this conversation as read
   conv.messages.forEach(m => {
     if (!m.is_read && !m.isMe) markAsRead(m.id)
   })
@@ -124,14 +122,12 @@ function formatTime(t) {
   if (!t) return ''
   const d = new Date(t)
   const now = new Date()
-  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  if (d.toDateString() === now.toDateString())
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   return d.toLocaleDateString([], { day: 'numeric', month: 'short' })
 }
 
-function handleSend(newMsg) {
-  // useMessages will handle the reactivity via props.messages refresh
-  composeOpen.value = false
-}
+function handleSend() { composeOpen.value = false }
 
 function markAllRead() {
   conversations.value.forEach(conv => {
@@ -140,6 +136,20 @@ function markAllRead() {
     })
   })
 }
+
+// Auto-open a conversation when navigated from overview
+watch(() => props.autoOpenConversation, async (conv) => {
+  if (!conv) return
+  await nextTick()
+  const match = conversations.value.find(c =>
+    String(c.id) === String(conv.id) ||
+    c.messages?.some(m => m.id === conv.messageID || m.id === conv.id)
+  )
+  if (match) {
+    openThread(match)
+    emit('conversation-opened')
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>
