@@ -2,10 +2,13 @@ import { ref, computed } from 'vue'
 
 const API_BASE = '/arrivo-website/backend/api/v1'
 
+const messages = ref([])
+const loading  = ref(false)
+const error    = ref(null)
+
+  let pollInterval = null
+
 export function useMessages() {
-  const messages = ref([])
-  const loading  = ref(false)
-  const error    = ref(null)
 
   async function fetchMessages(userId) {
     if (!userId) return
@@ -42,16 +45,19 @@ export function useMessages() {
   }
 
   async function markAsRead(id) {
+    // Optimistic Update
+    const msg = messages.value.find(m => m.id === id)
+    if (msg) msg.is_read = 1
+
     try {
       await fetch(`${API_BASE}/Messages.php`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
       })
-      const msg = messages.value.find(m => m.id === id)
-      if (msg) msg.is_read = 1
     } catch (e) {
       console.error('Failed to mark as read', e)
+      // Rollback if needed? Usually not critical for read status
     }
   }
 
@@ -113,6 +119,20 @@ export function useMessages() {
     })
   }
 
+
+  function startPolling(userId, intervalMs = 10000) {
+    if (pollInterval) stopPolling()
+    if (!userId) return
+    pollInterval = setInterval(() => fetchMessages(userId), intervalMs)
+  }
+
+  function stopPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval)
+      pollInterval = null
+    }
+  }
+
   return {
     messages,
     loading,
@@ -120,6 +140,8 @@ export function useMessages() {
     getConversations,
     getUnreadCount,
     fetchMessages,
+    startPolling,
+    stopPolling,
     sendMessage,
     markAsRead,
     deleteMessage

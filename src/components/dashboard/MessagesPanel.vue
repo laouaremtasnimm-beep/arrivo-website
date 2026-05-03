@@ -24,35 +24,34 @@
       </div>
     </div>
 
-    <div class="msg-empty" v-if="!filtered.length">
+    <div class="msg-empty" v-if="!filteredConversations.length">
       <div class="msg-empty__icon">💬</div>
-      <p class="msg-empty__title">No {{ activeTab === 'all' ? '' : activeTab + ' ' }}messages</p>
+      <p class="msg-empty__title">No {{ activeTab === 'all' ? '' : activeTab + ' ' }}conversations</p>
       <button class="btn-compose-cta" @click="composeOpen = true">Write a message</button>
     </div>
 
     <div class="messages-list" v-else>
       <div
         class="message-row"
-        :class="{ unread: !msg.read, sent: msg.sent }"
-        v-for="msg in filtered"
-        :key="msg.messageID"
-        @click="openThread(msg)"
+        :class="{ unread: conv.unread }"
+        v-for="conv in filteredConversations"
+        :key="conv.id"
+        @click="openThread(conv)"
       >
-        <div class="msg-avatar" :class="{ 'msg-avatar--sent': msg.sent }">
-          {{ msg.sent ? 'You' : msg.from[0] }}
+        <div class="msg-avatar">
+          {{ conv.name[0] }}
         </div>
         <div class="msg-body">
           <div class="msg-top">
-            <span class="msg-from">{{ msg.sent ? `To: ${msg.to || 'Recipient'}` : msg.from }}</span>
-            <span class="msg-date">{{ msg.date }}</span>
+            <span class="msg-from">{{ conv.name }}</span>
+            <span class="msg-date">{{ formatTime(conv.time) }}</span>
           </div>
-          <div class="msg-title">{{ msg.title }}</div>
-          <div class="msg-preview">{{ msg.content }}</div>
+          <div class="msg-preview">{{ conv.lastMessage }}</div>
         </div>
         <div class="msg-indicators">
-          <div class="msg-unread-dot" v-if="!msg.read && !msg.sent" />
-          <div class="msg-reply-count" v-if="msg.replies?.length">
-            ↩ {{ msg.replies.length }}
+          <div class="msg-unread-dot" v-if="conv.unread" />
+          <div class="msg-reply-count">
+            {{ conv.messages.length }} msgs
           </div>
         </div>
       </div>
@@ -60,7 +59,7 @@
 
     <div class="dash-card__footer">
       <span class="dash-card__count">
-        {{ localMessages.length }} messages · {{ unreadCount }} unread
+        {{ conversations.length }} conversations · {{ unreadCount }} unread
       </span>
       <button class="see-all-btn" v-if="unreadCount" @click="markAllRead">
         Mark all read
@@ -69,8 +68,8 @@
 
     <MessageThread
       v-model="threadOpen"
-      :message="activeMessage"
-      @delete="handleDelete"
+      :conversation="activeConversation"
+      :current-user-id="currentUserId"
     />
 
     <ComposeModal
@@ -86,53 +85,60 @@ import { ref, computed, watch } from 'vue'
 import MessageThread from '@/components/dashboard/MessageThread.vue'
 import ComposeModal  from '@/components/dashboard/ComposeModal.vue'
 
+import { useMessages } from '@/composables/useMessages'
+
 const props = defineProps({
   messages:      { type: Array,  default: () => [] },
   currentUserId: { type: Number, default: null },
 })
 const emit = defineEmits(['open', 'compose', 'delete'])
 
-const localMessages = ref(
-  props.messages.map(m => ({ ...m, replies: m.replies || [] }))
-)
+const { getConversations, markAsRead } = useMessages()
 
-watch(() => props.messages, (val) => {
-  localMessages.value = val.map(m => ({ ...m, replies: m.replies || [] }))
-}, { deep: true })
+// ── Conversations ──────────────────────────────────────────────────────────
+const conversations = computed(() => getConversations(props.currentUserId))
 
-const activeTab     = ref('all')
-const threadOpen    = ref(false)
-const composeOpen   = ref(false)
-const activeMessage = ref(null)
+const activeTab = ref('all')
+const threadOpen         = ref(false)
+const composeOpen        = ref(false)
+const activeConversation = ref(null)
 
-const unreadCount = computed(() => localMessages.value.filter(m => !m.read && !m.sent).length)
+const unreadCount = computed(() => conversations.value.filter(c => c.unread).length)
 
-const filtered = computed(() => {
-  if (activeTab.value === 'unread') return localMessages.value.filter(m => !m.read && !m.sent)
-  if (activeTab.value === 'sent')   return localMessages.value.filter(m => m.sent)
-  return localMessages.value
+const filteredConversations = computed(() => {
+  if (activeTab.value === 'unread') return conversations.value.filter(c => c.unread)
+  // 'sent' tab becomes 'active conversations' or we can hide it for now as chat is bi-directional
+  return conversations.value
 })
 
-function openThread(msg) {
-  const idx = localMessages.value.findIndex(m => m.messageID === msg.messageID)
-  if (idx !== -1) localMessages.value[idx].read = true
-  activeMessage.value = localMessages.value[idx] ?? msg
+function openThread(conv) {
+  activeConversation.value = conv
   threadOpen.value = true
-  emit('open', msg)
+  // Mark all unread messages in this conversation as read
+  conv.messages.forEach(m => {
+    if (!m.is_read && !m.isMe) markAsRead(m.id)
+  })
+}
+
+function formatTime(t) {
+  if (!t) return ''
+  const d = new Date(t)
+  const now = new Date()
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString([], { day: 'numeric', month: 'short' })
 }
 
 function handleSend(newMsg) {
-  localMessages.value.unshift(newMsg)
-}
-
-function handleDelete(msg) {
-  if (!confirm(`Delete conversation with ${msg.from}?`)) return
-  emit('delete', msg)
-  threadOpen.value = false
+  // useMessages will handle the reactivity via props.messages refresh
+  composeOpen.value = false
 }
 
 function markAllRead() {
-  localMessages.value.forEach(m => { m.read = true })
+  conversations.value.forEach(conv => {
+    conv.messages.forEach(m => {
+      if (!m.is_read && !m.isMe) markAsRead(m.id)
+    })
+  })
 }
 </script>
 

@@ -208,7 +208,7 @@ const { user, isAgency, isProvider, logout } = useAuth()
 const { saveOffer, deleteOffer, saveOfferToDB, deleteOfferFromDB, allOffers } = useOffers()
 const { toggle: toggleWishlist } = useWishlist()
 const { unreadCount: getUnreadCount } = useNotifications()
-const { fetchMessages, getUnreadCount: getMsgUnreadCount, messages: dbMessages } = useMessages()
+const { fetchMessages, getUnreadCount: getMsgUnreadCount, messages: dbMessages, startPolling, stopPolling } = useMessages()
 
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
@@ -235,9 +235,9 @@ function setSection(s) {
 }
 
 // ── Counts ────────────────────────────────────────────────────────────────
-const unreadMessages    = getMsgUnreadCount(user.value?.userID ?? user.value?.id)
+const unreadMessages    = computed(() => getMsgUnreadCount(user.value?.userID ?? user.value?.id).value)
 const pendingCollabs    = computed(() => collaborations.value.filter(c => c.direction === 'incoming' && c.status === 'pending').length)
-const notificationCount = computed(() => getUnreadCount(user.value?.role, user.value?.userID).value)
+const notificationCount = computed(() => getUnreadCount(user.value?.role, user.value?.userID ?? user.value?.id, 'notification').value)
 
 // ── Auth ──────────────────────────────────────────────────────────────────
 function handleLogout() { logout(); router.push('/') }
@@ -347,7 +347,6 @@ async function fetchServices() {
 }
 
 
-// ── Bootstrap ─────────────────────────────────────────────────────────────
 onMounted(async () => {
   if (!user.value) return
   const uid = user.value.userID || user.value.id
@@ -355,6 +354,12 @@ onMounted(async () => {
   await fetchPackages()
   await fetchServices()
   await fetchMessages(uid)
+  startPolling(uid)
+})
+
+import { onUnmounted } from 'vue'
+onUnmounted(() => {
+  stopPolling()
 })
 
 // ─────────────────────────────────────────────────────────────────────────

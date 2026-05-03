@@ -287,11 +287,11 @@ const router = useRouter()
 const route  = useRoute()
 const { user, isLoggedIn, canAccessDashboard, logout } = useAuth()
 const { unreadCount: getUnreadCount } = useNotifications()
-const { fetchMessages, getUnreadCount: getMsgUnreadCount } = useMessages()
+const { fetchMessages, getUnreadCount: getMsgUnreadCount, startPolling, stopPolling } = useMessages()
 const { entries: wishlistEntries } = useWishlist()
 
 const unreadNotifCount = getUnreadCount(user.value?.role, user.value?.userID ?? user.value?.id, 'notification')
-const unreadMsgCount   = getMsgUnreadCount(user.value?.userID ?? user.value?.id)
+const unreadMsgCount   = computed(() => getMsgUnreadCount(user.value?.userID ?? user.value?.id).value)
 
 const wishlistCount = computed(() => wishlistEntries.value.length)
 
@@ -377,12 +377,16 @@ function onClickOutside(e) {
 
 onMounted(() => {
   if (isLoggedIn.value) {
-    fetchMessages(user.value.userID || user.value.id)
+    const uid = user.value.userID || user.value.id
+    fetchMessages(uid)
+    startPolling(uid)
   }
   window.addEventListener('scroll', onScroll)
   document.addEventListener('click', onClickOutside)
 })
+
 onUnmounted(() => {
+  stopPolling()
   window.removeEventListener('scroll', onScroll)
   document.removeEventListener('click', onClickOutside)
 })

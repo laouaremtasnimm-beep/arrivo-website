@@ -15,7 +15,7 @@
                 <path d="M19 12H5M12 19l-7-7 7-7"/>
               </svg>
             </button>
-            <h3 class="msg-panel__title">{{ selectedConversation ? selectedConversation.title : 'Messages' }}</h3>
+            <h3 class="msg-panel__title">{{ selectedConversation ? selectedConversation.name : 'Messages' }}</h3>
           </div>
           <div class="msg-panel__header-actions">
             <button class="msg-panel__close" @click="$emit('update:modelValue', false)">✕</button>
@@ -183,6 +183,7 @@ async function sendReply() {
   position: fixed;
   width: 400px;
   height: 520px;
+  max-height: 85vh;
   background: #fff;
   border-radius: var(--radius);
   box-shadow: var(--shadow-lg, 0 16px 64px rgba(45,49,66,.14));
@@ -217,9 +218,12 @@ async function sendReply() {
 }
 
 .msg-panel__list {
-  flex: 1; overflow-y: auto;
+  flex: 1; overflow-y: auto; overscroll-behavior: contain;
   scrollbar-width: thin; scrollbar-color: var(--gray-200) transparent;
+  min-height: 0;
 }
+.msg-panel__list::-webkit-scrollbar { width: 6px; }
+.msg-panel__list::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 10px; }
 
 .msg-panel__empty {
   display: flex; flex-direction: column; align-items: center;
@@ -230,11 +234,22 @@ async function sendReply() {
 .msg-empty__sub { font-size: .85rem; color: var(--gray-400); margin: 0; text-align: center; }
 
 /* Conversation View */
-.msg-conversation { flex: 1; display: flex; flex-direction: column; background: var(--gray-50); }
-.msg-chat-window {
-  flex: 1; overflow-y: auto; padding: 20px;
-  display: flex; flex-direction: column; gap: 12px;
+.msg-conversation { 
+  flex: 1; 
+  display: flex; 
+  flex-direction: column; 
+  background: var(--gray-50); 
+  min-height: 0; /* Important: allows child to scroll instead of growing */
 }
+.msg-chat-window {
+  flex: 1; overflow-y: auto; padding: 20px; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 12px;
+  min-height: 0; /* Crucial for scrolling in flex */
+}
+/* Style scrollbar for better visibility */
+.msg-chat-window::-webkit-scrollbar { width: 6px; }
+.msg-chat-window::-webkit-scrollbar-thumb { background: var(--gray-200); border-radius: 10px; }
+.msg-chat-window::-webkit-scrollbar-thumb:hover { background: var(--gray-300); }
 .chat-bubble {
   max-width: 80%; padding: 10px 14px; border-radius: 16px;
   font-size: .9rem; line-height: 1.4; position: relative;

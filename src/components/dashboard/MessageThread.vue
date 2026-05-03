@@ -7,41 +7,30 @@
           <div class="thread__header">
             <button class="thread__back" @click="close">← Back</button>
             <div class="thread__header-info">
-              <div class="thread__subject">{{ message?.title }}</div>
-              <div class="thread__meta">Conversation with {{ message?.from }}</div>
+              <div class="thread__subject">{{ conversation?.name }}</div>
+              <div class="thread__meta">Chat with {{ conversation?.name }}</div>
             </div>
-            <button class="thread__del" @click="$emit('delete', message)" title="Delete">🗑️</button>
+            <button class="thread__del" @click="$emit('delete', conversation)" title="Delete">🗑️</button>
           </div>
 
           <div class="thread__body" ref="bodyRef">
-
-            <div class="thread-msg thread-msg--incoming">
-              <div class="thread-msg__avatar">{{ message?.from?.[0] }}</div>
-              <div class="thread-msg__bubble">
-                <div class="thread-msg__name">{{ message?.from }}</div>
-                <p class="thread-msg__text">{{ message?.content }}</p>
-                <div class="thread-msg__time">{{ message?.date }}</div>
-              </div>
-            </div>
-
             <div
-              v-for="reply in localReplies"
-              :key="reply.id"
+              v-for="msg in conversation?.messages"
+              :key="msg.id"
               class="thread-msg"
-              :class="reply.fromMe ? 'thread-msg--outgoing' : 'thread-msg--incoming'"
+              :class="msg.isMe ? 'thread-msg--outgoing' : 'thread-msg--incoming'"
             >
-              <div class="thread-msg__avatar thread-msg__avatar--you" v-if="reply.fromMe">You</div>
-              <div class="thread-msg__avatar" v-else>{{ message?.from?.[0] }}</div>
-              <div class="thread-msg__bubble" :class="{ 'bubble--you': reply.fromMe }">
+              <div class="thread-msg__avatar thread-msg__avatar--you" v-if="msg.isMe">You</div>
+              <div class="thread-msg__avatar" v-else>{{ conversation?.name?.[0] }}</div>
+              <div class="thread-msg__bubble" :class="{ 'bubble--you': msg.isMe }">
                 <div class="bubble-header">
-                  <div class="thread-msg__name">{{ reply.fromMe ? 'You' : message?.from }}</div>
-                  <button class="reply-del" @click="handleDeleteReply(reply)" title="Delete message">🗑️</button>
+                  <div class="thread-msg__name">{{ msg.isMe ? 'You' : conversation?.name }}</div>
+                  <button class="reply-del" @click="handleDeleteMsg(msg.id)" title="Delete message">🗑️</button>
                 </div>
-                <p class="thread-msg__text">{{ reply.text }}</p>
-                <div class="thread-msg__time">{{ reply.time }}</div>
+                <p class="thread-msg__text">{{ msg.text }}</p>
+                <div class="thread-msg__time">{{ msg.time }}</div>
               </div>
             </div>
-
           </div>
 
           <div class="thread__reply">
@@ -69,34 +58,33 @@
 
 <script setup>
 import { ref, watch, nextTick } from 'vue'
-import { useAuth } from '@/composables/useAuth'
+import { useMessages } from '@/composables/useMessages'
 
 const props = defineProps({
-  modelValue: Boolean,
-  message:    { type: Object, default: null },
+  modelValue:   Boolean,
+  conversation: { type: Object, default: null },
+  currentUserId: { type: [Number, String], default: null },
 })
-const emit = defineEmits(['update:modelValue', 'delete', 'delete-reply'])
+const emit = defineEmits(['update:modelValue', 'delete'])
 
-const API          = '/arrivo-website/backend/api/v1'
-const { user }     = useAuth()
+const { sendMessage, deleteMessage, fetchMessages } = useMessages()
+
 const replyText    = ref('')
 const replyError   = ref('')
 const bodyRef      = ref(null)
 const sending      = ref(false)
-const localReplies = ref([])
-
-// Reset replies when a new message is opened
-watch(() => props.message, () => {
-  localReplies.value = props.message?.replies ? [...props.message.replies] : []
-})
 
 watch(() => props.modelValue, v => {
   if (v) {
     replyText.value  = ''
     replyError.value = ''
-    localReplies.value = props.message?.replies ? [...props.message.replies] : []
     scrollToBottom()
   }
+})
+
+// Auto-scroll when new messages arrive
+watch(() => props.conversation?.messages?.length, () => {
+  scrollToBottom()
 })
 
 function scrollToBottom() {
@@ -105,75 +93,43 @@ function scrollToBottom() {
   })
 }
 
-async function handleDeleteReply(reply) {
-  if (!confirm('Delete this message permanently?')) return
-  try {
-    const res = await fetch(`${API}/messages.php`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: reply.id }),
-    })
-    if (!res.ok) throw new Error('Delete failed')
-    localReplies.value = localReplies.value.filter(r => r.id !== reply.id)
-    emit('delete-reply', { messageID: props.message.messageID, replyID: reply.id })
-  } catch (e) {
-    replyError.value = e.message
-  }
-}
-
 async function sendReply() {
-  if (!replyText.value.trim() || sending.value) return
+  if (!replyText.value.trim() || sending.value || !props.conversation) return
   replyError.value = ''
 
-  const senderId   = parseInt(user.value?.userID ?? user.value?.id) || null
-  // For demo messages sender_id is stored directly; for DB messages it comes from normalizeMessage
-  const receiverId = parseInt(props.message?.sender_id) || null
-
-  if (!senderId) {
+  if (!props.currentUserId) {
     replyError.value = 'Not logged in — please refresh and try again.'
-    return
-  }
-
-  if (!receiverId) {
-    // Demo message — just add locally without saving to DB
-    localReplies.value.push({
-      id:     Date.now(),
-      text:   replyText.value.trim(),
-      fromMe: true,
-      time:   'Just now',
-    })
-    replyText.value = ''
-    scrollToBottom()
     return
   }
 
   sending.value = true
   try {
-    const res = await fetch(`${API}/messages.php`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        sender_id:   senderId,
-        receiver_id: receiverId,
-        subject:     `Re: ${props.message?.title ?? ''}`,
-        content:     replyText.value.trim(),
-      }),
+    const res = await sendMessage({
+      sender_id:   props.currentUserId,
+      receiver_id: props.conversation.id,
+      content:     replyText.value.trim(),
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Reply failed')
+    
+    if (!res.ok) throw new Error(res.error || 'Reply failed')
 
-    localReplies.value.push({
-      id:     data.message_id,
-      text:   replyText.value.trim(),
-      fromMe: true,
-      time:   'Just now',
-    })
     replyText.value = ''
+    // Refresh messages to update the thread
+    await fetchMessages(props.currentUserId)
     scrollToBottom()
   } catch (e) {
     replyError.value = e.message
   } finally {
     sending.value = false
+  }
+}
+
+async function handleDeleteMsg(id) {
+  if (!confirm('Delete this message permanently?')) return
+  try {
+    await deleteMessage(id)
+    await fetchMessages(props.currentUserId)
+  } catch (e) {
+    replyError.value = e.message
   }
 }
 
@@ -216,7 +172,7 @@ function close() { emit('update:modelValue', false) }
 }
 .thread__del:hover { background: rgba(231,76,60,.1); color: #e74c3c; }
 .thread__body {
-  flex: 1; overflow-y: auto; padding: 20px;
+  flex: 1; overflow-y: auto; padding: 20px; overscroll-behavior: contain;
   display: flex; flex-direction: column; gap: 16px;
   scrollbar-width: thin; scrollbar-color: var(--gray-200) transparent;
 }

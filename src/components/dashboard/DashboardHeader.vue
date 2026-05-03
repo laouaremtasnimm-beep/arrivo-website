@@ -61,7 +61,7 @@
     <NotificationPanel
       v-model="notifOpen"
       :role="user.role"
-      :current-user-id="user.userID"
+      :current-user-id="user.userID ?? user.id"
       :anchor="bellAnchor"
       @navigate="handleNavigate"
     />
@@ -70,7 +70,7 @@
     <MessagePanel
       v-model="msgOpen"
       :role="user.role"
-      :current-user-id="user.userID"
+      :current-user-id="user.userID ?? user.id"
       :anchor="msgAnchor"
       @navigate="handleNavigate"
     />
