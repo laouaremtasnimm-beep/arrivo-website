@@ -25,15 +25,23 @@
             </div>
 
             <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Start Date</label>
-                <input type="text" class="form-input" v-model="form.startDate" placeholder="e.g. Jul 1" />
-              </div>
-              <div class="form-group">
-                <label class="form-label">End Date</label>
-                <input type="text" class="form-input" v-model="form.endDate" placeholder="e.g. Jul 31" />
-              </div>
-            </div>
+  <div class="form-group">
+    <label class="form-label">Start Date *</label>
+    <div class="date-input-wrap">
+      <input type="date" class="form-input" v-model="form.startDate" />
+      <span class="date-icon">🗓️</span>
+    </div>
+    <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
+  </div>
+  <div class="form-group">
+    <label class="form-label">End Date *</label>
+    <div class="date-input-wrap">
+      <input type="date" class="form-input" v-model="form.endDate" />
+      <span class="date-icon">🗓️</span>
+    </div>
+    <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
+  </div>
+</div>
 
             <div class="form-group">
               <label class="form-label">Description *</label>
@@ -97,8 +105,12 @@ watch(
 
 function validate() {
   const e = {}
-  if (!form.value.title?.trim())       e.title       = 'Title is required.'
+  if (!form.value.title?.trim()) e.title = 'Title is required.'
   if (!form.value.discount || form.value.discount < 1) e.discount = 'Enter a valid discount.'
+  if (!form.value.startDate) e.startDate = 'Start date is required.'
+  if (!form.value.endDate)   e.endDate   = 'End date is required.'
+  if (form.value.startDate && form.value.endDate && form.value.endDate < form.value.startDate)
+    e.endDate = 'End date must be after start date.'
   if (!form.value.description?.trim()) e.description = 'Description is required.'
   errors.value = e
   return !Object.keys(e).length
@@ -172,4 +184,26 @@ function close() { emit('update:modelValue', false) }
 
 .fade-enter-active, .fade-leave-active { transition: all .22s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; transform: scale(.97); }
+.date-input-wrap {
+  position: relative;
+}
+.date-input-wrap .form-input {
+  padding-right: 36px;
+  cursor: pointer;
+}
+.date-input-wrap input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 0; top: 0;
+  width: 100%; height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 1;
+}
+.date-icon {
+  position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 1rem;
+  z-index: 2;
+}
 </style>
