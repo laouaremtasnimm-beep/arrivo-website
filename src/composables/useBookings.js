@@ -152,24 +152,58 @@ export function useBookings() {
         }
     }
 
-    function isBooked(type, itemId) {
+    function isBooked(type, itemId, linkedId = null) {
         return _bookings.value.some(b => {
-            if (b.booking_type !== type || b.status === 'cancelled') return false
-            if (type === 'package') return Number(b.package_id) === Number(itemId)
-            if (type === 'service') return Number(b.service_id) === Number(itemId)
-            if (type === 'destination') return Number(b.destination_id) === Number(itemId)
-            if (type === 'offer') return Number(b.offer_id) === Number(itemId)
+            if (b.status === 'cancelled') return false
+            
+            // Direct match
+            if (b.booking_type === type) {
+                if (type === 'package'     && Number(b.package_id)     === Number(itemId)) return true
+                if (type === 'service'     && Number(b.service_id)     === Number(itemId)) return true
+                if (type === 'destination' && Number(b.destination_id) === Number(itemId)) return true
+                if (type === 'offer'       && Number(b.offer_id)       === Number(itemId)) return true
+            }
+            
+            // Cross-match (Package/Service/Dest <-> Offer)
+            if (linkedId) {
+                // If checking base type, see if booked as offer
+                if (b.booking_type === 'offer' && Number(b.offer_id) === Number(linkedId)) return true
+                // If checking offer, see if booked as base type
+                if (type === 'offer') {
+                    if (b.booking_type === 'package'     && Number(b.package_id)     === Number(linkedId)) return true
+                    if (b.booking_type === 'service'     && Number(b.service_id)     === Number(linkedId)) return true
+                    if (b.booking_type === 'destination' && Number(b.destination_id) === Number(linkedId)) return true
+                }
+            }
+            
             return false
         })
     }
 
-    function getBookingId(type, itemId) {
+    function getBookingId(type, itemId, linkedId = null) {
         const b = _bookings.value.find(b => {
-            if (b.booking_type !== type || b.status === 'cancelled') return false
-            if (type === 'package') return Number(b.package_id) === Number(itemId)
-            if (type === 'service') return Number(b.service_id) === Number(itemId)
-            if (type === 'destination') return Number(b.destination_id) === Number(itemId)
-            if (type === 'offer') return Number(b.offer_id) === Number(itemId)
+            if (b.status === 'cancelled') return false
+            
+            // Direct match
+            if (b.booking_type === type) {
+                if (type === 'package'     && Number(b.package_id)     === Number(itemId)) return true
+                if (type === 'service'     && Number(b.service_id)     === Number(itemId)) return true
+                if (type === 'destination' && Number(b.destination_id) === Number(itemId)) return true
+                if (type === 'offer'       && Number(b.offer_id)       === Number(itemId)) return true
+            }
+            
+            // Cross-match
+            if (linkedId) {
+                // If checking base type, see if booked as offer
+                if (b.booking_type === 'offer' && Number(b.offer_id) === Number(linkedId)) return true
+                // If checking offer, see if booked as base type
+                if (type === 'offer') {
+                    if (b.booking_type === 'package'     && Number(b.package_id)     === Number(linkedId)) return true
+                    if (b.booking_type === 'service'     && Number(b.service_id)     === Number(linkedId)) return true
+                    if (b.booking_type === 'destination' && Number(b.destination_id) === Number(linkedId)) return true
+                }
+            }
+            
             return false
         })
         return b?.id

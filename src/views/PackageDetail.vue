@@ -284,9 +284,7 @@ const isDemo = computed(() => {
 const isSavedVal    = computed(() => item.value ? isSaved.value('package', item.value.id) : false)
 const alreadyBooked = computed(() => {
   if (!item.value) return false
-  const pkgBooked = isBooked('package', item.value.id)
-  const offBooked = item.value.activeOffer ? isBooked('offer', item.value.activeOffer.id) : false
-  return pkgBooked || offBooked
+  return isBooked('package', item.value.id, item.value.activeOffer?.id)
 })
 const isOwner = computed(() => {
   if (!item.value || !user.value) return false
@@ -363,10 +361,7 @@ async function handleBooking(payload) {
 }
 
 async function handleCancel() {
-  const offId = item.value.activeOffer ? getBookingId('offer', item.value.activeOffer.id) : null
-  const pkgId = getBookingId('package', item.value.id)
-  const id = offId || pkgId
-
+  const id = getBookingId('package', item.value.id, item.value.activeOffer?.id)
   if (!id) return
   const res = await cancelBooking(id)
   if (res.ok) alert('Booking cancelled successfully.')

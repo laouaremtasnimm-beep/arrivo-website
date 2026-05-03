@@ -58,7 +58,7 @@
             :key="item.id"
             :item="item"
             :saved="isItemSaved(item)"
-            :booked="isBooked('package', item.id) || (item.activeOffer ? isBooked('offer', item.activeOffer.id) : false)"
+            :booked="isBooked('package', item.id, item.activeOffer?.id)"
             :is-owner="isItemOwner(item)"
             @select="goToDetail"
             @book="openBooking"
@@ -221,9 +221,7 @@ async function handleBooking(payload) {
 }
 
 async function handleCancel(item) {
-  const offId = item.activeOffer ? getBookingId('offer', item.activeOffer.id) : null
-  const pkgId = getBookingId('package', item.id)
-  const id = offId || pkgId
+  const id = getBookingId('package', item.id, item.activeOffer?.id)
 
   if (!id) return
   const res = await cancelBooking(id)

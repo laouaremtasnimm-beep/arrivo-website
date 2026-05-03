@@ -84,7 +84,7 @@
               v-if="item.category === 'offer'"
               :offer="item"
               :saved="isSaved('offer', item.id)"
-              :booked="isBooked('offer', item.id)"
+              :booked="isBooked('offer', item.id, item.package_id || item.linked_package_id)"
               :is-owner="isItemOwner(item)"
               @select="goToDetail"
               @toggle-save="toggleWishlist('offer', item.id)"
@@ -97,10 +97,11 @@
               v-else-if="item.category === 'service'"
               :item="item"
               :saved="isSaved('service', item.id)"
-              :booked="isBooked('service', item.id)"
+              :booked="isBooked('service', item.id, item.activeOffer?.id)"
               :is-owner="isItemOwner(item)"
               @select="goToDetail"
               @book="handleBook"
+              @cancel="handleCancel"
               @toggle-wishlist="toggleWishlist('service', item.id)"
               @manage="router.push('/dashboard')"
             />
@@ -114,15 +115,30 @@
               @toggle-wishlist="toggleWishlist('dest', item.id)"
             />
 
-            <!-- 🔵 PACKAGE / OTHER -->
+            <!-- 🟢 PACKAGE — use the exact same PackageCard as the packages page -->
+            <PackageCard
+              v-else-if="item.category === 'package'"
+              :item="item"
+              :saved="isSaved('package', item.id)"
+              :booked="isBooked('package', item.id, item.activeOffer?.id)"
+              :is-owner="isItemOwner(item)"
+              @select="goToDetail"
+              @book="handleBook"
+              @cancel="handleCancel"
+              @toggle-wishlist="toggleWishlist('package', item.id)"
+              @manage="router.push('/dashboard')"
+            />
+
+            <!-- 🔵 Everything else (destinations, etc.) -->
             <ResultCard
               v-else
               :item="item"
               :saved="isSaved(item.category === 'dest' ? 'destination' : item.category, item.id)"
-              :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id)"
+              :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id, item.activeOffer?.id)"
               :is-owner="isItemOwner(item)"
               @select="goToDetail"
               @book="handleBook"
+              @cancel="handleCancel"
               @toggle-wishlist="toggleWishlist(item.category, item.id)"
               @manage="router.push('/dashboard')"
             />
@@ -137,7 +153,7 @@
               v-if="item.category === 'offer'"
               :offer="item"
               :saved="isSaved('offer', item.id)"
-              :booked="isBooked('offer', item.id)"
+              :booked="isBooked('offer', item.id, item.package_id || item.linked_package_id)"
               :is-owner="isItemOwner(item)"
               @select="goToDetail"
               @toggle-save="toggleWishlist('offer', item.id)"
@@ -146,14 +162,28 @@
             />
 
             <!-- 🔵 Others (Packages & Services) -->
+            <PackageCard
+              v-else-if="item.category === 'package'"
+              :item="item"
+              :saved="isSaved('package', item.id)"
+              :booked="isBooked('package', item.id, item.activeOffer?.id)"
+              :is-owner="isItemOwner(item)"
+              @select="goToDetail"
+              @book="handleBook"
+              @cancel="handleCancel"
+              @toggle-wishlist="toggleWishlist('package', item.id)"
+              @manage="router.push('/dashboard')"
+            />
+
             <ResultListCard
               v-else
               :item="item"
               :saved="isSaved(item.category === 'dest' ? 'destination' : item.category, item.id)"
-              :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id)"
+              :booked="isBooked(item.category === 'dest' ? 'destination' : item.category, item.id, item.activeOffer?.id)"
               :is-owner="isItemOwner(item)"
               @select="goToDetail"
               @book="handleBook"
+              @cancel="handleCancel"
               @toggle-wishlist="toggleWishlist(item.category, item.id)"
               @manage="router.push('/dashboard')"
             />
@@ -193,9 +223,10 @@ import ResultCard       from '@/components/search/ResultCard.vue'
 import ResultListCard   from '@/components/search/ResultListCard.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal     from '@/components/search/BookingModal.vue'
-import DealCard from '@/components/search/DealCard.vue'
-import ServiceCard from '@/components/shared/ServiceCard.vue'
-import DestinationCard from '@/components/shared/DestinationCard.vue'
+import DealCard         from '@/components/search/DealCard.vue'
+import PackageCard      from '@/components/shared/PackageCard.vue'
+import ServiceCard      from '@/components/shared/ServiceCard.vue'
+import DestinationCard  from '@/components/shared/DestinationCard.vue'
 import OfferDetailModal from '@/components/home/OfferDetailModal.vue'
 
 
@@ -319,6 +350,7 @@ function normalizePackage(p) {
     startDate,
     endDate,
     agency_id: p.agency_id || p.userId || p.owner_id || null,
+    includes: p.includes ? (typeof p.includes === 'string' ? JSON.parse(p.includes) : p.includes) : [],
   }
 }
 
@@ -489,16 +521,25 @@ async function runSearch() {
     })
 
     // 4. Offers
-    const offers = useOffers().activeOffers.value.map(o => ({
-      ...o,
-      id: o.offerID,
-      category: 'offer',
-      title: o.title,
-      desc: o.description,
-      tag: (o.discount_pct || o.discount) + '% OFF',
-      agency_id: o.agency_id || o.userId || o.owner_id || null,
-      provider_id: o.provider_id || null,
-    }))
+    const offers = useOffers().activeOffers.value
+      .filter(o => o.source === 'collab') // ✅ ONLY KEEP COLLABORATIONS (Bargains/Bundles)
+      .map(o => ({
+        ...o,
+        id: o.offerID,
+        category: 'offer',
+        title: o.title,
+        desc: o.description,
+        tag: (o.discount_pct || o.discount) + '% OFF',
+        agency_id: o.agency_id || o.userId || o.owner_id || null,
+        provider_id: o.provider_id || null,
+        img: o.img || '/arrivo-website/src/assets/images/placeholder-deal.jpg',
+        price: o.price || 0,
+        rating: 5.0,
+        reviews: 0,
+        categoryLabel: 'Joint Offer',
+        ctaLabel: 'View Deal',
+        priceLabel: 'Starting from'
+      }))
 
     allResults.value = [
       ...finalDests,
@@ -549,9 +590,10 @@ function goToDetail(item) {
 async function handleBook(item) {
   const typeMap = { dest: 'destination', package: 'package', service: 'service', offer: 'offer' }
   const type = typeMap[item.category] || item.category
+  const linkedId = item.activeOffer?.id || null
 
-  if (isBooked(type, item.id)) {
-    const bid = getBookingId(type, item.id)
+  if (isBooked(type, item.id, linkedId)) {
+    const bid = getBookingId(type, item.id, linkedId)
     if (bid) {
       const res = await cancelBooking(bid)
       if (res.ok) alert('Booking cancelled successfully.')
@@ -569,21 +611,42 @@ async function handleBook(item) {
   bookingOpen.value  = true
 }
 
+async function handleCancel(item) {
+  const typeMap = { dest: 'destination', package: 'package', service: 'service', offer: 'offer' }
+  const type = typeMap[item.category] || item.category
+  const linkedId = item.activeOffer?.id || null
+  const bid = getBookingId(type, item.id, linkedId)
+  if (!bid) return
+  
+  if (!confirm('Are you sure you want to cancel this booking?')) return
+  const res = await cancelBooking(bid)
+  if (res.ok) alert('Booking cancelled successfully.')
+  else alert('Failed to cancel: ' + res.error)
+}
+
 async function handleBookingSubmit(payload) {
   if (!isLoggedIn.value) { alert('Please log in to book.'); return }
+
+  const item = selectedItem.value
+  const isOffer = !!item.activeOffer
+  let finalPrice = item.price
+  if (isOffer) {
+    finalPrice = Math.round(finalPrice * (1 - item.activeOffer.discount / 100))
+  }
+
   const result = await createBooking({
     user_id:  user.value ? (user.value.userID || user.value.id) : null,
-    type:     selectedItem.value.category === 'dest' ? 'destination' : selectedItem.value.category,
-    item_id:  selectedItem.value.id,
-    title:    selectedItem.value.title,
-    price:    selectedItem.value.price,
+    type:     isOffer ? 'offer' : (item.category === 'dest' ? 'destination' : item.category),
+    item_id:  isOffer ? item.activeOffer.id : item.id,
+    title:    isOffer ? item.activeOffer.title : item.title,
+    price:    finalPrice,
     check_in: payload.checkin,
     guests:   parseInt(payload.guests) || 1,
     notes:    payload.notes,
   })
   if (result.ok) {
     bookingOpen.value = false
-    alert('Booked successfully!')
+    alert(isOffer ? 'Offer booked successfully!' : 'Booked successfully!')
   } else {
     alert('Failed to book: ' + result.error)
   }
