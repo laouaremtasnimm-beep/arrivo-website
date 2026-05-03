@@ -15,17 +15,24 @@
  *   itemsOfType(type)   → Ref<{type,id}[]>  — reactive list for one type
  */
 
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useAuth } from './useAuth'
 
-const STORAGE_KEY = 'arrivo_wishlist_v2'
+const { user, isLoggedIn } = useAuth()
 
-// One-time cleanup: remove old single-bucket keys from the previous buggy version
-;['voyago_wish_dest', 'voyago_wish_pkg', 'voyago_wish_svc'].forEach(k => localStorage.removeItem(k))
+// Module-level ref
+const entries = ref([])
 
-/** Load the saved list from localStorage. Returns an array of {type, id}. */
+/** Get storage key for current user */
+function getStorageKey() {
+  const uid = user.value?.userID || user.value?.id
+  return uid ? `arrivo_wishlist_u_${uid}` : 'arrivo_wishlist_guest'
+}
+
+/** Load the saved list from localStorage. */
 function load() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+    return JSON.parse(localStorage.getItem(getStorageKey()) || '[]')
   } catch {
     return []
   }
@@ -33,50 +40,43 @@ function load() {
 
 /** Persist the current list to localStorage. */
 function save(list) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list))
+  localStorage.setItem(getStorageKey(), JSON.stringify(list))
 }
 
-// Module-level — one reactive array, shared across every component that calls useWishlist().
-const entries = ref(load())
+// Initial load
+entries.value = load()
 
-/**
- * Check whether a given (type, id) pair is currently wishlisted.
- */
+// Re-load whenever user changes (login/logout)
+watch(() => user.value?.id || user.value?.userID, () => {
+  entries.value = load()
+})
+
+/** Check whether a given (type, id) pair is currently wishlisted. */
 const isSaved = computed(() => (type, id) =>
   entries.value.some(e => e.type === type && e.id === id)
 )
 
-/**
- * Toggle a (type, id) pair.
- * Returns true  → item was just ADDED
- * Returns false → item was just REMOVED
- */
+/** Toggle a (type, id) pair. */
 function toggle(type, id) {
   const idx = entries.value.findIndex(e => e.type === type && e.id === id)
   if (idx !== -1) {
-    // Remove
     entries.value = entries.value.filter((_, i) => i !== idx)
     save(entries.value)
     return false
   } else {
-    // Add
     entries.value = [...entries.value, { type, id }]
     save(entries.value)
     return true
   }
 }
 
-/**
- * Remove all entries of a given type.
- */
+/** Remove all entries of a given type. */
 function clearType(type) {
   entries.value = entries.value.filter(e => e.type !== type)
   save(entries.value)
 }
 
-/**
- * Return a computed ref containing only the entries for a specific type.
- */
+/** Return a computed ref containing only the entries for a specific type. */
 function itemsOfType(type) {
   return computed(() => entries.value.filter(e => e.type === type))
 }
