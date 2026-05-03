@@ -41,7 +41,7 @@
                   @click="selectPackage(pkg)"
                 >
                   <div class="mini-card__img-wrap">
-                    <img :src="pkg.img" :alt="pkg.title" class="mini-card__img" />
+                    <img :src="pkg.img_url || pkg.img || 'https://via.placeholder.com/300?text=No+Image'" :alt="pkg.title" class="mini-card__img" />
                     <div class="mini-card__discount-pill">-{{ offer?.discount }}%</div>
                   </div>
                   <div class="mini-card__body">
@@ -127,7 +127,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { packages, services } from '@/data/content.js'
+import { usePackages } from '@/composables/usePackages'
+import { useServices } from '@/composables/useServices'
 import BookingModal from '@/components/home/BookingModal.vue'
 
 import { useAuth } from '@/composables/useAuth'
@@ -140,6 +141,8 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const router       = useRouter()
+const { allPackages }      = usePackages()
+const { allServices }      = useServices()
 const { user, isLoggedIn } = useAuth()
 const { createBooking, isBooked, getBookingId, cancelBooking } = useBookings()
 const bookingOpen  = ref(false)
@@ -157,15 +160,46 @@ const isOwner = computed(() => {
 })
 
 // ── Match packages to this offer by keyword in title ────────────────────
+const exactPackages = ref([])
+
+import { watch } from 'vue'
+
+watch(() => props.modelValue, async (isOpen) => {
+  if (isOpen && props.offer) {
+    exactPackages.value = []
+    const id = props.offer.offerID || props.offer.id
+    if (id) {
+      try {
+        const res = await fetch(`/arrivo-website/backend/api/v1/offers.php?id=${id}`)
+        const data = await res.json()
+        if (data.offer && data.offer.packages) {
+          exactPackages.value = data.offer.packages.map(p => ({
+             ...p,
+             img: p.img_url || p.img,
+             duration: p.duration_days || p.duration,
+             rating: p.rating || 4.5,
+             reviews: p.review_count || 0
+          }))
+        }
+      } catch (e) {
+        console.error('Failed to fetch exact offer packages', e)
+      }
+    }
+  }
+})
+
 const matchedPackages = computed(() => {
+  if (exactPackages.value.length > 0) return exactPackages.value
+  
   if (!props.offer) return []
   const keywords = offerKeywords(props.offer.title)
-  if (!keywords.length) return packages.slice(0, 3)
-  return packages.filter(p =>
+  const pkgs = allPackages.value || []
+  if (!keywords.length) return pkgs.slice(0, 3)
+  return pkgs.filter(p =>
     keywords.some(kw =>
-      p.title.toLowerCase().includes(kw) ||
-      p.type.toLowerCase().includes(kw)  ||
-      (p.agency || '').toLowerCase().includes(kw)
+      p.title?.toLowerCase().includes(kw) ||
+      p.type?.toLowerCase().includes(kw)  ||
+      (p.agency_name || p.agency || '').toLowerCase().includes(kw)
     )
   ).slice(0, 3)
 })
@@ -174,11 +208,12 @@ const matchedPackages = computed(() => {
 const matchedServices = computed(() => {
   if (!props.offer) return []
   const keywords = offerKeywords(props.offer.title)
+  const svcs = allServices.value || []
   if (!keywords.length) return []
-  return services.filter(s =>
+  return svcs.filter(s =>
     keywords.some(kw =>
-      s.title.toLowerCase().includes(kw) ||
-      s.type.toLowerCase().includes(kw)
+      s.title?.toLowerCase().includes(kw) ||
+      s.type?.toLowerCase().includes(kw)
     )
   ).slice(0, 3)
 })

@@ -54,7 +54,7 @@ try {
                 FROM packages p
                 LEFT JOIN users u ON u.id = p.agency_id
                 LEFT JOIN reviews r ON r.package_id = p.id
-                WHERE p.is_active = 1
+                WHERE p.is_active = 1 AND (p.offer_only = 0 OR p.offer_only IS NULL)
                 GROUP BY p.id
                 ORDER BY p.created_at DESC
             ');

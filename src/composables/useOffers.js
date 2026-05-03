@@ -26,8 +26,16 @@ async function _bootstrap() {
     if (data.offers) {
       // Merge: avoid duplicates if demo offers were somehow in the DB
       data.offers.forEach(dbOff => {
-        if (!_offers.value.some(o => o.offerID === dbOff.offerID)) {
-          _offers.value.push(dbOff)
+        const mapped = {
+          ...dbOff,
+          offerID:   dbOff.id,
+          discount:  dbOff.discount_pct,
+          startDate: dbOff.start_date,
+          endDate:   dbOff.end_date,
+          active:    dbOff.is_active === 1
+        }
+        if (!_offers.value.some(o => o.offerID === mapped.offerID)) {
+          _offers.value.push(mapped)
         }
       })
     }

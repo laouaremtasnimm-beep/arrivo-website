@@ -71,7 +71,7 @@ try {
     } elseif ($method === 'POST') {
         $data = json_decode(file_get_contents('php://input'), true);
 
-        $required = ['agency_id', 'title', 'discount', 'startDate', 'endDate', 'description'];
+        $required = ['agency_id', 'title', 'discount'];
         foreach ($required as $field) {
             if (!isset($data[$field]) || $data[$field] === '') {
                 http_response_code(400);
@@ -98,19 +98,20 @@ try {
             $stmt = $pdo->prepare('
                 INSERT INTO special_offers
                     (agency_id, title, discount_pct, start_date, end_date,
-                     description, type, offer_type, is_active, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                     description, type, offer_type, is_active, source, includes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
             ');
             $stmt->execute([
                 $data['agency_id'],
                 $data['title'],
-                $data['discount'],      // frontend sends 'discount', maps to discount_pct
-                $data['startDate'],
-                $data['endDate'],
+                $data['discount'],
+                !empty($data['startDate']) ? $data['startDate'] : null,
+                !empty($data['endDate']) ? $data['endDate'] : null,
                 $data['description'],
                 $data['type']   ?? 'General',
                 $offerType,
                 $data['source'] ?? 'manual',
+                isset($data['includes']) ? json_encode($data['includes']) : null,
             ]);
             $offerId = (int) $pdo->lastInsertId();
 
@@ -169,18 +170,20 @@ try {
                     description  = ?,
                     type         = ?,
                     offer_type   = ?,
-                    is_active    = ?
+                    is_active    = ?,
+                    includes     = ?
                 WHERE id = ?
             ');
             $stmt->execute([
                 $data['title'],
                 $data['discount'],
-                $data['startDate'],
-                $data['endDate'],
+                !empty($data['startDate']) ? $data['startDate'] : null,
+                !empty($data['endDate']) ? $data['endDate'] : null,
                 $data['description'],
                 $data['type']     ?? 'General',
                 $offerType,
                 $data['is_active'] ?? 1,
+                isset($data['includes']) ? json_encode($data['includes']) : null,
                 $offerId,
             ]);
 

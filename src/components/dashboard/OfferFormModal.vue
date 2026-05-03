@@ -109,7 +109,7 @@
               </span>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" v-if="!selectedPackage">
               <label class="form-label">Offer title *</label>
               <input class="form-input" v-model="form.title" placeholder="e.g. Adventure Bundle Deal" />
               <p class="field-error" v-if="errors.title">{{ errors.title }}</p>
@@ -122,7 +122,7 @@
                   v-model.number="form.discount" placeholder="e.g. 20" />
                 <p class="field-error" v-if="errors.discount">{{ errors.discount }}</p>
               </div>
-              <div class="form-group">
+              <div class="form-group" v-if="!selectedPackage">
                 <label class="form-label">Category</label>
                 <select class="form-input form-select" v-model="form.type">
                   <option value="General">✨ General</option>
@@ -155,11 +155,22 @@
               </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" v-if="!selectedPackage">
               <label class="form-label">Description *</label>
               <textarea class="form-input form-textarea" v-model="form.description"
                 placeholder="Describe what makes this offer special…" />
               <p class="field-error" v-if="errors.description">{{ errors.description }}</p>
+            </div>
+
+            <!-- What's included -->
+            <div class="form-group" v-if="!selectedPackage">
+              <label class="form-label">What's included <span class="form-hint">(one per line)</span></label>
+              <textarea
+                class="form-input form-textarea"
+                v-model="includesRaw"
+                placeholder="Free breakfast&#10;Airport pick-up&#10;Premium insurance"
+                rows="3"
+              />
             </div>
 
             <!-- Live discount preview -->
@@ -194,26 +205,28 @@
     </Transition>
 
     <!-- ══════════════════════════════════════════
-         Nested: Create Package sub-modal
+         Nested: Create Package sub-modal (2-step mini-wizard)
     ══════════════════════════════════════════ -->
     <Transition name="wizard-fade">
       <div class="modal-backdrop modal-backdrop--top" v-if="showCreatePackage" @click.self="showCreatePackage = false">
         <div class="modal modal--package">
 
+          <!-- Sub-modal progress bar -->
           <div class="wizard-progress">
-            <div class="wizard-progress__fill" style="width:50%"></div>
+            <div class="wizard-progress__fill" :style="{ width: subProgressWidth }"></div>
           </div>
 
           <div class="modal__header">
             <div class="header-left">
-              <div class="step-badge">New Package</div>
-              <h2 class="modal__title">Create a package for this offer</h2>
-              <p class="step-sub">Hidden from public listings — exclusive to this offer</p>
+              <div class="step-badge">New Package · Step {{ subStep }} of 2</div>
+              <h2 class="modal__title">{{ subStepTitle }}</h2>
+              <p class="step-sub">{{ subStepSub }}</p>
             </div>
             <button class="modal__close" @click="showCreatePackage = false">✕</button>
           </div>
 
-          <div class="modal__body">
+          <!-- ── Sub-step 1: Package details ── -->
+          <div class="modal__body" v-if="subStep === 1">
 
             <div class="form-group">
               <label class="form-label">Package title *</label>
@@ -246,37 +259,53 @@
                 <p class="field-error" v-if="pkgErrors.price">{{ pkgErrors.price }}</p>
               </div>
               <div class="form-group">
-                <label class="form-label">Duration (days)</label>
-                <input type="number" min="1" class="form-input" v-model.number="newPkg.duration_days" placeholder="e.g. 7" />
+                <label class="form-label">Spots Available</label>
+                <input type="number" min="1" class="form-input" v-model.number="newPkg.spots_available" placeholder="e.g. 10" />
               </div>
             </div>
 
             <div class="form-row">
               <div class="form-group">
-                <label class="form-label">Start Date</label>
+                <label class="form-label">Start Date *</label>
                 <div class="date-wrap">
                   <input type="date" class="form-input" v-model="newPkg.start_date" />
                   <span class="date-icon">🗓️</span>
                 </div>
+                <p class="field-error" v-if="pkgErrors.start_date">{{ pkgErrors.start_date }}</p>
               </div>
               <div class="form-group">
-                <label class="form-label">End Date</label>
+                <label class="form-label">End Date *</label>
                 <div class="date-wrap">
                   <input type="date" class="form-input" v-model="newPkg.end_date" />
                   <span class="date-icon">🗓️</span>
                 </div>
+                <p class="field-error" v-if="pkgErrors.end_date">{{ pkgErrors.end_date }}</p>
               </div>
             </div>
 
             <div class="form-group">
-              <label class="form-label">Description</label>
+              <label class="form-label">Description *</label>
               <textarea class="form-input form-textarea" v-model="newPkg.description"
                 placeholder="Describe this package…" />
+              <p class="field-error" v-if="pkgErrors.description">{{ pkgErrors.description }}</p>
             </div>
 
             <div class="form-group">
               <label class="form-label">Image URL</label>
               <input class="form-input" v-model="newPkg.img_url" placeholder="https://…" />
+              <div class="img-preview" v-if="newPkg.img_url">
+                <img :src="newPkg.img_url" alt="Preview" @error="newPkg.img_url = ''" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">What's included <span class="form-hint">(one per line)</span></label>
+              <textarea
+                class="form-input form-textarea"
+                v-model="pkgIncludesRaw"
+                placeholder="All meals&#10;Private transport"
+                rows="3"
+              />
             </div>
 
             <div class="autofill-notice" v-if="form.startDate || form.endDate">
@@ -286,12 +315,63 @@
 
           </div>
 
+          <!-- ── Sub-step 2: Discount + category ── -->
+          <div class="modal__body" v-else-if="subStep === 2">
+
+            <!-- Package preview pills -->
+            <div class="selected-summary">
+              <span class="summary-pill">📦 {{ newPkg.title }}</span>
+              <span class="summary-pill summary-pill--meta" v-if="newPkg.price">
+                ${{ Number(newPkg.price).toLocaleString() }}
+              </span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Discount (%) *</label>
+              <div class="discount-input-wrap">
+                <input
+                  type="number" min="1" max="80"
+                  class="form-input"
+                  v-model.number="newPkg.discount"
+                  placeholder="e.g. 20"
+                />
+                <span class="discount-suffix">% off</span>
+              </div>
+              <p class="field-error" v-if="pkgErrors.discount">{{ pkgErrors.discount }}</p>
+            </div>
+
+            <!-- Live discount preview -->
+            <div class="discount-preview" v-if="newPkg.discount && newPkg.price">
+              <div class="discount-preview__label">Price preview</div>
+              <div class="discount-preview__items">
+                <div class="discount-preview__row">
+                  <span class="dp-name">{{ newPkg.title }}</span>
+                  <span class="dp-prices">
+                    <s class="dp-old">${{ Number(newPkg.price).toLocaleString() }}</s>
+                    <strong class="dp-new">${{ subDiscountedPrice }}</strong>
+                    <span class="dp-badge">-{{ newPkg.discount }}%</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Sub-modal footer -->
           <div class="modal__footer">
-            <button class="btn btn-outline" @click="showCreatePackage = false">Cancel</button>
-            <button class="btn btn-coral" @click="saveNewPackage" :disabled="savingPackage">
-              <span v-if="savingPackage" class="btn-spinner"></span>
-              Save &amp; Add to Offer
+            <button class="btn btn-outline" @click="subBack">
+              {{ subStep === 1 ? 'Cancel' : '← Back' }}
             </button>
+            <div class="footer-right">
+              <span class="step-dots">
+                <span class="dot" :class="{ active: subStep === 1, done: subStep > 1 }"></span>
+                <span class="dot" :class="{ active: subStep === 2 }"></span>
+              </span>
+              <button class="btn btn-coral" @click="subNext" :disabled="savingPackage">
+                <span v-if="savingPackage" class="btn-spinner"></span>
+                {{ subStep === 1 ? 'Next →' : 'Save & Add to Offer' }}
+              </button>
+            </div>
           </div>
 
         </div>
@@ -318,6 +398,8 @@ const step       = ref(1)
 const submitting = ref(false)
 const errors     = ref({})
 const existingOpen = ref(false)
+const includesRaw  = ref('')
+const pkgIncludesRaw = ref('')
 
 const blankForm = () => ({
   title:              '',
@@ -327,6 +409,7 @@ const blankForm = () => ({
   description:        '',
   type:               'Bundle',
   selectedPackageIds: [],
+  includes:           [],
 })
 const form = ref(blankForm())
 
@@ -351,18 +434,14 @@ async function fetchPackages() {
   if (!props.agencyId) return
   loadingPackages.value = true
   try {
-    // Fetch both packages and services
     const [pkgRes, svcRes] = await Promise.all([
       fetch(`/arrivo-website/backend/api/v1/Packages.php?agency_id=${props.agencyId}`),
       fetch(`/arrivo-website/backend/api/v1/Services.php?provider_id=${props.agencyId}`)
     ])
-    
     const pkgData = await pkgRes.json()
     const svcData = await svcRes.json()
-    
     const pkgs = (pkgData.packages || []).map(p => ({ ...p, itemType: 'package' }))
     const svcs = (svcData.services || []).map(s => ({ ...s, itemType: 'service' }))
-    
     agencyPackages.value = [...pkgs, ...svcs]
   } catch (e) {
     console.error('Failed to load items', e)
@@ -371,74 +450,158 @@ async function fetchPackages() {
   }
 }
 
-/* ── Create-package sub-modal ─────────────────── */
+/* ── Create-package sub-modal (2-step) ────────── */
 const showCreatePackage = ref(false)
 const savingPackage     = ref(false)
 const pkgErrors         = ref({})
+const subStep           = ref(1)
+const showCustomDates   = ref(false)
 
 const blankPkg = () => ({
-  title:        '',
-  destination:  '',
-  type:         'Adventure',
-  price:        null,
-  duration_days: null,
-  start_date:   '',
-  end_date:     '',
-  description:  '',
-  img_url:      '',
+  title:            '',
+  destination:      '',
+  type:             'Adventure',
+  price:            null,
+  spots_available:  10,
+  start_date:       '',
+  end_date:         '',
+  description:      '',
+  img_url:          '',
+  discount:         null,
+  offerType:        'General',
+  offer_start_date: '',
+  offer_end_date:   '',
 })
 const newPkg = ref(blankPkg())
 
+const subProgressWidth = computed(() => `${(subStep.value / 2) * 100}%`)
+
+const subStepTitle = computed(() =>
+  subStep.value === 1
+    ? 'Create a package for this offer'
+    : 'Apply a discount'
+)
+const subStepSub = computed(() =>
+  subStep.value === 1
+    ? 'Hidden from public listings — exclusive to this offer'
+    : 'Set a discount and category to turn this package into a deal'
+)
+
+const subDiscountedPrice = computed(() => {
+  const d = newPkg.value.discount || 0
+  return (Number(newPkg.value.price) * (1 - d / 100))
+    .toFixed(0)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+})
+
 function openCreatePackage() {
-  pkgErrors.value = {}
+  pkgErrors.value       = {}
+  subStep.value         = 1
+  showCustomDates.value = false
   newPkg.value = {
     ...blankPkg(),
-    start_date: form.value.startDate || '',
-    end_date:   form.value.endDate   || '',
+    start_date:       form.value.startDate || '',
+    end_date:         form.value.endDate   || '',
+    offer_start_date: form.value.startDate || '',
+    offer_end_date:   form.value.endDate   || '',
   }
+  pkgIncludesRaw.value    = ''
   showCreatePackage.value = true
 }
 
-function validatePkg() {
+function validateSubStep1() {
   const e = {}
   if (!newPkg.value.title?.trim())       e.title       = 'Title is required.'
   if (!newPkg.value.destination?.trim()) e.destination = 'Destination is required.'
   if (!newPkg.value.price || newPkg.value.price <= 0) e.price = 'Enter a valid price.'
+  if (!newPkg.value.start_date)          e.start_date  = 'Start date is required.'
+  if (!newPkg.value.end_date)            e.end_date    = 'End date is required.'
+  if (newPkg.value.start_date && newPkg.value.end_date && newPkg.value.end_date < newPkg.value.start_date)
+    e.end_date = 'End date must be after start date.'
+  if (!newPkg.value.description?.trim()) e.description = 'Description is required.'
   pkgErrors.value = e
   return !Object.keys(e).length
 }
 
+function validateSubStep2() {
+  const e = {}
+  if (!newPkg.value.discount || newPkg.value.discount < 1 || newPkg.value.discount > 80)
+    e.discount = 'Enter a valid discount between 1 and 80.'
+  pkgErrors.value = e
+  return !Object.keys(e).length
+}
+
+function subNext() {
+  if (subStep.value === 1) {
+    if (!validateSubStep1()) return
+    subStep.value = 2
+    return
+  }
+  saveNewPackage()
+}
+
+function subBack() {
+  if (subStep.value === 1) {
+    showCreatePackage.value = false
+    return
+  }
+  pkgErrors.value = {}
+  subStep.value   = 1
+}
+
 async function saveNewPackage() {
-  if (!validatePkg()) return
+  if (!validateSubStep2()) return
   savingPackage.value = true
   try {
-    const res  = await fetch('/arrivo-website/backend/api/v1/Packages.php', {
+    const effectiveStart = showCustomDates.value ? newPkg.value.offer_start_date : (form.value.startDate || newPkg.value.offer_start_date)
+    const effectiveEnd   = showCustomDates.value ? newPkg.value.offer_end_date   : (form.value.endDate   || newPkg.value.offer_end_date)
+
+    const res = await fetch('/arrivo-website/backend/api/v1/Packages.php', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({
         ...newPkg.value,
-        agency_id:  props.agencyId,
-        offer_only: 1,
-        is_active:  1,
+        duration_days: 1,
+        agency_id:     props.agencyId,
+        offer_only:    1,
+        is_active:     1,
+        includes:      pkgIncludesRaw.value.split('\n').map(s => s.trim()).filter(Boolean),
       }),
     })
     const data = await res.json()
 
     if (data.package_id) {
       const created = {
-        id:            data.package_id,
-        title:         newPkg.value.title,
-        destination:   newPkg.value.destination,
-        duration_days: newPkg.value.duration_days,
-        price:         newPkg.value.price,
-        img_url:       newPkg.value.img_url,
-        offer_only:    1,
+        id:              data.package_id,
+        title:           newPkg.value.title,
+        type:            newPkg.value.type,
+        duration_days:   1,
+        price:           newPkg.value.price,
+        spots_available: newPkg.value.spots_available || 10,
+        description:     newPkg.value.description,
+        img_url:         newPkg.value.img_url,
+        offer_only:      1,
+        itemType:        'package',
       }
       agencyPackages.value.unshift(created)
       form.value.selectedPackageIds.push(data.package_id)
-      if (!form.value.title) form.value.title = newPkg.value.title
+
+      // Auto-fill offer fields from the new package's offer settings
+      if (!form.value.title)    form.value.title    = newPkg.value.title
+      if (!form.value.discount) form.value.discount = newPkg.value.discount
+      if (form.value.type === 'Bundle' || !form.value.type) form.value.type = newPkg.value.offerType
+      if (!form.value.startDate) form.value.startDate = effectiveStart
+      if (!form.value.endDate)   form.value.endDate   = effectiveEnd
+      
+      // Also sync description and inclusions if empty
+      if (!form.value.description) form.value.description = newPkg.value.description
+      if (!includesRaw.value)      includesRaw.value      = pkgIncludesRaw.value
+
+      showCreatePackage.value = false
+      
+      // Automatically save the offer too, as requested
+      submit()
     }
-    showCreatePackage.value = false
   } catch (e) {
     console.error('Failed to create package', e)
   } finally {
@@ -484,15 +647,21 @@ watch(
             description:        offer.description  ?? '',
             type:               offer.type         ?? 'Bundle',
             selectedPackageIds: offer.packageIds   ?? [],
+            includes:           offer.includes     ?? [],
           }
         : blankForm()
-      
+
+      if (offer?.includes) {
+        includesRaw.value = Array.isArray(offer.includes) ? offer.includes.join('\n') : ''
+      } else {
+        includesRaw.value = ''
+      }
+
       if (props.agencyId) fetchPackages()
     }
   }
 )
 
-// Also fetch if agencyId arrives late
 watch(() => props.agencyId, (newId) => {
   if (newId && props.modelValue) fetchPackages()
 })
@@ -505,7 +674,7 @@ function validateStep() {
       e.packages = 'Select at least one package, or create a new one above.'
   }
   if (step.value === 2) {
-    if (!form.value.title?.trim())
+    if (!form.value.title?.trim() && !selectedPackage.value)
       e.title = 'Title is required.'
     if (!form.value.discount || form.value.discount < 1)
       e.discount = 'Enter a valid discount (1–80).'
@@ -515,7 +684,7 @@ function validateStep() {
       e.endDate = 'End date is required.'
     if (form.value.startDate && form.value.endDate && form.value.endDate < form.value.startDate)
       e.endDate = 'End date must be after start date.'
-    if (!form.value.description?.trim())
+    if (!form.value.description?.trim() && !selectedPackage.value)
       e.description = 'Description is required.'
   }
   errors.value = e
@@ -539,19 +708,21 @@ function back() {
 async function submit() {
   submitting.value = true
   try {
-    emit('save', {
-      title:       form.value.title,
-      discount:    form.value.discount,
-      startDate:   form.value.startDate,
-      endDate:     form.value.endDate,
-      description: form.value.description,
-      type:        form.value.type,
-      offerType:   'package',
-      packageIds:  form.value.selectedPackageIds,
-      source:      'manual',
-      offerID:     props.offer?.offerID ?? props.offer?.id ?? null,
-      is_active:   1,
-    })
+    const payload = {
+      ...form.value,
+      title:       selectedPackage.value ? selectedPackage.value.title : form.value.title,
+      description: selectedPackage.value ? (selectedPackage.value.desc || selectedPackage.value.description) : form.value.description,
+      type:        selectedPackage.value ? selectedPackage.value.type : form.value.type,
+      id:          isEdit.value ? props.offer.id : undefined,
+      agency_id:  props.agencyId,
+      offerType:  form.value.selectedPackageIds.length > 0 ? 'package' : 'general',
+      packageIds: form.value.selectedPackageIds,
+      includes:   selectedPackage.value ? (selectedPackage.value.includes || []) : includesRaw.value.split('\n').map(s => s.trim()).filter(Boolean),
+      source:     'manual',
+      offerID:    props.offer?.offerID ?? props.offer?.id ?? null,
+      is_active:  1,
+    }
+    emit('save', payload)
     close()
   } finally {
     submitting.value = false
@@ -565,6 +736,8 @@ function close() {
     form.value              = blankForm()
     errors.value            = {}
     showCreatePackage.value = false
+    subStep.value           = 1
+    showCustomDates.value   = false
   }, 300)
 }
 </script>
@@ -580,7 +753,6 @@ function close() {
   background: #fff; border-radius: 22px; width: 100%; max-width: 520px;
   box-shadow: 0 20px 72px rgba(45,49,66,.22);
   max-height: 92vh; display: flex; flex-direction: column;
-  /* overflow: hidden; */ /* Removed to allow dropdowns to pop out */
   position: relative;
 }
 .modal--package { max-width: 500px; }
@@ -614,16 +786,25 @@ function close() {
 .modal__body {
   padding: 18px 26px; overflow-y: auto; flex: 1;
   display: flex; flex-direction: column; gap: 14px;
-  position: relative;
-  /* Allow dropdowns to be visible outside body if needed */
-  min-height: 200px;
+  position: relative; min-height: 200px;
 }
-.modal.step-1 .modal__body { overflow: visible; } /* Specifically allow step 1 to overflow for dropdown */
+.modal.step-1 .modal__body { overflow: visible; }
 
 .modal__footer {
   padding: 14px 26px; border-top: 1px solid var(--gray-100);
-  display: flex; justify-content: space-between; gap: 10px; flex-shrink: 0;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 10px; flex-shrink: 0;
 }
+
+/* Footer right — dots + button */
+.footer-right { display: flex; align-items: center; gap: 12px; }
+.step-dots    { display: flex; gap: 5px; align-items: center; }
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--gray-200); transition: all .25s ease;
+}
+.dot.active { background: var(--coral); transform: scale(1.3); }
+.dot.done   { background: var(--teal); }
 
 .btn {
   padding: 10px 22px; border-radius: 50px; font-size: .88rem; font-weight: 700;
@@ -659,14 +840,6 @@ function close() {
 .new-pkg-card__sub   { font-size: .78rem; color: var(--gray-600); margin-top: 2px; }
 .new-pkg-card__arrow { font-size: 1.1rem; color: var(--teal); font-weight: 700; }
 
-.divider {
-  display: flex; align-items: center; gap: 10px;
-  color: var(--gray-400); font-size: .78rem;
-}
-.divider::before, .divider::after {
-  content: ''; flex: 1; height: 1px; background: var(--gray-200);
-}
-
 .loading-row {
   display: flex; align-items: center; gap: 10px;
   color: var(--gray-600); font-size: .88rem;
@@ -677,35 +850,7 @@ function close() {
   animation: spin .7s linear infinite; flex-shrink: 0;
 }
 .empty-state {
-  text-align: center; padding: 20px 0; color: var(--gray-500);
-  font-size: .88rem; display: flex; flex-direction: column; align-items: center; gap: 8px;
-}
-.empty-state span { font-size: 1.8rem; }
-
-.pkg-list { display: flex; flex-direction: column; gap: 8px; }
-.pkg-row {
-  display: flex; align-items: center; gap: 12px; padding: 10px 14px;
-  border-radius: 12px; border: 1.5px solid var(--gray-200);
-  cursor: pointer; transition: all .15s ease;
-}
-.pkg-row:hover    { border-color: var(--teal); background: var(--teal-lt, #f0fafa); }
-.pkg-row.selected { border-color: var(--teal); background: var(--teal-lt, #f0fafa); }
-.pkg-check { accent-color: var(--teal); width: 16px; height: 16px; flex-shrink: 0; cursor: pointer; }
-.pkg-thumb {
-  width: 50px; height: 42px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
-}
-.pkg-thumb--fallback {
-  display: flex; align-items: center; justify-content: center;
-  background: var(--gray-100); font-size: 1.2rem;
-  width: 50px; height: 42px; border-radius: 8px;
-}
-.pkg-info  { flex: 1; min-width: 0; }
-.pkg-name  { font-size: .88rem; font-weight: 600; color: var(--indigo); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pkg-meta  { font-size: .75rem; color: var(--gray-600); margin-top: 2px; }
-.pkg-selected-check {
-  width: 22px; height: 22px; border-radius: 50%; background: var(--teal);
-  color: #fff; font-size: .7rem; font-weight: 700;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  text-align: center; padding: 20px 0; color: var(--gray-500); font-size: .88rem;
 }
 
 /* Step 2 */
@@ -714,6 +859,9 @@ function close() {
   background: var(--teal-lt, #f0fafa); border: 1px solid var(--teal);
   border-radius: 20px; padding: 4px 12px;
   font-size: .76rem; color: var(--indigo); font-weight: 600;
+}
+.summary-pill--meta {
+  background: var(--gray-50, #f9f9fc); border-color: var(--gray-300); color: var(--gray-600);
 }
 
 .form-group  { display: flex; flex-direction: column; gap: 5px; }
@@ -729,7 +877,38 @@ function close() {
 .form-textarea { resize: vertical; min-height: 86px; }
 .form-select   { cursor: pointer; }
 .field-error   { font-size: .78rem; color: var(--coral); margin: 0; }
+.form-hint     { font-weight: 400; color: var(--gray-400); font-size: .76rem; }
 
+/* Discount input */
+.discount-input-wrap { position: relative; display: flex; align-items: center; }
+.discount-input-wrap .form-input { padding-right: 52px; width: 100%; }
+.discount-suffix {
+  position: absolute; right: 13px; font-size: .82rem;
+  font-weight: 700; color: var(--gray-500); pointer-events: none;
+}
+
+/* Inherited dates */
+.inherited-dates {
+  display: flex; align-items: center; gap: 10px;
+  background: #f0fafa; border: 1px solid var(--teal);
+  border-radius: 12px; padding: 10px 14px;
+}
+.inherited-dates__icon { font-size: 1.1rem; flex-shrink: 0; }
+.inherited-dates__info { flex: 1; min-width: 0; }
+.inherited-dates__label {
+  font-size: .68rem; color: var(--gray-500); font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.inherited-dates__value { font-size: .83rem; color: var(--indigo); font-weight: 600; margin-top: 2px; }
+.inherited-dates__change {
+  background: none; border: 1px solid var(--teal); border-radius: 20px;
+  color: var(--teal); font-size: .74rem; font-weight: 700;
+  padding: 4px 10px; cursor: pointer; flex-shrink: 0;
+  transition: all .15s ease; font-family: 'DM Sans', sans-serif;
+}
+.inherited-dates__change:hover { background: var(--teal); color: #fff; }
+
+/* Date inputs */
 .date-wrap { position: relative; }
 .date-wrap .form-input { padding-right: 36px; cursor: pointer; }
 .date-wrap input::-webkit-calendar-picker-indicator {
@@ -740,6 +919,11 @@ function close() {
   pointer-events: none; font-size: 1rem; z-index: 2;
 }
 
+/* Image preview */
+.img-preview { margin-top: 8px; height: 110px; border-radius: 10px; overflow: hidden; }
+.img-preview img { width: 100%; height: 100%; object-fit: cover; }
+
+/* Discount preview */
 .discount-preview {
   border-radius: 12px; border: 1.5px solid var(--gray-200); overflow: hidden;
 }
@@ -755,6 +939,10 @@ function close() {
 .dp-prices { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .dp-old    { color: var(--gray-400); font-size: .82rem; }
 .dp-new    { color: var(--coral); font-size: .95rem; }
+.dp-badge  {
+  background: var(--coral); color: #fff; font-size: .68rem;
+  font-weight: 800; padding: 2px 7px; border-radius: 20px;
+}
 
 .autofill-notice {
   display: flex; align-items: flex-start; gap: 8px;
@@ -762,7 +950,7 @@ function close() {
   padding: 10px 14px; font-size: .8rem; color: #7a5c00; line-height: 1.4;
 }
 
-/* Dropdown styles */
+/* Dropdown */
 .existing-pkgs-wrap { display: flex; flex-direction: column; gap: 6px; }
 .dropdown-container { position: relative; }
 .dropdown-trigger {
@@ -772,31 +960,27 @@ function close() {
   cursor: pointer; transition: all .2s ease; min-height: 52px;
 }
 .dropdown-trigger:hover { border-color: var(--teal); background: var(--teal-lt, #f0fafa); }
-.dropdown-trigger.open { border-color: var(--teal); box-shadow: 0 0 0 4px rgba(46,196,182,.1); }
-
+.dropdown-trigger.open  { border-color: var(--teal); box-shadow: 0 0 0 4px rgba(46,196,182,.1); }
 .dropdown-trigger__content { display: flex; align-items: center; gap: 12px; text-align: left; }
 .trigger-icon { font-size: 1.2rem; }
 .trigger-placeholder { color: var(--gray-400); font-size: .9rem; }
 .trigger-title { font-size: .92rem; font-weight: 600; color: var(--indigo); }
-.dropdown-arrow { font-size: 1.1rem; color: var(--teal); transition: transform .2s; }
+.dropdown-arrow { font-size: 1.1rem; color: var(--teal); }
 
 .dropdown-menu {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0;
   background: var(--white); border-radius: 14px;
   border: 1px solid var(--gray-200);
   box-shadow: 0 12px 48px rgba(45,49,66,.25);
-  z-index: 1000; max-height: 190px; overflow-y: auto;
-  padding: 8px;
+  z-index: 1000; max-height: 190px; overflow-y: auto; padding: 8px;
 }
-
 .dropdown-list { display: flex; flex-direction: column; gap: 4px; }
 .dropdown-item {
   display: flex; align-items: center; gap: 12px; padding: 10px;
   border-radius: 10px; cursor: pointer; transition: background .15s;
 }
-.dropdown-item:hover { background: var(--gray-50); }
+.dropdown-item:hover    { background: var(--gray-50); }
 .dropdown-item.selected { background: var(--teal-lt); }
-
 .item-img { width: 44px; height: 36px; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
 .item-img img { width: 100%; height: 100%; object-fit: cover; }
 .item-img--fallback {
