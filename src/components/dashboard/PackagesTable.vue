@@ -26,7 +26,11 @@
   <td>
     <div class="pkg-cell">
       <div class="pkg-img">
-        <img :src="pkg.img_url || pkg.img" :alt="pkg.title" />   <!-- img_url -->
+   <img 
+  :src="pkg.img_url || pkg.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg'"
+  :alt="pkg.title"
+  @error="e => e.target.src = 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg'"
+/>
       </div>
       <div>
         <div class="pkg-title">{{ pkg.title }}</div>
