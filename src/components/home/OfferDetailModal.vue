@@ -8,7 +8,7 @@
           <button class="modal__close" @click="close">✕</button>
 
           <!-- Hero banner -->
-          <div class="offer-hero">
+          <div class="offer-hero" :style="heroStyle">
             <div class="offer-hero__discount">{{ offer?.discount }}% OFF</div>
             <div class="offer-hero__right">
               <div class="offer-hero__title">{{ offer?.title }}</div>
@@ -41,7 +41,7 @@
                   @click="selectPackage(pkg)"
                 >
                   <div class="mini-card__img-wrap">
-                    <img :src="pkg.img_url || pkg.img || 'https://via.placeholder.com/300?text=No+Image'" :alt="pkg.title" class="mini-card__img" />
+                    <img :src="pkg.img_url || pkg.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg'" :alt="pkg.title" class="mini-card__img" />
                     <div class="mini-card__discount-pill">-{{ offer?.discount }}%</div>
                   </div>
                   <div class="mini-card__body">
@@ -165,7 +165,13 @@ const isOwner = computed(() => {
 })
 
 // ── Match packages to this offer by keyword in title ────────────────────
-const exactPackages = ref([])
+const heroStyle = computed(() => {
+  const url = props.offer?.img || props.offer?.img_url
+  if (!url) return {}
+  return { backgroundImage: `url(${url})` }
+})
+
+const exactPackages   = ref([])
 
 import { watch } from 'vue'
 
@@ -339,10 +345,20 @@ function close() { emit('update:modelValue', false) }
 
 /* Hero banner */
 .offer-hero {
-  background: linear-gradient(135deg, var(--indigo) 0%, #3d4460 100%);
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: var(--indigo);
   padding: 32px 28px; display: flex; align-items: center; gap: 20px;
   flex-shrink: 0;
 }
+.offer-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(45,49,66,0.9) 0%, rgba(61,68,96,0.7) 100%);
+  z-index: 0;
+}
+.offer-hero > * { position: relative; z-index: 1; }
 .offer-hero__discount {
   font-family: 'Fraunces', serif; font-size: 3rem; font-weight: 700;
   color: var(--coral); line-height: 1; flex-shrink: 0;

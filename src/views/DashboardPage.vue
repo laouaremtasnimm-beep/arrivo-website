@@ -426,10 +426,10 @@ function handleViewBooking(b) {
     selectedOffer.value = {
       id: b.item_id || b.offer_id,
       title: b.itemName || b.offer_title,
-      description: b.description || b.notes || '',
+      description: b.offer_description || b.description || b.notes || '',
       discount: b.discount || 0,
-      startDate: b.start_date || '',
-      endDate: b.end_date || '',
+      startDate: b.offer_start || b.start_date || '',
+      endDate: b.offer_end || b.end_date || '',
       owner_id: b.owner_id || b.agency_id || b.provider_id || b.item_owner_id,
     }
     offerDetailOpen.value = true

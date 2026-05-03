@@ -32,6 +32,7 @@ async function _bootstrap() {
           discount:  dbOff.discount_pct,
           startDate: dbOff.start_date,
           endDate:   dbOff.end_date,
+          owner_id:  dbOff.agency_id,
           active:    dbOff.is_active === 1
         }
         if (!_offers.value.some(o => o.offerID === mapped.offerID)) {

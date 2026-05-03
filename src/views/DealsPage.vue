@@ -89,7 +89,7 @@
           class="deal-card"
           :class="{ 'deal-card--collab': offer.source === 'collab', 'deal-card--featured': i === 0 && activeFilter === 'all' }"
           :style="{ '--i': i }"
-          
+          @click="handleSelect(offer)"
         >
           <!-- Featured ribbon -->
           <div v-if="i === 0 && activeFilter === 'all'" class="deal-ribbon">⭐ Featured</div>
@@ -216,16 +216,6 @@ const filteredOffers = computed(() => {
 
 // ── Actions ───────────────────────────────────────────────────────────────
 async function handleSelect(offer) {
-  if (isBooked('offer', offer.offerID)) {
-    if (!confirm('Are you sure you want to cancel this booking?')) return
-    const bid = getBookingId('offer', offer.offerID)
-    if (bid) {
-      const res = await cancelBooking(bid)
-      if (res.ok) alert('Booking cancelled successfully.')
-      else alert('Failed to cancel: ' + res.error)
-    }
-    return
-  }
   selectedOffer.value = offer
   offerModalOpen.value = true
 }

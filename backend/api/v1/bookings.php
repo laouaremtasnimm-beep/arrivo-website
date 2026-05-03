@@ -20,7 +20,11 @@ try {
                        COALESCE(d.name, b.item_title)  AS destination_name,
                        COALESCE(p.title, b.item_title) AS package_title,
                        COALESCE(s.title, b.item_title) AS service_title,
-                       COALESCE(o.title, b.item_title) AS offer_title
+                       COALESCE(o.title, b.item_title) AS offer_title,
+                       o.discount_pct AS discount,
+                       o.description AS offer_description,
+                       o.start_date AS offer_start,
+                       o.end_date AS offer_end
                 FROM   bookings b
                 LEFT   JOIN destinations d ON b.destination_id = d.id
                 LEFT   JOIN packages     p ON b.package_id     = p.id
@@ -36,6 +40,10 @@ try {
         SELECT b.*,
                COALESCE(p.title, b.item_title) AS package_title,
                COALESCE(o.title, b.item_title) AS offer_title,
+               o.discount_pct AS discount,
+               o.description AS offer_description,
+               o.start_date AS offer_start,
+               o.end_date AS offer_end,
                u.first_name AS guest_first,
                u.last_name  AS guest_last
         FROM   bookings b
@@ -52,6 +60,10 @@ try {
         SELECT b.*,
                COALESCE(s.title, b.item_title) AS service_title,
                COALESCE(o.title, b.item_title) AS offer_title,
+               o.discount_pct AS discount,
+               o.description AS offer_description,
+               o.start_date AS offer_start,
+               o.end_date AS offer_end,
                u.first_name AS guest_first,
                u.last_name  AS guest_last
         FROM   bookings b
