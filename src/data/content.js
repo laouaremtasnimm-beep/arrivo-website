@@ -8,11 +8,11 @@ export const destinations = [
     ], bestTime: 'April to November'
   },
   {
-    id: 2, name: 'Kyoto, Japan', img: 'https://images.unsplash.com/photo-1558862107-d49ef2a04d72?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8a3lvdG98ZW58MHx8MHx8fDA%3D', badge: '🌸 Seasonal', country: 'Japan', type: 'Cultural', rating: 4.8, reviews: 1830, from: 1200, desc: 'Ancient temples, bamboo groves, geisha districts and world-class cuisine.', highlights: ['Temples', 'Tea ceremony', 'Bamboo forest'], thingsToDo: [
-      { title: 'Fushimi Inari', icon: '⛩️', desc: 'Walk through thousands of vibrant vermilion torii gates.' },
-      { title: 'Bamboo Grove', icon: '🎋', desc: 'Immerse yourself in the ethereal Arashiyama Bamboo Grove.' },
-      { title: 'Gion District', icon: '🏮', desc: 'Explore the traditional geisha district and enjoy fine dining.' },
-      { title: 'Kinkaku-ji', icon: '✨', desc: 'Marvel at the stunning Golden Pavilion reflected in its pond.' }
+    id: 2, name: 'Kyoto, Japan', img: 'https://images.unsplash.com/photo-1558862107-d49ef2a04d72?q=80&w=2000', badge: '🌸 Seasonal', country: 'Japan', type: 'Cultural', rating: 4.8, reviews: 1830, from: 1200, desc: 'Ancient temples, bamboo groves, geisha districts and world-class cuisine.', highlights: ['Temples', 'Tea ceremony', 'Bamboo forest'], thingsToDo: [
+      { title: 'Fushimi Inari', icon: '⛩️', desc: 'Walk through thousands of vibrant vermilion torii gates.', img: 'https://images.unsplash.com/photo-1719710707871-4b954cc55664?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8RnVzaGltaSUyMEluYXJpfGVufDB8fDB8fHwy' },
+      { title: 'Bamboo Grove', icon: '🎋', desc: 'Immerse yourself in the ethereal Arashiyama Bamboo Grove.', img: 'https://images.unsplash.com/photo-1632922916380-805f09957a8c?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTB8fEFyYXNoaXlhbWElMjBCYW1ib28lMjBHcm92ZXxlbnwwfHwwfHx8Mg%3D%3D' },
+      { title: 'Gion District', icon: '🏮', desc: 'Explore the traditional geisha district and enjoy fine dining.', img: 'https://images.unsplash.com/photo-1593405844957-3854dae97a19?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8R2lvbiUyMERpc3RyaWN0JTIwZ2Vpc2hhfGVufDB8fDB8fHwy' },
+      { title: 'Kinkaku-ji', icon: '✨', desc: 'Marvel at the stunning Golden Pavilion reflected in its pond.', img: 'https://images.unsplash.com/photo-1593297305379-8dac6cc9313e?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTV8fEtpbmtha3Utaml8ZW58MHx8MHx8fDI%3D' }
     ], bestTime: 'March to May & Oct to Nov'
   },
   {
