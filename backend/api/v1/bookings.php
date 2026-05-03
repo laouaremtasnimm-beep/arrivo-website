@@ -82,6 +82,32 @@ try {
             exit();
         }
 
+        // Prevent duplicate active bookings for the same item
+        $checkStmt = $pdo->prepare('
+            SELECT id FROM bookings 
+            WHERE user_id = ? 
+            AND booking_type = ? 
+            AND status != "cancelled"
+            AND (
+                (package_id IS NOT NULL AND package_id = ?) OR
+                (service_id IS NOT NULL AND service_id = ?) OR
+                (offer_id IS NOT NULL AND offer_id = ?)
+            )
+            LIMIT 1
+        ');
+        $checkStmt->execute([
+            $data['user_id'],
+            $data['booking_type'],
+            $data['package_id'] ?? -1,
+            $data['service_id'] ?? -1,
+            $data['offer_id']   ?? -1
+        ]);
+        if ($checkStmt->fetch()) {
+            http_response_code(409); // Conflict
+            echo json_encode(["error" => "You have already booked this item."]);
+            exit();
+        }
+
         $stmt = $pdo->prepare('
             INSERT INTO bookings
                 (user_id, package_id, service_id, destination_id, offer_id, item_title,

@@ -12,7 +12,7 @@ export function useBookings() {
     const { push: pushNotification } = useNotifications()
 
     async function fetchBookings(user) {
-        if (!user) return
+        if (!user || _loaded.value) return
         _loading.value = true
         const uid = user.userID ?? user.id
         const queryParam = `user_id=${uid}`

@@ -280,6 +280,7 @@ import { useAuth } from '@/composables/useAuth'
 import { useNotifications } from '@/composables/useNotifications'
 import { useMessages } from '@/composables/useMessages'
 import { useWishlist } from '@/composables/useWishlist.js'
+import { useBookings } from '@/composables/useBookings'
 import NotificationPanel from '@/components/shared/NotificationPanel.vue'
 import MessagePanel from '@/components/shared/MessagePanel.vue'
 
@@ -381,6 +382,8 @@ onMounted(() => {
     startNotifPolling(uid)
     fetchMessages(uid)
     startPolling(uid)
+    const { fetchBookings } = useBookings()
+    fetchBookings(user.value)
   }
   window.addEventListener('scroll', onScroll)
   document.addEventListener('click', onClickOutside)
