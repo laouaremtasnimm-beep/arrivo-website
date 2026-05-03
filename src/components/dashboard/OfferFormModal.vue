@@ -115,25 +115,24 @@
               <p class="field-error" v-if="errors.title">{{ errors.title }}</p>
             </div>
 
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Discount (%) *</label>
-                <input type="number" min="1" max="80" class="form-input"
-                  v-model.number="form.discount" placeholder="e.g. 20" :disabled="isEdit" />
-                <p class="field-error" v-if="errors.discount">{{ errors.discount }}</p>
-              </div>
-              <div class="form-group" v-if="!selectedPackage">
-                <label class="form-label">Category</label>
-                <select class="form-input form-select" v-model="form.type">
-                  <option value="General">✨ General</option>
-                  <option value="Adventure">🧗 Adventure</option>
-                  <option value="Beach">🏖️ Beach</option>
-                  <option value="Cultural">🏛️ Cultural</option>
-                  <option value="Family">👨‍👩‍👧 Family</option>
-                  <option value="Wellness">🧘 Wellness</option>
-                  <option value="Bundle">📦 Bundle</option>
-                </select>
-              </div>
+            <div class="form-group">
+              <label class="form-label">Discount (%) *</label>
+              <input type="number" min="1" max="99" class="form-input"
+                v-model.number="form.discount" placeholder="e.g. 20" :disabled="isEdit" />
+              <p class="field-error" v-if="errors.discount">{{ errors.discount }}</p>
+            </div>
+
+            <div class="form-group" v-if="!selectedPackage">
+              <label class="form-label">Category</label>
+              <select class="form-input form-select" v-model="form.type">
+                <option value="General">✨ General</option>
+                <option value="Adventure">🧗 Adventure</option>
+                <option value="Beach">🏖️ Beach</option>
+                <option value="Cultural">🏛️ Cultural</option>
+                <option value="Family">👨‍👩‍👧 Family</option>
+                <option value="Wellness">🧘 Wellness</option>
+                <option value="Bundle">📦 Bundle</option>
+              </select>
             </div>
 
             <div class="form-row">
@@ -339,7 +338,7 @@
               <label class="form-label">Discount (%) *</label>
               <div class="discount-input-wrap">
                 <input
-                  type="number" min="1" max="80"
+                  type="number" min="1" max="99"
                   class="form-input"
                   v-model.number="newPkg.discount"
                   placeholder="e.g. 20"
@@ -701,8 +700,8 @@ function validateStep() {
   if (step.value === 2) {
     if (!form.value.title?.trim() && !selectedPackage.value)
       e.title = 'Title is required.'
-    if (!form.value.discount || form.value.discount < 1)
-      e.discount = 'Enter a valid discount (1–80).'
+    if (!form.value.discount || form.value.discount < 1 || form.value.discount > 99)
+      e.discount = 'Enter a valid discount (1–99).'
     if (!form.value.startDate)
       e.startDate = 'Start date is required.'
     else if (form.value.startDate < today.value)

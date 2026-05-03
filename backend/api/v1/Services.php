@@ -77,8 +77,9 @@ try {
         $stmt = $pdo->prepare('
             INSERT INTO services
                 (provider_id, title, type, icon, price, price_unit,
-                 description, long_desc, img_url, features, is_available)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 description, long_desc, img_url, features, is_available,
+                 start_date, end_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ');
         $stmt->execute([
             $data['provider_id'],
@@ -92,6 +93,8 @@ try {
             $data['img_url']      ?? null,
             isset($data['features']) ? json_encode($data['features']) : null,
             1,
+            $data['start_date']   ?? null,
+            $data['end_date']     ?? null,
         ]);
 
         echo json_encode([
@@ -119,7 +122,9 @@ try {
                 long_desc    = ?,
                 img_url      = ?,
                 features     = ?,
-                is_available = ?
+                is_available = ?,
+                start_date   = ?,
+                end_date     = ?
             WHERE id = ?
         ');
         $stmt->execute([
@@ -133,6 +138,8 @@ try {
             $data['img_url']     ?? null,
             isset($data['features']) ? json_encode($data['features']) : null,
             $data['is_available'] ?? 1,
+            $data['start_date']   ?? null,
+            $data['end_date']     ?? null,
             $data['id'],
         ]);
 

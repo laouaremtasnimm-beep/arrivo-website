@@ -1,6 +1,6 @@
 export const destinations = [
   {
-    id: 1, name: 'Santorini, Greece', img: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', badge: '🔥 Trending', country: 'Greece', type: 'Beach', rating: 4.9, reviews: 2140, from: 890, desc: 'Famous for white-washed buildings, stunning sunsets and crystal-clear Aegean waters.', highlights: ['Sunsets', 'Volcanic beaches', 'Greek cuisine'], thingsToDo: [
+    id: 1, name: 'Santorini, Greece', img: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?q=80&w=2000', badge: '🔥 Trending', country: 'Greece', type: 'Beach', rating: 4.9, reviews: 2140, from: 890, desc: 'Famous for white-washed buildings, stunning sunsets and crystal-clear Aegean waters.', highlights: ['Sunsets', 'Volcanic beaches', 'Greek cuisine'], thingsToDo: [
       { title: 'Sunset in Oia', icon: '🌅', desc: 'Watch the world-famous sunset from the Byzantine Castle ruins.', img: 'https://images.unsplash.com/photo-1667526273488-378aa6f5f113?w=1000&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fHNhbnRvcmluaSUyMHN1bnNldHxlbnwwfHwwfHx8Mg%3D%3D' },
       { title: 'Caldera Hike', icon: '🥾', desc: 'Hike the scenic path from Fira to Oia for breathtaking views.', img: 'https://imgs.search.brave.com/ePfD6ZlvSacWLFcEcO9W4R3oraQtoBPXfJfZfMrUnIE/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93d3cu/c2hvcmVleGN1cnNp/b25zZ3JvdXAuY29t/L2ltZy90b3VyL0VV/U05UUkxISUtFLTIu/anBn' },
       { title: 'Ammoudi Bay', icon: '🛶', desc: 'Descend to this charming bay for fresh seafood and cliff jumping.', img: 'https://imgs.search.brave.com/a6RR_WkRxJLMTo772HjvFGBhjr2q9oiKWfdSz6E86k0/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9wbGFj/ZS5jb20tcGhvdG9z/LmNvbS81Mjg0OS9h/bW1vdWRpLWJheS1B/RjFRaXBPRWFmQlF4/VXNDaWFRWmw4TUs2/bWdKbFBhZHRDZ1ps/czBncTBrMi5qcGc' },
@@ -17,8 +17,8 @@ export const destinations = [
   },
   {
     id: 3, name: 'Marrakech, Morocco', img: 'https://i.pinimg.com/1200x/5a/9b/cd/5a9bcdfaa42bfc716a2aed9a45863d0e.jpg', badge: '✨ New', country: 'Morocco', type: 'Cultural', rating: 4.7, reviews: 950, from: 640, desc: 'A sensory feast of souks, spices, stunning riads and the vibrant Djemaa el-Fna.', highlights: ['Souks', 'Riads', 'Desert day trips'], thingsToDo: [
-      { title: 'Jemaa el-Fnaa', icon: '🎪', desc: 'Experience the bustling heart of the Medina with performers and stalls.' },
-      { title: 'Majorelle Garden', icon: '🌵', desc: 'Wander through the botanical oasis designed by Jacques Majorelle.' },
+      { title: 'Jemaa el-Fnaa', icon: '🎪', desc: 'Experience the bustling heart of the Medina with performers and stalls.', img: 'https://travelshus.com/wp-content/uploads/2014/02/date-dried-fruit-stall-djemaa-el-fna-marrakech-morocco.jpg' },
+      { title: 'Majorelle Garden', icon: '🌵', desc: 'Wander through the botanical oasis designed by Jacques Majorelle.', img: 'https://images.unsplash.com/photo-1747601387763-3abf57ee79c8?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8TWFqb3JlbGxlJTIwR2FyZGVufGVufDB8fDB8fHwy' },
       { title: 'Bahia Palace', icon: '🏰', desc: 'Admire the intricate Moroccan architecture and lush courtyards.' },
       { title: 'Medina Souks', icon: '👜', desc: 'Get lost in the maze of shops selling spices, leather, and crafts.' }
     ], bestTime: 'March to May & Sep to Nov'

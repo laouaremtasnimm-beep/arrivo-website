@@ -2,234 +2,332 @@
   <Teleport to="body">
     <Transition name="wizard-fade">
       <div class="modal-backdrop" v-if="modelValue" @click.self="close">
-        <div class="modal" :class="['step-' + step]">
-          <div class="wizard-progress"><div class="wizard-progress__fill" :style="{ width: progressWidth }"></div></div>
+        <div class="modal" :class="['step-' + step, { 'modal--creating': showNewServiceForm }]">
+
+          <!-- ── Progress bar ── -->
+          <div class="wizard-progress">
+            <div class="wizard-progress__fill" :style="{ width: displayProgressWidth }"></div>
+          </div>
+
+          <!-- ── Header ── -->
           <div class="modal__header">
             <div class="header-left">
-              <div class="step-badge">Step {{ step }} of 2</div>
-              <h2 class="modal__title">{{ stepTitle }}</h2>
-              <p class="step-sub">{{ stepSub }}</p>
-            </div>
-            <button class="modal__close" @click="close">X</button>
-          </div>
-          <div class="modal__body" v-if="step === 1">
-            <button class="new-svc-card" @click="openCreateService">
-              <div class="new-svc-card__icon">+</div>
-              <div class="new-svc-card__text">
-                <div class="new-svc-card__title">Create a new service</div>
-                <div class="new-svc-card__sub">It will be exclusive to this offer</div>
+              <div class="step-badge">
+                {{ showNewServiceForm ? 'NEW SERVICE · STEP ' + subStep + ' OF 2' : 'STEP ' + step + ' OF 2' }}
               </div>
-              <span class="new-svc-card__arrow">→</span>
-            </button>
-            <div class="existing-svcs-wrap">
-              <label class="form-label">Or choose existing</label>
-              <div class="dropdown-container">
-                <button class="dropdown-trigger" :class="{ open: dropdownOpen }" type="button" @click="dropdownOpen = !dropdownOpen">
-                  <div class="dropdown-trigger__content">
-                    <span class="trigger-icon">&#x1F6CE;&#xFE0F;</span>
-                    <div class="trigger-text">
-                      <div class="trigger-title" v-if="selectedService">{{ selectedService.title }}</div>
-                      <div class="trigger-placeholder" v-else>Select from your services...</div>
-                    </div>
+              <h2 class="modal__title">{{ displayStepTitle }}</h2>
+              <p class="step-sub">{{ displayStepSub }}</p>
+            </div>
+            <button class="modal__close" @click="close">✕</button>
+          </div>
+
+          <!-- ══════════════════════════════════════════
+               SUB-WIZARD — Create New Service
+          ══════════════════════════════════════════ -->
+          <template v-if="showNewServiceForm">
+            <!-- Sub-Step 1: Details -->
+            <div class="modal__body" v-if="subStep === 1">
+              <div class="form-group">
+                <label class="form-label">Service title *</label>
+                <input class="form-input" v-model="newService.title" placeholder="e.g. Private Airport Transfer" />
+                <p class="field-error" v-if="subErrors.title">{{ subErrors.title }}</p>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Category *</label>
+                  <select class="form-input" v-model="newService.type">
+                    <option value="">Select type…</option>
+                    <option v-for="t in serviceTypes" :key="t" :value="t">{{ t }}</option>
+                  </select>
+                  <p class="field-error" v-if="subErrors.type">{{ subErrors.type }}</p>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Icon (emoji)</label>
+                  <input class="form-input" v-model="newService.icon" placeholder="e.g. 🚐" maxlength="4" />
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Price ($) *</label>
+                  <input type="number" min="0" class="form-input" v-model.number="newService.price" placeholder="e.g. 45" />
+                  <p class="field-error" v-if="subErrors.price">{{ subErrors.price }}</p>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Price unit *</label>
+                  <select class="form-input" v-model="newService.unit">
+                    <option value="day">Per day</option>
+                    <option value="trip">Per trip</option>
+                    <option value="person">Per person</option>
+                    <option value="session">Per session</option>
+                    <option value="evening">Per evening</option>
+                    <option value="hour">Per hour</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Short description *</label>
+                <textarea
+                  class="form-input form-textarea"
+                  v-model="newService.desc"
+                  placeholder="A brief summary shown on listing cards…"
+                  rows="3"
+                />
+                <p class="field-error" v-if="subErrors.desc">{{ subErrors.desc }}</p>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Features / inclusions <span class="form-hint">(one per line)</span></label>
+                <textarea
+                  class="form-input form-textarea"
+                  v-model="newService.featuresRaw"
+                  placeholder="Meet & greet&#10;Flight tracking&#10;Free waiting time"
+                  rows="4"
+                />
+              </div>
+
+              <div class="availability-row">
+                <div class="availability-row__info">
+                  <div class="availability-row__label">Available for booking</div>
+                  <div class="availability-row__sub">
+                    {{ newService.availability ? 'Visible and bookable by travellers' : 'Hidden from listings' }}
                   </div>
-                  <span class="dropdown-arrow">{{ dropdownOpen ? '&#9652;' : '&#9662;' }}</span>
+                </div>
+                <button
+                  type="button"
+                  class="toggle"
+                  :class="{ on: newService.availability }"
+                  @click="newService.availability = !newService.availability"
+                  role="switch"
+                  :aria-checked="newService.availability"
+                >
+                  <span class="toggle__knob"></span>
                 </button>
-                <Transition name="dropdown-slide">
-                  <div class="dropdown-menu" v-if="dropdownOpen">
-                    <div v-if="loadingServices" class="loading-row"><span class="spinner"></span> Loading...</div>
-                    <div v-else-if="providerServices.length === 0" class="empty-state"><p>No services found.</p></div>
-                    <div v-else class="dropdown-list">
-                      <div v-for="svc in providerServices" :key="svc.id" class="dropdown-item" :class="{ selected: form.selectedServiceId === svc.id }" @click="selectService(svc)">
-                        <div class="item-img"><div class="item-img--fallback">{{ svc.icon || '&#x1F6CE;&#xFE0F;' }}</div></div>
-                        <div class="item-info">
-                          <div class="item-name">{{ svc.title }}</div>
-                          <div class="item-meta">{{ svc.type }} ${{ Number(svc.price).toLocaleString() }}/{{ svc.price_unit || 'day' }}</div>
-                        </div>
-                        <div class="item-check" v-if="form.selectedServiceId === svc.id">&#10003;</div>
+              </div>
+            </div>
+
+            <!-- Sub-Step 2: Discount & Dates -->
+            <div class="modal__body" v-else-if="subStep === 2">
+              <div class="selected-summary">
+                <div class="summary-pill">
+                  <span class="pill-icon">{{ newService.icon || '🛎️' }}</span>
+                  <span class="pill-text">{{ newService.title }}</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Discount (%) *</label>
+                <div class="discount-input-wrap">
+                  <input
+                    type="number" min="1" max="80"
+                    class="form-input"
+                    v-model.number="form.discount"
+                    placeholder="e.g. 20"
+                  />
+                  <span class="discount-suffix">% off</span>
+                </div>
+                <p class="field-error" v-if="errors.discount">{{ errors.discount }}</p>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Start Date *</label>
+                  <div class="date-wrap">
+                    <input type="date" class="form-input" v-model="form.startDate" :min="today" />
+                    <span class="date-icon">🗓️</span>
+                  </div>
+                  <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">End Date *</label>
+                  <div class="date-wrap">
+                    <input type="date" class="form-input" v-model="form.endDate" :min="minEndDate" />
+                    <span class="date-icon">🗓️</span>
+                  </div>
+                  <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
+                </div>
+              </div>
+
+              <!-- Price preview with discount -->
+              <div class="discount-preview" v-if="form.discount && newService.price">
+                <div class="discount-preview__label">Price preview with discount</div>
+                <div class="discount-preview__items">
+                  <div class="discount-preview__row">
+                    <span class="dp-name">{{ newService.title }}</span>
+                    <span class="dp-prices">
+                      <s class="dp-old">${{ Number(newService.price).toLocaleString() }}</s>
+                      <strong class="dp-new">${{ discountedPrice(newService.price) }}</strong>
+                      <span class="dp-unit">/{{ newService.unit }}</span>
+                      <span class="dp-badge">-{{ form.discount }}%</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- ══════════════════════════════════════════
+               MAIN WIZARD Steps
+          ══════════════════════════════════════════ -->
+          <template v-else>
+            <!-- Step 1: Selection -->
+            <div class="modal__body" v-if="step === 1">
+              <button class="new-svc-card" @click="openCreateService">
+                <div class="new-svc-card__icon">＋</div>
+                <div class="new-svc-card__text">
+                  <div class="new-svc-card__title">Create a new service</div>
+                  <div class="new-svc-card__sub">It will be exclusive to this offer</div>
+                </div>
+                <span class="new-svc-card__arrow">→</span>
+              </button>
+
+              <div class="existing-svcs-wrap">
+                <label class="form-label">Or choose existing service</label>
+                <div class="dropdown-container">
+                  <button
+                    class="dropdown-trigger"
+                    :class="{ open: dropdownOpen }"
+                    type="button"
+                    @click="dropdownOpen = !dropdownOpen"
+                  >
+                    <div class="dropdown-trigger__content">
+                      <span class="trigger-icon">🛎️</span>
+                      <div class="dropdown-text">
+                        <div class="trigger-title" v-if="selectedService">{{ selectedService.title }}</div>
+                        <div class="trigger-placeholder" v-else>Select from your services…</div>
                       </div>
                     </div>
+                    <span class="dropdown-arrow">{{ dropdownOpen ? '▴' : '▾' }}</span>
+                  </button>
+
+                  <Transition name="dropdown-slide">
+                    <div class="dropdown-menu" v-if="dropdownOpen">
+                      <div v-if="loadingServices" class="loading-row">
+                        <span class="spinner"></span> Loading services…
+                      </div>
+                      <div v-else-if="providerServices.length === 0" class="empty-state">
+                        <p>No services found. Create one in the Services tab first.</p>
+                      </div>
+                      <div v-else class="dropdown-list">
+                        <div
+                          v-for="svc in providerServices"
+                          :key="svc.id"
+                          class="dropdown-item"
+                          :class="{ selected: form.selectedServiceId === svc.id }"
+                          @click="selectService(svc)"
+                        >
+                          <div class="item-img">
+                            <div class="item-img--fallback">{{ svc.icon || '🛎️' }}</div>
+                          </div>
+                          <div class="item-info">
+                            <div class="item-name">{{ svc.title }}</div>
+                            <div class="item-meta">
+                              {{ svc.type }} · ${{ Number(svc.price).toLocaleString() }}/{{ svc.price_unit || 'day' }}
+                            </div>
+                          </div>
+                          <div class="item-check" v-if="form.selectedServiceId === svc.id">✓</div>
+                        </div>
+                      </div>
+                    </div>
+                  </Transition>
+                </div>
+              </div>
+              <p class="field-error" v-if="errors.service">{{ errors.service }}</p>
+            </div>
+
+            <!-- Step 2: Discount & Dates -->
+            <div class="modal__body" v-else-if="step === 2">
+              <div class="selected-summary" v-if="selectedService">
+                <div class="summary-pill">
+                  <span class="pill-icon">🛎️</span>
+                  <span class="pill-text">{{ selectedService.title }}</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Discount (%) *</label>
+                <div class="discount-input-wrap">
+                  <input
+                    type="number" min="1" max="80"
+                    class="form-input"
+                    v-model.number="form.discount"
+                    placeholder="e.g. 20"
+                    :disabled="isEdit && hasBookings"
+                  />
+                  <span class="discount-suffix">% off</span>
+                </div>
+                <p class="lock-notice" v-if="isEdit && hasBookings">🔒 Locked — this offer has active bookings.</p>
+                <p class="field-error" v-if="errors.discount">{{ errors.discount }}</p>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Start Date *</label>
+                  <div class="date-wrap">
+                    <input
+                      type="date" class="form-input"
+                      v-model="form.startDate"
+                      :min="today"
+                      :disabled="isEdit && offerIsLive"
+                    />
+                    <span class="date-icon">🗓️</span>
                   </div>
-                </Transition>
-              </div>
-            </div>
-            <p class="field-error" v-if="errors.service">{{ errors.service }}</p>
-          </div>
-          <div class="modal__body" v-else-if="step === 2">
-            <div class="selected-summary" v-if="selectedService">
-              <span class="summary-pill">&#x1F6CE;&#xFE0F; {{ selectedService.title }}</span>
-              <span class="summary-pill summary-pill--meta" v-if="selectedService.price">${{ Number(selectedService.price).toLocaleString() }}/{{ selectedService.price_unit || 'day' }}</span>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Discount (%) *</label>
-              <div class="discount-input-wrap">
-                <input type="number" min="1" max="99" class="form-input" v-model.number="form.discount" placeholder="e.g. 20" :disabled="isEdit && hasBookings" />
-                <span class="discount-suffix">% off</span>
-              </div>
-              <p class="lock-notice" v-if="isEdit && hasBookings">Locked - this offer has active bookings.</p>
-              <p class="field-error" v-if="errors.discount">{{ errors.discount }}</p>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Start Date *</label>
-                <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="form.startDate" :min="today" :disabled="isEdit && offerIsLive" />
-                  <span class="date-icon">&#x1F5D3;&#xFE0F;</span>
+                  <p class="lock-notice" v-if="isEdit && offerIsLive">🔒 Offer is live — start date locked.</p>
+                  <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
                 </div>
-                <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
-              </div>
-              <div class="form-group">
-                <label class="form-label">End Date *</label>
-                <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="form.endDate" :min="minEndDate" :max="maxOfferEndDate" />
-                  <span class="date-icon">&#x1F5D3;&#xFE0F;</span>
+                <div class="form-group">
+                  <label class="form-label">End Date *</label>
+                  <div class="date-wrap">
+                    <input
+                      type="date" class="form-input"
+                      v-model="form.endDate"
+                      :min="minEndDate"
+                    />
+                    <span class="date-icon">🗓️</span>
+                  </div>
+                  <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
                 </div>
-                <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
               </div>
-            </div>
-            <div class="discount-preview" v-if="form.discount && selectedService">
-              <div class="discount-preview__label">Price preview with discount</div>
-              <div class="discount-preview__items">
-                <div class="discount-preview__row">
-                  <span class="dp-name">{{ selectedService.title }}</span>
-                  <span class="dp-prices">
-                    <s class="dp-old">${{ Number(selectedService.price).toLocaleString() }}</s>
-                    <strong class="dp-new">${{ discountedPrice(selectedService.price) }}</strong>
-                  </span>
+
+              <!-- Price preview with discount -->
+              <div class="discount-preview" v-if="form.discount && selectedService">
+                <div class="discount-preview__label">Price preview with discount</div>
+                <div class="discount-preview__items">
+                  <div class="discount-preview__row">
+                    <span class="dp-name">{{ selectedService.title }}</span>
+                    <span class="dp-prices">
+                      <s class="dp-old">${{ Number(selectedService.price).toLocaleString() }}</s>
+                      <strong class="dp-new">${{ discountedPrice(selectedService.price) }}</strong>
+                      <span class="dp-unit">/{{ selectedService.price_unit || 'day' }}</span>
+                      <span class="dp-badge">-{{ form.discount }}%</span>
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </template>
+
+          <!-- ── Footer ── -->
           <div class="modal__footer">
-            <button class="btn btn-outline" @click="back">{{ (step === 1 || (isEdit && step === 2)) ? 'Cancel' : '← Back' }}</button>
-            <button class="btn btn-coral" @click="next" :disabled="submitting">
-              <span v-if="submitting" class="btn-spinner"></span>
-              {{ step === 1 ? 'Continue →' : (isEdit ? 'Save Changes' : 'Create Offer') }}
+            <button class="btn btn-outline" @click="back">
+              {{ (step === 1 && !showNewServiceForm) || (isEdit && step === 2) ? 'Cancel' : '← Back' }}
             </button>
-          </div>
-        </div>
-      </div>
-    </Transition>
-    <Transition name="wizard-fade">
-      <div class="modal-backdrop modal-backdrop--top" v-if="showNewServiceForm" @click.self="showNewServiceForm = false">
-        <div class="modal modal--package">
-          <div class="wizard-progress"><div class="wizard-progress__fill" :style="{ width: subProgressWidth }"></div></div>
-          <div class="modal__header">
-            <div class="header-left">
-              <div class="step-badge">New Service - Step {{ subStep }} of 2</div>
-              <h2 class="modal__title">{{ subStepTitle }}</h2>
-              <p class="step-sub">{{ subStepSub }}</p>
-            </div>
-            <button class="modal__close" @click="showNewServiceForm = false">X</button>
-          </div>
-          <div class="modal__body" v-if="subStep === 1">
-            <div class="form-group">
-              <label class="form-label">Service title *</label>
-              <input class="form-input" v-model="newService.title" placeholder="e.g. Private Airport Transfer" />
-              <p class="field-error" v-if="subErrors.title">{{ subErrors.title }}</p>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Category *</label>
-                <select class="form-input form-select" v-model="newService.type">
-                  <option value="">Select type...</option>
-                  <option v-for="t in serviceTypes" :key="t" :value="t">{{ t }}</option>
-                </select>
-                <p class="field-error" v-if="subErrors.type">{{ subErrors.type }}</p>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Icon (emoji)</label>
-                <input class="form-input text-center" v-model="newService.icon" placeholder="e.g. 🚐" maxlength="4" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Price ($) *</label>
-                <input type="number" min="0" class="form-input" v-model.number="newService.price" placeholder="e.g. 45" />
-                <p class="field-error" v-if="subErrors.price">{{ subErrors.price }}</p>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Price unit</label>
-                <select class="form-input form-select" v-model="newService.unit">
-                  <option value="day">Per day</option>
-                  <option value="trip">Per trip</option>
-                  <option value="person">Per person</option>
-                  <option value="session">Per session</option>
-                  <option value="hour">Per hour</option>
-                </select>
-              </div>
-            </div>
-            <!-- Service dates -->
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Start Date *</label>
-                <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="newService.startDate" :min="today" />
-                  <span class="date-icon">&#x1F5D3;&#xFE0F;</span>
-                </div>
-                <p class="field-error" v-if="subErrors.startDate">{{ subErrors.startDate }}</p>
-              </div>
-              <div class="form-group">
-                <label class="form-label">End Date *</label>
-                <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="newService.endDate" :min="newService.startDate || today" />
-                  <span class="date-icon">&#x1F5D3;&#xFE0F;</span>
-                </div>
-                <p class="field-error" v-if="subErrors.endDate">{{ subErrors.endDate }}</p>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Description *</label>
-              <textarea class="form-input form-textarea" v-model="newService.desc" placeholder="Describe this service..." />
-              <p class="field-error" v-if="subErrors.desc">{{ subErrors.desc }}</p>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Features (one per line)</label>
-              <textarea class="form-input form-textarea" v-model="newService.featuresRaw" placeholder="Meet and greet&#10;Free waiting time" rows="3" />
-            </div>
-          </div>
-          <div class="modal__body" v-else-if="subStep === 2">
-            <div class="selected-summary">
-              <span class="summary-pill">{{ newService.icon || '&#x1F6CE;&#xFE0F;' }} {{ newService.title }}</span>
-              <span class="summary-pill summary-pill--meta" v-if="newService.price">${{ Number(newService.price).toLocaleString() }}/{{ newService.unit }}</span>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Discount (%) *</label>
-              <div class="discount-input-wrap">
-                <input type="number" min="1" max="99" class="form-input" v-model.number="newService.discount" placeholder="e.g. 20" />
-                <span class="discount-suffix">% off</span>
-              </div>
-              <p class="field-error" v-if="subErrors.discount">{{ subErrors.discount }}</p>
-            </div>
-
-            <div class="discount-preview" v-if="newService.discount && newService.price">
-              <div class="discount-preview__label">Price preview</div>
-              <div class="discount-preview__items">
-                <div class="discount-preview__row">
-                  <span class="dp-name">{{ newService.title }}</span>
-                  <span class="dp-prices">
-                    <s class="dp-old">${{ Number(newService.price).toLocaleString() }}</s>
-                    <strong class="dp-new">${{ subDiscountedPrice }}</strong>
-                    <span class="dp-badge">-{{ newService.discount }}%</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div class="modal__footer">
-            <button class="btn btn-outline" @click="subBack">{{ subStep === 1 ? 'Cancel' : '← Back' }}</button>
             <div class="footer-right">
-              <span class="step-dots">
-                <span class="dot" :class="{ active: subStep === 1, done: subStep > 1 }"></span>
-                <span class="dot" :class="{ active: subStep === 2 }"></span>
-              </span>
-              <button class="btn btn-coral" @click="subNext" :disabled="savingService">
-                <span v-if="savingService" class="btn-spinner"></span>
-                {{ subStep === 1 ? 'Next →' : 'Save & Add to Offer' }}
+              <div class="step-dots" v-if="step === 2 || showNewServiceForm">
+                <div class="dot" :class="{ done: (step === 2) || (showNewServiceForm && subStep === 2) }"></div>
+                <div class="dot active"></div>
+              </div>
+              <button class="btn btn-coral" @click="next" :disabled="submitting">
+                <span v-if="submitting" class="btn-spinner"></span>
+                <template v-else>
+                  {{ showNewServiceForm ? (subStep === 1 ? 'Next →' : 'Save & Add to Offer') : (step === 1 ? 'Continue →' : (isEdit ? 'Save Changes' : 'Create Offer')) }}
+                </template>
               </button>
             </div>
           </div>
+
         </div>
       </div>
     </Transition>
@@ -275,18 +373,15 @@ const showNewServiceForm = ref(false)
 const subStep           = ref(1)
 const subErrors         = ref({})
 const serviceTypes      = ['Transport', 'Adventure', 'Food', 'Wellness', 'Photography', 'Tours', 'City Break']
-const savingService = ref(false)
-const newService    = ref({
+const newService        = ref({
   title: '', type: '', icon: '🛎️', price: null, unit: 'day',
-  desc: '', featuresRaw: '', availability: true,
-  discount: null, startDate: '', endDate: ''
+  desc: '', featuresRaw: '', availability: true
 })
 
 function openCreateService() {
   newService.value = {
     title: '', type: '', icon: '🛎️', price: null, unit: 'day',
-    desc: '', featuresRaw: '', availability: true,
-    discount: null, startDate: '', endDate: ''
+    desc: '', featuresRaw: '', availability: true
   }
   subErrors.value = {}
   subStep.value = 1
@@ -299,29 +394,29 @@ function validateSubStep1() {
   if (!newService.value.type)          e.type  = 'Please select a category.'
   if (!newService.value.price || newService.value.price < 0) e.price = 'Enter a valid price.'
   if (!newService.value.desc?.trim())   e.desc  = 'Description is required.'
-  if (!newService.value.startDate)      e.startDate = 'Start date is required.'
-  if (!newService.value.endDate)        e.endDate   = 'End date is required.'
-  if (newService.value.startDate && newService.value.endDate && newService.value.endDate < newService.value.startDate)
-                                        e.endDate   = 'End date must be after start date.'
   subErrors.value = e
   return !Object.keys(e).length
 }
 
 function confirmNewService() {
-  form.value.isFromScratch  = true
+  form.value.isFromScratch = true
   form.value.newServiceData = { 
-    ...newService.value, 
-    is_available: newService.value.availability ? 1 : 0,
-    start_date:   newService.value.startDate,
-    end_date:     newService.value.endDate
+    ...newService.value,
+    is_available: newService.value.availability ? 1 : 0
   }
   form.value.selectedServiceId = 'new-' + Date.now()
-  form.value.title       = `${newService.value.title} — Special Offer`
+  form.value.title = `${newService.value.title} — Special Offer`
   form.value.description = newService.value.desc
-  form.value.type        = newService.value.type || 'General'
-  form.value.discount    = newService.value.discount
-  form.value.startDate   = newService.value.startDate || today.value
-  form.value.endDate     = newService.value.endDate || (() => { const d = new Date(); d.setMonth(d.getMonth()+3); return d.toISOString().split('T')[0] })()
+  form.value.type = newService.value.type || 'General'
+  
+  // Auto-fill dates if not set
+  if (!form.value.startDate) form.value.startDate = today.value
+  if (!form.value.endDate) {
+    const d = new Date()
+    d.setMonth(d.getMonth() + 3)
+    form.value.endDate = d.toISOString().split('T')[0]
+  }
+
   submit()
 }
 
@@ -356,23 +451,29 @@ function selectService(svc) {
 }
 
 /* ── Computed helpers ─────────────────────────── */
-const progressWidth = computed(() => `${(step.value / 2) * 100}%`)
-const subProgressWidth = computed(() => `${(subStep.value / 2) * 100}%`)
+const displayProgressWidth = computed(() => {
+  if (showNewServiceForm.value) return `${(subStep.value / 2) * 100}%`
+  return `${(step.value / 2) * 100}%`
+})
 
-const stepTitle = computed(() =>
-  step.value === 1
+const displayStepTitle = computed(() => {
+  if (showNewServiceForm.value) {
+    return subStep.value === 1 ? 'Create a service for this offer' : 'Apply a discount'
+  }
+  return step.value === 1
     ? (isEdit.value ? 'Edit Offer — Service' : 'Choose a Service')
-    : (isEdit.value ? 'Edit Offer Details' : 'Offer Details')
-)
-const stepSub = computed(() =>
-  step.value === 1 ? 'Pick a service to create this offer.' : 'Set the discount and dates for your offer.'
-)
-const subStepTitle = computed(() => subStep.value === 1 ? 'Create a service for this offer' : 'Apply a discount')
-const subStepSub   = computed(() => subStep.value === 1 ? 'Exclusive to this offer' : 'Set a discount to turn this service into a deal')
+    : (isEdit.value ? 'Edit Offer Details'    : 'Offer Details')
+})
 
-const subDiscountedPrice = computed(() => {
-  if (!newService.value.discount || !newService.value.price) return '0'
-  return (Number(newService.value.price) * (1 - newService.value.discount / 100)).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+const displayStepSub = computed(() => {
+  if (showNewServiceForm.value) {
+    return subStep.value === 1
+      ? 'Hidden from public listings — exclusive to this offer'
+      : 'Set a discount to turn this service into a deal'
+  }
+  return step.value === 1
+    ? 'Pick a service to create this offer.'
+    : 'Set the discount, dates and description for your offer.'
 })
 
 const today = computed(() => new Date().toISOString().split('T')[0])
@@ -389,12 +490,6 @@ const minEndDate = computed(() => {
     return current > today.value ? current : today.value
   }
   return form.value.startDate || today.value
-})
-
-const maxOfferEndDate = computed(() => {
-  const s = selectedService.value
-  if (!s) return null
-  return s.end_date || s.endDate || null
 })
 
 function discountedPrice(price) {
@@ -439,48 +534,45 @@ function validateStep() {
     if (!form.value.selectedServiceId) e.service = 'Please select a service.'
   }
   if (step.value === 2) {
-    if (!form.value.discount || form.value.discount < 1 || form.value.discount > 99)
-      e.discount = 'Enter a valid discount (1–99).'
+    if (!form.value.discount || form.value.discount < 1 || form.value.discount > 80)
+      e.discount = 'Enter a valid discount (1–80).'
     if (!form.value.startDate) e.startDate = 'Start date is required.'
     if (!form.value.endDate) e.endDate = 'End date is required.'
     if (form.value.startDate && form.value.endDate && form.value.endDate < form.value.startDate)
       e.endDate = 'End date must be after start date.'
-    if (form.value.endDate && maxOfferEndDate.value && form.value.endDate > maxOfferEndDate.value)
-      e.endDate = `Offer must end before the service ends (${maxOfferEndDate.value}).`
   }
   errors.value = e
   return !Object.keys(e).length
 }
 
-/* ── Main wizard navigation ──────────────────── */
+/* ── Navigation ──────────────────────────────── */
 function next() {
+  if (showNewServiceForm.value) {
+    if (subStep.value === 1) {
+      if (validateSubStep1()) subStep.value = 2
+      return
+    }
+    if (!form.value.discount || form.value.discount < 1) {
+      errors.value.discount = 'Enter a valid discount.'
+      return
+    }
+    confirmNewService()
+    return
+  }
   if (!validateStep()) return
   if (step.value === 2) { submit(); return }
   step.value++
 }
-function back() {
-  if (step.value === 1 || (isEdit.value && step.value === 2)) { close(); return }
-  step.value--; errors.value = {}
-}
 
-/* ── Sub-modal navigation ────────────────────── */
-function subNext() {
-  if (subStep.value === 1) {
-    if (validateSubStep1()) subStep.value = 2
+function back() {
+  if (showNewServiceForm.value) {
+    if (subStep.value === 1) { showNewServiceForm.value = false; return }
+    subStep.value = 1
     return
   }
-  // Step 2: only discount is required
-  const e = {}
-  if (!newService.value.discount || newService.value.discount < 1) e.discount = 'Enter a valid discount.'
-  subErrors.value = e
-  if (Object.keys(e).length) return
-  confirmNewService()
-  showNewServiceForm.value = false
-  step.value = 2
-}
-function subBack() {
-  if (subStep.value === 1) { showNewServiceForm.value = false; return }
-  subStep.value = 1
+  if (step.value === 1 || (isEdit.value && step.value === 2)) { close(); return }
+  step.value--
+  errors.value = {}
 }
 
 async function submit() {
@@ -536,14 +628,13 @@ function close() {
   display: flex; align-items: center; justify-content: center;
   z-index: 200; padding: 20px;
 }
-.modal-backdrop--top { z-index: 210; }
 .modal {
   background: #fff; border-radius: 22px; width: 100%; max-width: 520px;
   box-shadow: 0 20px 72px rgba(45,49,66,.22);
   max-height: 92vh; display: flex; flex-direction: column;
-  position: relative;
+  position: relative; overflow: hidden;
 }
-.modal--package { max-width: 500px; }
+.modal.step-1 { max-width: 500px; }
 
 .wizard-progress { height: 4px; background: var(--gray-100); flex-shrink: 0; }
 .wizard-progress__fill {
@@ -576,7 +667,7 @@ function close() {
   display: flex; flex-direction: column; gap: 14px;
   position: relative; min-height: 200px;
 }
-.modal.step-1 .modal__body { overflow: visible; }
+.modal.step-1:not(.modal--creating) .modal__body { overflow: visible; }
 
 .modal__footer {
   padding: 14px 26px; border-top: 1px solid var(--gray-100);
@@ -676,22 +767,16 @@ function close() {
   display: flex; align-items: center; gap: 6px;
 }
 
-.form-group  { display: flex; flex-direction: column; gap: 7px; margin-bottom: 6px; }
-.form-label  { font-size: .84rem; font-weight: 600; color: var(--indigo); }
-.form-row    { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-group  { display: flex; flex-direction: column; gap: 5px; }
+.form-label  { font-size: .82rem; font-weight: 600; color: var(--indigo); }
+.form-row    { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-input  {
-  width: 100%;
-  border: 1.5px solid var(--gray-200); border-radius: 8px;
+  border: 1.5px solid var(--gray-200); border-radius: 12px;
   padding: 10px 13px; font-size: .9rem; font-family: 'DM Sans', sans-serif;
   color: var(--indigo); outline: none; background: #fff;
   transition: all .2s ease;
 }
 .form-input:focus { border-color: var(--coral); }
-.form-select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-  background-repeat: no-repeat; background-position: right 12px center; background-size: 16px;
-  padding-right: 36px; appearance: none; cursor: pointer;
-}
 .form-input--lg { font-size: 1.1rem; }
 .form-textarea { resize: vertical; min-height: 86px; }
 .field-error   { font-size: .78rem; color: var(--coral); margin: 0; }

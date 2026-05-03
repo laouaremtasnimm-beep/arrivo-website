@@ -151,9 +151,18 @@
     />
 
     <OfferFormModal
+      v-if="isAgency"
       v-model="offerFormOpen"
       :offer="editingOffer"
       :agency-id="user.userID ?? user.id"
+      @save="handleSaveOffer"
+    />
+
+    <ServiceOfferFormModal
+      v-if="isProvider"
+      v-model="offerFormOpen"
+      :offer="editingOffer"
+      :provider-id="user.userID ?? user.id"
       @save="handleSaveOffer"
     />
 
@@ -195,8 +204,9 @@ import MessagesPanel       from '@/components/dashboard/MessagesPanel.vue'
 import DashboardReviews    from '@/components/dashboard/DashboardReviews.vue'
 import OffersPanel         from '@/components/dashboard/OffersPanel.vue'
 import OfferFormModal      from '@/components/dashboard/OfferFormModal.vue'
+import ServiceOfferFormModal from '@/components/dashboard/ServiceOfferFormModal.vue'
 import PackageFormModal    from '@/components/dashboard/PackageFormModal.vue'
-import ServiceFormModal    from '@/components/dashboard/ServiceFormModal.vue'
+import ServiceFormModal    from '@/components/dashboard/Serviceformmodal.vue'
 import CollaborationsPanel from '@/components/dashboard/CollaborationsPanel.vue'
 import CollabFormModal     from '@/components/dashboard/CollabFormModal.vue'
 import BookingDetailModal  from '@/components/dashboard/BookingDetailModal.vue'
@@ -633,6 +643,24 @@ function openOfferForm(offer) {
 
 
 async function handleSaveOffer(payload) {
+  // If provider is creating a new service from scratch within the offer flow
+  if (isProvider.value && payload.newService) {
+    try {
+      const svcRes = await fetch(`${API}/services.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload.newService, provider_id: user.value.userID })
+      })
+      const svcData = await svcRes.json()
+      if (svcRes.ok) {
+        payload.serviceId = svcData.service_id
+        await fetchServices() // Refresh the main services list
+      }
+    } catch (e) {
+      console.error('Failed to create service for offer:', e)
+    }
+  }
+
   // Use the ID from the payload (if editing) or the editingOffer ref
   const offerId = payload.id || editingOffer.value?.offerID || editingOffer.value?.id;
   

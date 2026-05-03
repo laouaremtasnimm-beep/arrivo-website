@@ -103,10 +103,10 @@
       @save="handleSaveService"
     />
 
-    <OfferFormModal
+    <ServiceOfferFormModal
       v-model="offerFormOpen"
       :offer="editingOffer"
-      :agency-id="user?.userID ?? user?.id"
+      :provider-id="user?.userID ?? user?.id"
       @save="handleSaveOffer"
     />
 
@@ -140,8 +140,8 @@ import ServicesTable    from '@/components/dashboard/ServicesTable.vue'
 import MessagesPanel    from '@/components/dashboard/MessagesPanel.vue'
 import DashboardReviews from '@/components/dashboard/DashboardReviews.vue'
 import OffersPanel      from '@/components/dashboard/OffersPanel.vue'
-import OfferFormModal   from '@/components/dashboard/OfferFormModal.vue'
-import ServiceFormModal from '@/components/dashboard/ServiceFormModal.vue'
+import ServiceOfferFormModal from '@/components/dashboard/ServiceOfferFormModal.vue'
+import ServiceFormModal from '@/components/dashboard/Serviceformmodal.vue'
 import BookingDetailModal from '@/components/dashboard/BookingDetailModal.vue'
 import OfferDetailModal   from '@/components/home/OfferDetailModal.vue'
 
@@ -477,6 +477,24 @@ function openOfferForm(offer) {
 
 // Persist to DB and update the in-memory store
 async function handleSaveOffer(payload) {
+  // If there's a new service to create from scratch
+  if (payload.newService) {
+    try {
+      const svcRes = await fetch(`${API}/services.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload.newService, provider_id: user.value.userID })
+      })
+      const svcData = await svcRes.json()
+      if (svcRes.ok) {
+        payload.serviceId = svcData.service_id
+        await fetchServices() // Refresh the main services list
+      }
+    } catch (e) {
+      console.error('Failed to create service for offer:', e)
+    }
+  }
+
   await saveOfferToDB({ ...payload, owner_id: user.value?.userID })
 }
 </script>

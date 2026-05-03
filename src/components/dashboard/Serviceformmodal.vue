@@ -7,7 +7,7 @@
           <button class="modal__close" @click="close">✕</button>
 
           <h2 class="modal__title">{{ isEdit ? 'Edit Service' : 'Add New Service' }}</h2>
-          <p class="modal__sub">{{ isEdit ? 'Update the details below.' : 'Fill in the details to list a new service.' }}</p>
+          <p class="modal__sub">{{ isEdit ? 'Update your service details below.' : 'Fill in the details to list a new service.' }}</p>
 
           <div class="modal__body">
 
@@ -18,19 +18,19 @@
               <p class="field-error" v-if="errors.title">{{ errors.title }}</p>
             </div>
 
-            <!-- Type + Icon -->
+            <!-- Category + Icon -->
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Category *</label>
-                <select class="form-input" v-model="form.type">
-                  <option value="">Select category…</option>
-                  <option v-for="t in types" :key="t" :value="t">{{ t }}</option>
+                <select class="form-input form-select" v-model="form.type">
+                  <option value="">Select type…</option>
+                  <option v-for="t in categories" :key="t" :value="t">{{ t }}</option>
                 </select>
                 <p class="field-error" v-if="errors.type">{{ errors.type }}</p>
               </div>
               <div class="form-group">
-                <label class="form-label">Icon (emoji)</label>
-                <input class="form-input" v-model="form.icon" placeholder="e.g. 🚐" maxlength="4" />
+                <label class="form-label">Icon (Emoji)</label>
+                <input class="form-input text-center" v-model="form.icon" maxlength="2" placeholder="🛎️" />
               </div>
             </div>
 
@@ -42,15 +42,33 @@
                 <p class="field-error" v-if="errors.price">{{ errors.price }}</p>
               </div>
               <div class="form-group">
-                <label class="form-label">Price unit *</label>
-                <select class="form-input" v-model="form.unit">
+                <label class="form-label">Price unit</label>
+                <select class="form-input form-select" v-model="form.unit">
                   <option value="day">Per day</option>
                   <option value="trip">Per trip</option>
                   <option value="person">Per person</option>
-                  <option value="session">Per session</option>
-                  <option value="evening">Per evening</option>
                   <option value="hour">Per hour</option>
                 </select>
+              </div>
+            </div>
+
+            <!-- Start & End Dates (Obligatory) -->
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Available from *</label>
+                <div class="date-input-wrap">
+                  <input class="form-input" v-model="form.start_date" type="date" />
+                  <span class="date-icon">🗓️</span>
+                </div>
+                <p class="field-error" v-if="errors.start_date">{{ errors.start_date }}</p>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Available until *</label>
+                <div class="date-input-wrap">
+                  <input class="form-input" v-model="form.end_date" type="date" :min="form.start_date" />
+                  <span class="date-icon">🗓️</span>
+                </div>
+                <p class="field-error" v-if="errors.end_date">{{ errors.end_date }}</p>
               </div>
             </div>
 
@@ -60,7 +78,7 @@
               <textarea
                 class="form-input form-textarea"
                 v-model="form.desc"
-                placeholder="A brief summary shown on listing cards…"
+                placeholder="A brief summary of your service…"
                 rows="3"
               />
               <p class="field-error" v-if="errors.desc">{{ errors.desc }}</p>
@@ -68,11 +86,11 @@
 
             <!-- Features -->
             <div class="form-group">
-              <label class="form-label">Features / inclusions <span class="form-hint">(one per line)</span></label>
+              <label class="form-label">Features / Inclusions <span class="form-hint">(one per line)</span></label>
               <textarea
                 class="form-input form-textarea"
                 v-model="featuresRaw"
-                placeholder="Meet & greet&#10;Flight tracking&#10;Free waiting time"
+                placeholder="Free cancellation&#10;Insurance included&#10;English speaking guide"
                 rows="4"
               />
             </div>
@@ -104,33 +122,35 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'save'])
 
 const isEdit  = computed(() => !!props.service)
+const today = computed(() => new Date().toISOString().split('T')[0])
 const loading = ref(false)
 const errors  = ref({})
 
-const types = ['Transport', 'Adventure', 'Food', 'Wellness', 'Photography', 'Tours', 'City Break']
+const categories = ['Transport', 'Accommodation', 'Activity', 'Tour', 'Restaurant', 'Wellness', 'Other']
 
+// ── Form state ─────────────────────────────────────────────────────────────
 const defaultForm = () => ({
-  title: '', type: '', icon: '🛎️', price: null, unit: 'day',
-  desc: '', availability: true, features: [],
+  title: '', type: '', icon: '🛎️',
+  price: null, unit: 'day', start_date: '', end_date: '', desc: '',
 })
-
 const form        = ref(defaultForm())
 const featuresRaw = ref('')
 
+// Populate form when editing
 watch(() => props.service, (svc) => {
   if (svc) {
     form.value = {
-      id:           svc.id,
-      title:        svc.title        || '',
-      type:         svc.type         || '',
-      icon:         svc.icon         || '🛎️',
-      price:        svc.price        || null,
-      unit:         svc.price_unit   || svc.unit || 'day',
-      desc:         svc.description  || svc.desc || '',
-      availability: Number(svc.is_available) === 1,
+      id:          svc.id,
+      title:       svc.title       || '',
+      type:        svc.type        || '',
+      icon:        svc.icon        || '🛎️',
+      price:       svc.price       || null,
+      unit:        svc.price_unit  || svc.unit || 'day',
+      start_date:  svc.start_date  || '',
+      end_date:    svc.end_date    || '',
+      desc:        svc.description || svc.desc || '',
     }
     
-    // Handle features - might be JSON string or array
     let feat = []
     try {
       feat = typeof svc.features === 'string' ? JSON.parse(svc.features) : (svc.features || [])
@@ -143,16 +163,22 @@ watch(() => props.service, (svc) => {
   errors.value = {}
 }, { immediate: true })
 
+// ── Validation ─────────────────────────────────────────────────────────────
 function validate() {
   const e = {}
-  if (!form.value.title?.trim()) e.title = 'Title is required.'
-  if (!form.value.type)         e.type  = 'Please select a category.'
+  if (!form.value.title?.trim())      e.title      = 'Title is required.'
+  if (!form.value.type)               e.type       = 'Please select a category.'
   if (!form.value.price || form.value.price < 0) e.price = 'Enter a valid price.'
-  if (!form.value.desc?.trim())  e.desc  = 'Description is required.'
+  if (!form.value.start_date)         e.start_date = 'Start date is required.'
+  if (!form.value.end_date)           e.end_date   = 'End date is required.'
+  if (form.value.start_date && form.value.end_date && form.value.end_date < form.value.start_date)
+    e.end_date = 'End date must be after start date.'
+  if (!form.value.desc?.trim())       e.desc       = 'Description is required.'
   errors.value = e
   return Object.keys(e).length === 0
 }
 
+// ── Submit ─────────────────────────────────────────────────────────────────
 async function submit() {
   if (!validate()) return
   loading.value = true
@@ -160,15 +186,17 @@ async function submit() {
   loading.value = false
 
   const payload = {
-    id:           props.service?.id,
+    id:           form.value.id,
     title:        form.value.title,
     type:         form.value.type,
     icon:         form.value.icon,
     price:        form.value.price,
     price_unit:   form.value.unit,
+    start_date:   form.value.start_date,
+    end_date:     form.value.end_date,
     description:  form.value.desc,
-    is_available: form.value.availability ? 1 : 0,
     features:     featuresRaw.value.split('\n').map(s => s.trim()).filter(Boolean),
+    is_available: 1,
   }
 
   emit('save', payload)
@@ -185,7 +213,7 @@ function close() { emit('update:modelValue', false) }
 }
 .modal {
   background: var(--white); border-radius: 24px;
-  width: 100%; max-width: 580px;
+  width: 100%; max-width: 600px;
   box-shadow: 0 24px 80px rgba(0,0,0,.20);
   display: flex; flex-direction: column; max-height: 90vh;
   position: relative;
@@ -199,10 +227,13 @@ function close() { emit('update:modelValue', false) }
   z-index: 1;
 }
 .modal__close:hover { background: var(--gray-200); }
-.modal__title { font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 700; padding: 32px 32px 4px; }
+
+.modal__title { font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 700; padding: 32px 32px 4px; color: var(--indigo); }
 .modal__sub   { font-size: .88rem; color: var(--gray-400); padding: 0 32px 20px; }
+
 .modal__body  { padding: 0 32px; overflow-y: auto; flex: 1; }
 
+/* Form */
 .form-row    { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-group  { margin-bottom: 18px; }
 .form-label  { font-size: .84rem; font-weight: 600; color: var(--indigo); margin-bottom: 7px; display: block; }
@@ -214,11 +245,23 @@ function close() { emit('update:modelValue', false) }
   outline: none; transition: border-color var(--transition); background: var(--white);
 }
 .form-input:focus { border-color: var(--coral); }
+.form-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%234a5568' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center; background-size: 16px;
+  padding-right: 36px; appearance: none; cursor: pointer;
+}
 .form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
 .field-error { font-size: .76rem; color: #e74c3c; margin-top: 4px; }
 
-.img-preview { margin-top: 10px; height: 100px; border-radius: 10px; overflow: hidden; }
-.img-preview img { width: 100%; height: 100%; object-fit: cover; }
+.text-center { text-align: center; }
+
+/* Date inputs */
+.date-input-wrap { position: relative; }
+.date-input-wrap .form-input { padding-right: 36px; cursor: pointer; }
+.date-input-wrap input::-webkit-calendar-picker-indicator {
+  position: absolute; right: 0; top: 0; width: 40px; height: 100%; opacity: 0; cursor: pointer;
+}
+.date-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; font-size: 1rem; }
 
 /* Footer */
 .modal__footer {
@@ -239,6 +282,7 @@ function close() { emit('update:modelValue', false) }
 .fade-enter-from, .fade-leave-to       { opacity: 0; transform: scale(.97); }
 
 @media (max-width: 480px) {
+  .modal { border-radius: 20px; }
   .modal__title { padding: 24px 24px 4px; font-size: 1.4rem; }
   .modal__sub   { padding: 0 24px 16px; }
   .modal__body  { padding: 0 24px; }
