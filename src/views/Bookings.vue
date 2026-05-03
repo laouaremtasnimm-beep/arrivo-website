@@ -77,7 +77,7 @@
             <div class="bk-card__thumb">
               <div class="bk-card__thumb-bg">{{ typeIcon(b.booking_type) }}</div>
               <span class="bk-card__type-tag">{{ typeName(b.booking_type) }}</span>
-              <span class="status-badge" :class="`status--${b.status}`">{{ b.status }}</span>
+              <span class="status-badge" :class="`status--${b.status}`">{{ statusLabel(b.status) }}</span>
             </div>
 
             <div class="bk-card__body">
@@ -148,7 +148,8 @@ const tabs = [
 ]
 
 const statuses = [
-  { value: 'all',       label: 'All status' },
+  { value: 'all',       label: 'All Status' },
+  { value: 'pending',   label: 'Pending'    },
   { value: 'confirmed', label: 'Booked'     },
   { value: 'cancelled', label: 'Cancelled'  },
 ]
@@ -185,6 +186,14 @@ function bookingTitle(b) {
 }
 function typeIcon(type) { return { package: '✈️', service: '🎯', destination: '📍', offer: '🏷️' }[type] ?? '📋' }
 function typeName(type) { return { package: 'Package', service: 'Service', destination: 'Destination', offer: 'Offer' }[type] ?? 'Booking' }
+function statusLabel(s) {
+  return {
+    pending:   'Pending',
+    confirmed: 'Booked',
+    cancelled: 'Cancelled',
+    completed: 'Completed'
+  }[s] || s
+}
 function formatDate(d)  { return d ? new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '' }
 function canConfirm(b)  { return role.value !== 'tourist' && b.status === 'pending' }
 function canCancel(b)   { return b.status === 'pending' || (role.value === 'tourist' && b.status === 'confirmed') }
