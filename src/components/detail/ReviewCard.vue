@@ -106,7 +106,6 @@ const props = defineProps({
 const emit = defineEmits(['deleted', 'updated'])
 
 const { user, isLoggedIn, isAgency, isProvider } = useAuth()
-const { push: pushNotification } = useNotifications()
 const { saveReply: apiSaveReply, deleteReview: apiDeleteReview } = useReviews()
 
 const isMine = computed(() => {
@@ -154,26 +153,12 @@ async function submitReply() {
   if (!replyText.value.trim()) return
   replyLoading.value = true
   try {
-    const data = await apiSaveReply(
+    await apiSaveReply(
       props.review.id || props.review.reviewID,
       replyText.value.trim()
     )
     props.review.reply = replyText.value.trim()
     isReplying.value   = false
-
-    if (data.reviewer_id) {
-      const type   = props.review.item_type || 'package'
-      const itemId = props.review.package_id || props.review.service_id || props.review.destination_id
-      pushNotification({
-        roles:        ['tourist'],
-        targetUserId: data.reviewer_id,
-        type:         'review',
-        icon:         '💬',
-        title:        'Someone replied to your review',
-        body:         `Your review received a reply: "${replyText.value.slice(0, 50)}..."`,
-        link:         itemId ? `/${type}s/${itemId}#review-${props.review.id}` : '/bookings',
-      })
-    }
   } catch (e) {
     console.error('submitReply failed:', e)
   } finally {

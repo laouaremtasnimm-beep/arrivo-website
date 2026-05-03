@@ -111,7 +111,6 @@ const props = defineProps({
 })
 const emit = defineEmits(['reply'])
 
-const { push: pushNotification } = useNotifications()
 const { reviews: localReviews, loading, fetchAllForOwner, saveReply: apiSaveReply } = useReviews()
 
 const openReplyId  = ref(null)
@@ -163,21 +162,11 @@ async function saveReply(reviewID, text) {
   const rev = localReviews.value.find(r => r.reviewID === reviewID)
   if (!rev) return
   try {
-    const data = await apiSaveReply(reviewID, text)
-    if (data.reviewer_id) {
-      pushNotification({
-        roles: ['tourist'],
-        targetUserId: data.reviewer_id,
-        type: 'review_reply',
-        icon: '✍️',
-        title: 'New Reply to Your Review',
-        body: `A provider replied to your review on ${rev.itemName}.`,
-        link: `/${rev.itemType}s/${rev.itemId}#review-${reviewID}`
-      })
-    }
+    await apiSaveReply(reviewID, text)
+    rev.reply = text
     emit('reply', { reviewID, text })
   } catch (e) {
-    alert(e.message)
+    console.error('saveReply failed:', e)
   } finally {
     openReplyId.value = null
   }
