@@ -1,10 +1,10 @@
 export const destinations = [
   {
     id: 1, name: 'Santorini, Greece', img: 'https://images.unsplash.com/photo-1613395877344-13d4a8e0d49e?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', badge: '🔥 Trending', country: 'Greece', type: 'Beach', rating: 4.9, reviews: 2140, from: 890, desc: 'Famous for white-washed buildings, stunning sunsets and crystal-clear Aegean waters.', highlights: ['Sunsets', 'Volcanic beaches', 'Greek cuisine'], thingsToDo: [
-      { title: 'Sunset in Oia', icon: '🌅', desc: 'Watch the world-famous sunset from the Byzantine Castle ruins.', img: 'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?q=80&w=600&auto=format&fit=crop' },
-      { title: 'Caldera Hike', icon: '🥾', desc: 'Hike the scenic path from Fira to Oia for breathtaking views.', img: 'https://images.unsplash.com/photo-1541432901912-2d836396841b?q=80&w=600&auto=format&fit=crop' },
-      { title: 'Ammoudi Bay', icon: '🛶', desc: 'Descend to this charming bay for fresh seafood and cliff jumping.', img: 'https://images.unsplash.com/photo-1621274220348-41007804107e?q=80&w=600&auto=format&fit=crop' },
-      { title: 'Akrotiri Visit', icon: '🏛️', desc: 'Explore the remarkably preserved Bronze Age settlement.', img: 'https://images.unsplash.com/photo-1571403251703-91122a27526f?q=80&w=600&auto=format&fit=crop' }
+      { title: 'Sunset in Oia', icon: '🌅', desc: 'Watch the world-famous sunset from the Byzantine Castle ruins.', img: 'https://images.unsplash.com/photo-1667526273488-378aa6f5f113?w=1000&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTJ8fHNhbnRvcmluaSUyMHN1bnNldHxlbnwwfHwwfHx8Mg%3D%3D' },
+      { title: 'Caldera Hike', icon: '🥾', desc: 'Hike the scenic path from Fira to Oia for breathtaking views.', img: 'https://imgs.search.brave.com/ePfD6ZlvSacWLFcEcO9W4R3oraQtoBPXfJfZfMrUnIE/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93d3cu/c2hvcmVleGN1cnNp/b25zZ3JvdXAuY29t/L2ltZy90b3VyL0VV/U05UUkxISUtFLTIu/anBn' },
+      { title: 'Ammoudi Bay', icon: '🛶', desc: 'Descend to this charming bay for fresh seafood and cliff jumping.', img: 'https://imgs.search.brave.com/a6RR_WkRxJLMTo772HjvFGBhjr2q9oiKWfdSz6E86k0/rs:fit:860:0:0:0/g:ce/aHR0cHM6Ly9wbGFj/ZS5jb20tcGhvdG9z/LmNvbS81Mjg0OS9h/bW1vdWRpLWJheS1B/RjFRaXBPRWFmQlF4/VXNDaWFRWmw4TUs2/bWdKbFBhZHRDZ1ps/czBncTBrMi5qcGc' },
+      { title: 'Akrotiri Visit', icon: '🏛️', desc: 'Explore the remarkably preserved Bronze Age settlement.', img: 'https://imgs.search.brave.com/6x_dobnMJsDQQRVI49sWdcLkmyJa80wBeSapbE-QaHM/rs:fit:500:0:1:0/g:ce/aHR0cHM6Ly93d3cu/YW5jaWVudHRyYXZl/bC5vcmcvaW1hZ2Vz/L3NpdGVzL2Frcm90/aXJpLWx1bmEud2Vi/cA' }
     ], bestTime: 'April to November'
   },
   {
