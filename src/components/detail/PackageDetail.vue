@@ -62,10 +62,16 @@
           />
 
           <DetailReviews
-            :rating="item.rating"
-            :total-reviews="item.reviews"
-            :reviews="mockReviews"
-          />
+  :rating="item.rating"
+  :total-reviews="item.reviews"
+  :reviews="isDemo ? mockReviews : []"
+  item-type="package"
+  :item-id="item.id"
+  :can-moderate="isOwner"
+  :item-owner-id="item.agency_id"
+  :hide-write-review="isOwner"
+  @stats-update="updateStats"
+/>
         </div>
 
         <DetailSidebar

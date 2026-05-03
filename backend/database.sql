@@ -129,6 +129,7 @@ CREATE TABLE reviews (
     item_type      ENUM('package','service','destination') NOT NULL,
     rating         INT  NOT NULL CHECK (rating >= 1 AND rating <= 5),
     comment        TEXT NULL,
+    reply          TEXT NULL, 
     created_at     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id)         REFERENCES users(id)        ON DELETE CASCADE,
     FOREIGN KEY (package_id)      REFERENCES packages(id)     ON DELETE CASCADE,

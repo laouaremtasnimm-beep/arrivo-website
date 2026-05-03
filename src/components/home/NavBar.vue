@@ -286,7 +286,7 @@ import MessagePanel from '@/components/shared/MessagePanel.vue'
 const router = useRouter()
 const route  = useRoute()
 const { user, isLoggedIn, canAccessDashboard, logout } = useAuth()
-const { unreadCount: getUnreadCount } = useNotifications()
+const { startPolling: startNotifPolling, stopPolling: stopNotifPolling, unreadCount: getUnreadCount } = useNotifications()
 const { fetchMessages, getUnreadCount: getMsgUnreadCount, startPolling, stopPolling } = useMessages()
 const { entries: wishlistEntries } = useWishlist()
 
@@ -378,6 +378,7 @@ function onClickOutside(e) {
 onMounted(() => {
   if (isLoggedIn.value) {
     const uid = user.value.userID || user.value.id
+    startNotifPolling(uid)
     fetchMessages(uid)
     startPolling(uid)
   }
@@ -386,6 +387,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  stopNotifPolling()
   stopPolling()
   window.removeEventListener('scroll', onScroll)
   document.removeEventListener('click', onClickOutside)

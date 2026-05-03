@@ -16,55 +16,51 @@ const defaultNotification = {
   link: '/',
 }
 
-// ── Singleton State ──────────────────────────────────────────────────────────
-const saved = localStorage.getItem(STORAGE_KEY)
-const notifications = ref(saved ? JSON.parse(saved) : [defaultNotification])
+let pollInterval = null
 
-function saveToStorage() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications.value))
-}
+const notifications = ref([])
+const API_URL = '/arrivo-website/backend/api/v1/notifications.php'
 
-function syncFromStorage() {
+async function fetchNotifications(userId) {
+  if (!userId) return
   try {
-    const latest = localStorage.getItem(STORAGE_KEY)
-    if (latest) {
-      notifications.value = JSON.parse(latest)
+    const res = await fetch(`${API_URL}?user_id=${userId}`)
+    const data = await res.json()
+    if (data.notifications) {
+      notifications.value = data.notifications.map(n => ({
+        ...n,
+        read: !!Number(n.is_read),
+        time: new Date(n.created_at).toLocaleDateString()
+      }))
     }
-  } catch (e) { console.error('Sync failed', e) }
+  } catch (e) { console.error('Fetch notifications failed', e) }
 }
 
-// Initialize listener only once
-if (typeof window !== 'undefined') {
-  window.addEventListener('storage', (e) => {
-    if (e.key === STORAGE_KEY) syncFromStorage()
-  })
+function startPolling(userId) {
+  if (pollInterval) return
+  fetchNotifications(userId)
+  pollInterval = setInterval(() => fetchNotifications(userId), 10000) // Poll every 10s
+}
+
+function stopPolling() {
+  if (pollInterval) {
+    clearInterval(pollInterval)
+    pollInterval = null
+  }
 }
 
 export function useNotifications() {
 
   function forRole(role, currentUserId = null) {
     if (!role) return []
-    const r = role.toLowerCase()
-
-    return notifications.value.filter(n => {
-      // 1. Role Check: notification must target this user's role
-      const roleMatch = n.roles.some(roleStr => roleStr.toLowerCase() === r)
-      if (!roleMatch) return false
-
-      // 2. Ownership Check: if targeted, ID must match
-      if (n.targetUserId != null) {
-        if (currentUserId == null) return false
-        return String(n.targetUserId) === String(currentUserId)
-      }
-
-      // Global role-based notification
-      return true
-    })
+    // Role filtering is handled by DB user_id for targeted ones
+    // and we can filter globally if needed.
+    return notifications.value
   }
 
   function forType(role, type, currentUserId = null) {
     return computed(() => {
-      const all = forRole(role, currentUserId)
+      const all = notifications.value
       if (type === 'message') return all.filter(n => n.type === 'message')
       return all.filter(n => n.type !== 'message')
     })
@@ -72,45 +68,77 @@ export function useNotifications() {
 
   function unreadCount(role, currentUserId = null, type = 'all') {
     return computed(() => {
-      let list = forRole(role, currentUserId)
+      let list = notifications.value
       if (type === 'message') list = list.filter(n => n.type === 'message')
       else if (type === 'notification') list = list.filter(n => n.type !== 'message')
       return list.filter(n => !n.read).length
     })
   }
 
-  function markRead(id) {
+  async function markRead(id) {
     const n = notifications.value.find(n => n.id === id)
     if (n) {
       n.read = true
-      saveToStorage()
+      try {
+        await fetch(API_URL, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id })
+        })
+      } catch (e) { console.error('Mark read failed', e) }
     }
   }
 
-  function markAllRead(role, currentUserId = null) {
-    forRole(role, currentUserId).forEach(n => { n.read = true })
-    saveToStorage()
+  async function markAllRead(role, currentUserId = null) {
+    notifications.value.forEach(n => { n.read = true })
+    try {
+      await fetch(API_URL, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: currentUserId })
+      })
+    } catch (e) { console.error('Mark all read failed', e) }
   }
 
-  function deleteNotification(id) {
+  async function deleteNotification(id) {
     notifications.value = notifications.value.filter(n => n.id !== id)
-    saveToStorage()
+    try {
+      await fetch(`${API_URL}?id=${id}`, { method: 'DELETE' })
+    } catch (e) { console.error('Delete notification failed', e) }
   }
 
-  function push(notification) {
+  async function push(notification) {
+    // Add locally first for instant feedback
+    const localId = Date.now()
     notifications.value.unshift({
-      id: Date.now(),
+      id: localId,
       read: false,
       time: 'Just now',
-      targetUserId: null,
       ...notification,
     })
-    saveToStorage()
-    syncFromStorage()
+
+    // Persist to DB
+    try {
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: notification.targetUserId,
+          type:    notification.type,
+          title:   notification.title,
+          body:    notification.body,
+          icon:    notification.icon,
+          link:    notification.link
+        })
+      })
+    } catch (e) { console.error('Push notification failed', e) }
   }
 
   return {
     notifications,
+    fetchNotifications,
+    startPolling,
+    stopPolling,
     forRole,
     forType,
     unreadCount,

@@ -111,6 +111,9 @@
         :reviews="isDemo ? mockReviews : []"
         item-type="service"
         :item-id="item.id"
+        :can-moderate="isOwner"
+        :item-owner-id="item.provider_id"
+        :hide-write-review="isOwner"
         @stats-update="updateStats"
       />
 

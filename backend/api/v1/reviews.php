@@ -2,6 +2,9 @@
 require_once __DIR__ . '/../../config/cors.php';
 require_once __DIR__ . '/../../config/db.php';
 
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 header('Content-Type: application/json');
 
 $method = $_SERVER['REQUEST_METHOD'];
@@ -15,7 +18,7 @@ try {
             exit();
         }
 
-        $itemType = $_GET['item_type'];   // 'package' | 'service' | 'destination'
+        $itemType = $_GET['item_type'];
         $itemId   = (int) $_GET['item_id'];
 
         $columnMap = [
@@ -32,7 +35,8 @@ try {
 
         $col  = $columnMap[$itemType];
         $stmt = $pdo->prepare("
-            SELECT r.id, r.user_id, r.rating, r.comment, r.created_at,
+            SELECT r.id, r.user_id, r.rating, r.comment, r.reply, r.created_at,
+                   r.item_type, r.package_id, r.service_id, r.destination_id,
                    u.first_name, u.last_name
             FROM   reviews r
             JOIN   users   u ON r.user_id = u.id
@@ -109,32 +113,69 @@ try {
 
     } elseif ($method === 'PUT') {
         $data = json_decode(file_get_contents('php://input'), true);
-
         if (!isset($data['id']) || !isset($data['rating'])) {
             http_response_code(400);
             echo json_encode(["error" => "Missing review id or rating"]);
             exit();
         }
-
         $comment = $data['comment'] ?? '';
-
         $stmt = $pdo->prepare('UPDATE reviews SET rating = ?, comment = ? WHERE id = ?');
         $stmt->execute([$data['rating'], $comment, $data['id']]);
-
         echo json_encode(["message" => "Review updated successfully"]);
+
+    } elseif ($method === 'PATCH') {
+        $data = json_decode(file_get_contents('php://input'), true);
+        if (!isset($data['id']) || !isset($data['reply'])) {
+            http_response_code(400);
+            echo json_encode(["error" => "Missing review id or reply"]);
+            exit();
+        }
+        $stmt = $pdo->prepare('UPDATE reviews SET reply = ? WHERE id = ?');
+        $stmt->execute([$data['reply'], $data['id']]);
+
+        // Return the reviewer's user_id so frontend can target the notification
+        $s = $pdo->prepare('SELECT r.user_id as reviewer_id, r.item_type, r.package_id, r.service_id, r.destination_id, 
+                                  COALESCE(p.title, s.title, d.name) as item_name,
+                                  u.company_name, u.role as owner_role
+                           FROM reviews r
+                           LEFT JOIN packages p ON r.package_id = p.id
+                           LEFT JOIN services s ON r.service_id = s.id
+                           LEFT JOIN destinations d ON r.destination_id = d.id
+                           LEFT JOIN users u ON (u.id = p.agency_id OR u.id = s.provider_id)
+                           WHERE r.id = ?');
+        $s->execute([$data['id']]);
+        $revData = $s->fetch();
+        $reviewerId = $revData ? (int)$revData['reviewer_id'] : null;
+
+        if ($reviewerId) {
+            $itemName = $revData['item_name'] ?? 'your review';
+            $ownerName = !empty($revData['company_name']) ? $revData['company_name'] : ucfirst($revData['owner_role'] ?? 'owner');
+            
+            $stmtN = $pdo->prepare("INSERT INTO notifications (user_id, type, title, body, icon, link) VALUES (?, ?, ?, ?, ?, ?)");
+            $stmtN->execute([
+                $reviewerId,
+                'review_reply',
+                'New Reply to Your Review',
+                "$ownerName replied to your review on $itemName.",
+                '✍️',
+                "/$revData[item_type]s/" . ($revData['package_id'] ?? $revData['service_id'] ?? $revData['destination_id']) . "#review-" . $data['id']
+            ]);
+        }
+
+        echo json_encode([
+            "message"     => "Reply saved",
+            "reviewer_id" => $reviewerId,
+        ]);
 
     } elseif ($method === 'DELETE') {
         $data = json_decode(file_get_contents('php://input'), true);
-
         if (!isset($data['id'])) {
             http_response_code(400);
             echo json_encode(["error" => "Missing review id"]);
             exit();
         }
-
         $stmt = $pdo->prepare('DELETE FROM reviews WHERE id = ?');
         $stmt->execute([$data['id']]);
-
         echo json_encode(["message" => "Review deleted"]);
 
     } else {

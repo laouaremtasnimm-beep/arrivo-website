@@ -30,16 +30,17 @@ import { useNotifications } from '@/composables/useNotifications'
 const props = defineProps({
   open:         { type: Boolean, default: false },
   reviewerName: { type: String,  default: 'Guest' },
+  initialText:  { type: String,  default: '' },
 })
 const emit = defineEmits(['submit', 'cancel'])
-const { push: pushNotification } = useNotifications()
+
 
 const text     = ref('')
 const inputRef = ref(null)
 
 watch(() => props.open, v => {
   if (v) {
-    text.value = ''
+    text.value = props.initialText || ''
     nextTick(() => inputRef.value?.focus())
   }
 })
@@ -47,17 +48,6 @@ watch(() => props.open, v => {
 function submit() {
   if (!text.value.trim()) return
   emit('submit', text.value.trim())
-
-  // ── Notify Tourist ──────────────────────────────────────────────
-  pushNotification({
-    roles: ['tourist'],
-    type: 'review',
-    icon: '💬',
-    title: 'New reply to your review',
-    body: `A provider has replied to your review: "${text.value.slice(0, 40)}..."`,
-    link: '/bookings' // Or wherever reviews are shown to tourists
-  })
-
   text.value = ''
 }
 
@@ -103,6 +93,10 @@ function cancel() {
 .reply-btn-send:hover:not(:disabled) { background: var(--teal-dk); }
 .reply-btn-send:disabled { opacity: .4; cursor: not-allowed; }
 
-.reply-expand-enter-active, .reply-expand-leave-active { transition: all .2s ease; }
-.reply-expand-enter-from, .reply-expand-leave-to { opacity: 0; transform: translateY(-6px); }
+.reply-expand-enter-active, .reply-expand-leave-active { 
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.reply-expand-enter-from, .reply-expand-leave-to { 
+  opacity: 0; transform: translateY(-8px);
+}
 </style>

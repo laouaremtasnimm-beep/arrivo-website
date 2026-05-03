@@ -207,7 +207,7 @@ const router = useRouter()
 const { user, isAgency, isProvider, logout } = useAuth()
 const { saveOffer, deleteOffer, saveOfferToDB, deleteOfferFromDB, allOffers } = useOffers()
 const { toggle: toggleWishlist } = useWishlist()
-const { unreadCount: getUnreadCount } = useNotifications()
+const { startPolling: startNotifPolling, stopPolling: stopNotifPolling, unreadCount: getUnreadCount } = useNotifications()
 const { fetchMessages, getUnreadCount: getMsgUnreadCount, messages: dbMessages, startPolling, stopPolling } = useMessages()
 
 // ── Layout ────────────────────────────────────────────────────────────────
@@ -350,6 +350,7 @@ async function fetchServices() {
 onMounted(async () => {
   if (!user.value) return
   const uid = user.value.userID || user.value.id
+  startNotifPolling(uid)
   await fetchBookings()
   await fetchPackages()
   await fetchServices()
@@ -359,6 +360,7 @@ onMounted(async () => {
 
 import { onUnmounted } from 'vue'
 onUnmounted(() => {
+  stopNotifPolling()
   stopPolling()
 })
 

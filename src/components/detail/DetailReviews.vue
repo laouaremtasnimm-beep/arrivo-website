@@ -11,7 +11,7 @@
 
         <!-- Review cards -->
         <div class="detail-reviews__grid" v-else>
-          <ReviewCard v-for="review in displayed" :key="review.id" :review="review" @deleted="handleDeleteReview" @updated="fetchReviews" />
+         <ReviewCard v-for="review in displayed" :key="review.id" :review="review" :can-moderate="canModerate" :item-owner-id="itemOwnerId" @deleted="handleDeleteReview" @updated="fetchReviews" />
         </div>
 
         <!-- Show all button -->
@@ -38,7 +38,7 @@
         </h2>
 
         <!-- Rating breakdown bars -->
-        <div class="detail-reviews__breakdown" v-if="allReviews.length">
+        <div class="detail-reviews__breakdown">
           <div class="rating-bar" v-for="bar in bars" :key="bar.stars">
             <span class="rating-bar__label">{{ bar.stars }} ★</span>
             <div class="rating-bar__track">
@@ -49,13 +49,14 @@
         </div>
 
         <!-- Write a review -->
-        <WriteReview
-          v-if="itemType && itemId"
-          class="detail-reviews__write-wrap"
-          :item-type="itemType"
-          :item-id="itemId"
-          @submitted="onNewReview"
-        />
+       <WriteReview
+  v-if="itemType && itemId && !hideWriteReview"
+  class="detail-reviews__write-wrap"
+  :item-type="itemType"
+  :item-id="itemId"
+  :existing-review="myReview"
+  @submitted="onNewReview"
+/>
       </div>
     </div>
 
@@ -70,7 +71,7 @@
             </div>
             <div class="reviews-modal__content">
               <div class="reviews-modal__grid">
-                <ReviewCard v-for="review in allReviews" :key="review.id" :review="review" @deleted="handleDeleteReview" @updated="fetchReviews" />
+               <ReviewCard v-for="review in allReviews" :key="review.id" :review="review" :can-moderate="canModerate" :item-owner-id="itemOwnerId" @deleted="handleDeleteReview" @updated="fetchReviews" />
               </div>
             </div>
           </div>
@@ -84,41 +85,58 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import ReviewCard  from '@/components/detail/ReviewCard.vue'
 import WriteReview from '@/components/detail/WriteReview.vue'
+import { useReviews } from '@/composables/useReviews'
+import { useAuth }    from '@/composables/useAuth'
 
 const props = defineProps({
+  hideWriteReview: { type: Boolean, default: false },
   rating:       { type: Number, required: true },
   totalReviews: { type: Number, required: true },
   reviews:      { type: Array,  default: () => [] },
   itemType:     { type: String, default: null },
   itemId:       { type: Number, default: null },
+  canModerate:  { type: Boolean, default: false },
+  itemOwnerId:  { type: [Number, String], default: null },
 })
 
 const emit = defineEmits(['stats-update'])
 
-const API_BASE    = '/arrivo-website/backend/api/v1/reviews.php'
+const { user, isLoggedIn } = useAuth()
+const { reviews: globalReviews, loading, fetchReviews: apiFetchReviews } = useReviews()
+
 const displayCount = ref(4)
 const isModalOpen  = ref(false)
-const loading      = ref(false)
-const liveReviews  = ref([])
 
 const allReviews = computed(() => {
-  if (!liveReviews.value.length) return props.reviews
-  const live = liveReviews.value.map(r => ({
-    id:       r.id,
+  // Filter global reviews for THIS item
+  const live = globalReviews.value.filter(r => 
+    r.item_type === props.itemType && 
+    (r.package_id === props.itemId || r.service_id === props.itemId || r.destination_id === props.itemId)
+  ).map(r => ({
+    ...r,
+    id:       r.id || r.reviewID,
     user_id:  r.user_id,
-    name:     `${r.first_name} ${r.last_name}`,
+    name:     r.name || `${r.first_name} ${r.last_name}`,
     location: '',
     rating:   Number(r.rating),
     date:     new Date(r.created_at).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }),
     text:     r.comment || '',
+    reply:    r.reply || null
   }))
+
   const liveIds = new Set(live.map(r => r.id))
   const extra   = props.reviews.filter(r => !liveIds.has(r.id))
   return [...live, ...extra]
 })
 
+const myReview = computed(() => {
+  if (!isLoggedIn.value || !user.value) return null
+  const uid = Number(user.value.userID ?? user.value.id)
+  return allReviews.value.find(r => Number(r.user_id) === uid)
+})
+
 function handleDeleteReview(reviewId) {
-  liveReviews.value = liveReviews.value.filter(r => r.id !== reviewId)
+  globalReviews.value = globalReviews.value.filter(r => (r.id || r.reviewID) !== reviewId)
   emit('stats-update', { rating: Number(displayRating.value), count: allReviews.value.length })
 }
 
@@ -146,20 +164,11 @@ const bars = computed(() => {
 
 async function fetchReviews() {
   if (!props.itemType || !props.itemId) return
-  loading.value = true
-  try {
-    const res  = await fetch(`${API_BASE}?item_type=${props.itemType}&item_id=${props.itemId}`)
-    const data = await res.json()
-    if (res.ok) liveReviews.value = data.reviews || []
-  } catch (e) {
-    console.error('Failed to load reviews:', e)
-  } finally {
-    loading.value = false
-    emit('stats-update', {
-      rating: Number(displayRating.value),
-      count:  allReviews.value.length
-    })
-  }
+  await apiFetchReviews(props.itemType, props.itemId)
+  emit('stats-update', {
+    rating: Number(displayRating.value),
+    count:  allReviews.value.length
+  })
 }
 
 function onNewReview() { fetchReviews() }

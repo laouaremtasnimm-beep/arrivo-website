@@ -2,8 +2,8 @@
   <div class="write-review" :class="{ 'write-review--open': isOpen }">
     <!-- Collapsed trigger -->
     <button v-if="!isOpen" class="write-review__trigger" @click="isOpen = true">
-      <span class="write-review__trigger-icon">✏️</span>
-      <span>Write a review</span>
+      <span class="write-review__trigger-icon">{{ existingReview ? '✎' : '✏️' }}</span>
+      <span>{{ existingReview ? 'Edit your review' : 'Write a review' }}</span>
       <span class="write-review__trigger-arrow">→</span>
     </button>
 
@@ -73,19 +73,20 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { useNotifications } from '@/composables/useNotifications'
 
 const props = defineProps({
   itemType: { type: String, required: true },   // 'package' | 'service' | 'destination'
   itemId:   { type: Number, required: true },
   userId:   { type: Number, default: null },     // pass logged-in user id
+  existingReview: { type: Object, default: null },
 })
 
 const emit = defineEmits(['submitted'])
 const { push: pushNotification } = useNotifications()
 
-const API_BASE = 'http://localhost/arrivo-website/backend/api/v1/reviews.php'
+const API_BASE = '/arrivo-website/backend/api/v1/reviews.php'
 
 const isOpen  = ref(false)
 const loading = ref(false)
@@ -97,12 +98,22 @@ const ratingLabels = ['Poor', 'Below average', 'Good', 'Very good', 'Excellent']
 
 const form = reactive({ rating: 0, comment: '' })
 
+// Pre-fill if editing
+watch(() => [props.existingReview, isOpen.value], ([rev, open]) => {
+  if (open && rev) {
+    form.rating  = Number(rev.rating)
+    form.comment = rev.text || rev.comment || ''
+  }
+}, { immediate: true })
+
 function cancel() {
   isOpen.value  = false
   error.value   = ''
   success.value = false
-  form.rating   = 0
-  form.comment  = ''
+  if (!props.existingReview) {
+    form.rating   = 0
+    form.comment  = ''
+  }
   hovered.value = 0
 }
 
@@ -115,7 +126,10 @@ async function submit() {
   if (!uid) {
     try {
       const stored = localStorage.getItem('user')
-      uid = stored ? JSON.parse(stored).id : null
+      if (stored) {
+        const u = JSON.parse(stored)
+        uid = u.id || u.userID
+      }
     } catch { uid = null }
   }
 
@@ -130,13 +144,15 @@ async function submit() {
 
   loading.value = true
   try {
+    const isEdit = !!props.existingReview
     const res = await fetch(API_BASE, {
-      method: 'POST',
+      method: isEdit ? 'PUT' : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user_id:   uid,
-        item_type: props.itemType,
-        item_id:   props.itemId,
+        id:        isEdit ? props.existingReview.id : undefined,
+        user_id:   isEdit ? undefined : uid,
+        item_type: isEdit ? undefined : props.itemType,
+        item_id:   isEdit ? undefined : props.itemId,
         rating:    form.rating,
         comment:   form.comment,
       }),
