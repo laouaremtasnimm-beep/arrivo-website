@@ -126,6 +126,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'save'])
 
 const isEdit  = computed(() => !!props.package)
+const today = computed(() => new Date().toISOString().split('T')[0])
 const loading = ref(false)
 const errors  = ref({})
 
@@ -177,7 +178,8 @@ function validate() {
   if (!form.value.type)               e.type        = 'Please select a type.'
 
   if (!form.value.price || form.value.price < 0) e.price = 'Enter a valid price.'
-if (!form.value.startDate) e.startDate = 'Start date is required.'
+  if (!form.value.startDate) e.startDate = 'Start date is required.'
+  else if (form.value.startDate < today.value) e.startDate = 'Start date cannot be in the past.'
 if (!form.value.endDate)   e.endDate   = 'End date is required.'
 if (form.value.startDate && form.value.endDate && form.value.endDate < form.value.startDate)
   e.endDate = 'End date must be after start date.'

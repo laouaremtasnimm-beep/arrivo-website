@@ -140,7 +140,7 @@
               <div class="form-group">
                 <label class="form-label">Start Date *</label>
                 <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="form.startDate" />
+                  <input type="date" class="form-input" v-model="form.startDate" :min="today" />
                   <span class="date-icon">🗓️</span>
                 </div>
                 <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
@@ -148,7 +148,7 @@
               <div class="form-group">
                 <label class="form-label">End Date *</label>
                 <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="form.endDate" />
+                  <input type="date" class="form-input" v-model="form.endDate" :min="today" :max="maxOfferEndDate" />
                   <span class="date-icon">🗓️</span>
                 </div>
                 <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
@@ -268,7 +268,7 @@
               <div class="form-group">
                 <label class="form-label">Start Date *</label>
                 <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="newPkg.start_date" />
+                  <input type="date" class="form-input" v-model="newPkg.start_date" :min="today" />
                   <span class="date-icon">🗓️</span>
                 </div>
                 <p class="field-error" v-if="pkgErrors.start_date">{{ pkgErrors.start_date }}</p>
@@ -276,7 +276,7 @@
               <div class="form-group">
                 <label class="form-label">End Date *</label>
                 <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="newPkg.end_date" />
+                  <input type="date" class="form-input" v-model="newPkg.end_date" :min="newPkg.start_date || today" />
                   <span class="date-icon">🗓️</span>
                 </div>
                 <p class="field-error" v-if="pkgErrors.end_date">{{ pkgErrors.end_date }}</p>
@@ -423,6 +423,15 @@ const selectedPackage = computed(() =>
 const selectedPackages = computed(() =>
   agencyPackages.value.filter(p => form.value.selectedPackageIds.includes(p.id))
 )
+
+const maxOfferEndDate = computed(() => {
+  // If a package is selected, the offer (booking deadline) must end before the trip starts
+  const firstPkg = selectedPackage.value
+  if (firstPkg && firstPkg.start_date) return firstPkg.start_date
+  return null
+})
+
+const today = computed(() => new Date().toISOString().split('T')[0])
 
 function selectOne(pkg) {
   form.value.selectedPackageIds = [pkg.id]
@@ -680,10 +689,17 @@ function validateStep() {
       e.discount = 'Enter a valid discount (1–80).'
     if (!form.value.startDate)
       e.startDate = 'Start date is required.'
+    else if (form.value.startDate < today.value)
+      e.startDate = 'Start date cannot be in the past.'
+
     if (!form.value.endDate)
       e.endDate = 'End date is required.'
     if (form.value.startDate && form.value.endDate && form.value.endDate < form.value.startDate)
       e.endDate = 'End date must be after start date.'
+    
+    // NEW: Scarcity rule — Offer must end before the trip starts
+    if (form.value.endDate && maxOfferEndDate.value && form.value.endDate > maxOfferEndDate.value)
+      e.endDate = `Offer must end before the package starts (${maxOfferEndDate.value}).`
     if (!form.value.description?.trim() && !selectedPackage.value)
       e.description = 'Description is required.'
   }

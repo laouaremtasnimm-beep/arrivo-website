@@ -10,7 +10,7 @@
       @search="handleSearch"
     />
 
-    <HotOffers id="offers" @select="handleOfferSelect" />
+    <HotOffers id="offers" />
 
     <DestinationGrid :destinations="homeDestinations" @select="handleDestSelect" />
     <TravelPackages id="packages" :packages="homePackages"         @select="handlePackageSelect" @book="openBooking" @cancel="handleCancel" />

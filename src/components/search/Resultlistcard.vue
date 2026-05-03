@@ -23,6 +23,9 @@
 
       <div class="list-card__details">
         <span class="result-detail" v-if="item.duration">📅 {{ item.duration }} days</span>
+        <span class="result-detail result-detail--offer" v-if="item.activeOffer">
+          ⏳ Ends {{ item.activeOffer.endDate }}
+        </span>
         <span class="result-detail" :class="{ scarce: item.spots <= 3 }" v-if="item.spots">
           {{ item.spots <= 3 ? '🔥' : '👥' }} {{ item.spots }} spots left
         </span>
@@ -107,6 +110,7 @@ defineEmits(['select', 'book', 'toggle-wishlist', 'manage'])
 }
 .result-detail       { font-size: .82rem; color: var(--gray-600); }
 .result-detail.scarce{ color: var(--coral); font-weight: 600; }
+.result-detail--offer { color: var(--coral); font-weight: 700; }
 .list-card__rating   { display: flex; align-items: center; gap: 4px; font-size: .82rem; font-weight: 600; color: var(--indigo); }
 .list-card__reviews  { color: var(--gray-400); font-weight: 400; }
 

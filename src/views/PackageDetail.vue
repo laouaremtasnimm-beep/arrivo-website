@@ -157,6 +157,8 @@ import PackageItinerary   from '@/components/detail/pkg/PackageItinerary.vue'
 import PackageInclusions  from '@/components/detail/pkg/PackageInclusions.vue'
 import BookingModal       from '@/components/home/BookingModal.vue'
 
+import { calculateDays } from '@/utils/dateUtils.js'
+
 const route  = useRoute()
 const router = useRouter()
 
@@ -185,26 +187,37 @@ async function loadItem(id) {
       const data = await res.json()
       if (data.package) {
         const p = data.package
+        
+        const offer = p.active_offer_id ? {
+          id: p.active_offer_id,
+          discount: p.active_offer_discount,
+          startDate: p.active_offer_start,
+          endDate: p.active_offer_end,
+          title: p.active_offer_title
+        } : null
+
+        const startDate = p.start_date
+        const endDate = p.end_date
+
+        const calcDur = offer 
+          ? calculateDays(offer.startDate, offer.endDate)
+          : calculateDays(startDate, endDate)
+
         const dbItem = {
           agency_id: p.agency_id,
           id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency',
           img: p.img_url || p.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
-          type: p.type, duration: p.duration_days,
+          type: p.type, 
+          duration: calcDur || p.duration_days || 0,
           rating: Number(p.rating ?? 0), reviews: Number(p.review_count || 0),
           spots: Number(p.spots_available || 0), price: Number(p.price || 0),
           longDesc: p.long_desc || p.description || '',
           includes:  p.includes  && p.includes  !== 'null' ? JSON.parse(p.includes)  : [],
           excludes:  p.excludes  && p.excludes  !== 'null' ? JSON.parse(p.excludes)  : [],
           itinerary: p.itinerary && p.itinerary !== 'null' ? JSON.parse(p.itinerary) : [],
-          activeOffer: p.active_offer_id ? {
-            id: p.active_offer_id,
-            discount: p.active_offer_discount,
-            startDate: p.active_offer_start,
-            endDate: p.active_offer_end,
-            title: p.active_offer_title
-          } : null,
-          startDate: p.start_date,
-          endDate: p.end_date,
+          activeOffer: offer,
+          startDate,
+          endDate,
         }
         const demo = packages.find(x => x.id === id)
         if (demo) {

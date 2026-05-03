@@ -48,7 +48,7 @@
                     <div class="mini-card__type">{{ pkg.type }}</div>
                     <div class="mini-card__title">{{ pkg.title }}</div>
                     <div class="mini-card__meta">
-                      <span>{{ pkg.duration }} days</span>
+                      <span>{{ getPackageDuration(pkg) }} days</span>
                       <span class="mini-card__dot">·</span>
                       <span class="star">★</span> {{ pkg.rating }}
                     </div>
@@ -156,6 +156,17 @@ const alreadyBooked = computed(() => {
   const anyPkgBooked = matchedPackages.value.some(p => isBooked('package', p.id))
   return offBooked || anyPkgBooked
 })
+
+import { calculateDays } from '@/utils/dateUtils.js'
+
+function getPackageDuration(pkg) {
+  // If offer dates are present, they define the package window in this context
+  if (props.offer?.startDate && props.offer?.endDate) {
+    const days = calculateDays(props.offer.startDate, props.offer.endDate)
+    if (days) return days
+  }
+  return pkg.duration || 0
+}
 
 const isOwner = computed(() => {
   if (!props.offer || !user.value) return false

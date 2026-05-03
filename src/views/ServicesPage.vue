@@ -128,6 +128,13 @@ function normalizeService(s) {
     provider_id:  s.provider_id   ?? null,
     startDate:    s.start_date    ?? s.startDate,
     endDate:      s.end_date      ?? s.endDate,
+    activeOffer: (s.active_offer_id || s.activeOffer?.id) ? {
+      id:        s.active_offer_id       || s.activeOffer?.id,
+      discount:  s.active_offer_discount || s.activeOffer?.discount,
+      startDate: s.active_offer_start    || s.activeOffer?.startDate,
+      endDate:   s.active_offer_end      || s.activeOffer?.endDate,
+      title:     s.active_offer_title    || s.activeOffer?.title
+    } : null,
     features:     typeof s.features === 'string'
                     ? JSON.parse(s.features || '[]')
                     : (s.features ?? []),

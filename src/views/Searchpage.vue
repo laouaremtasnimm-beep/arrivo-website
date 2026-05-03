@@ -181,6 +181,7 @@ import { useBookings } from '@/composables/useBookings'
 import { useOffers } from '@/composables/useOffers'
 import { useWishlist } from '@/composables/useWishlist'
 import { destinations as demoDestinations, packages as demoPackages, services as demoServices } from '@/data/content.js'
+import { calculateDays } from '@/utils/dateUtils.js'
 
 import NavBar           from '@/components/home/NavBar.vue'
 import PageHero         from '@/components/shared/PageHero.vue'
@@ -285,20 +286,38 @@ function normalizeDestination(d) {
 }
 
 function normalizePackage(p) {
+  const startDate = p.start_date || p.startDate
+  const endDate   = p.end_date   || p.endDate
+  
+  const offer = (p.active_offer_id || p.activeOffer?.id) ? {
+    id:        p.active_offer_id       || p.activeOffer?.id,
+    discount:  p.active_offer_discount || p.activeOffer?.discount,
+    startDate: p.active_offer_start    || p.activeOffer?.startDate,
+    endDate:   p.active_offer_end      || p.activeOffer?.endDate,
+    title:     p.active_offer_title    || p.activeOffer?.title
+  } : null
+
+  // If offer exists, use its dates for duration, otherwise use standard dates
+  const calcDur = offer 
+    ? calculateDays(offer.startDate, offer.endDate)
+    : calculateDays(startDate, endDate)
+
   return {
     id: p.id,
     category: 'package',
     title: p.title,
-    agency: p.agency_name || 'Agency',
-    desc: p.description || '',
+    agency: p.agency_name || p.agency || 'Agency',
+    desc: p.description || p.desc || '',
     img: p.img_url || p.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
     price: Number(p.price || 0),
     rating: Number(p.rating || 4.5),
-    reviews: Number(p.review_count || 0),
-    duration: p.duration_days,
-    spots: Number(p.spots_available || 0),
-    startDate: p.start_date || p.startDate,
-    endDate: p.end_date || p.endDate,
+    reviews: Number(p.review_count || p.reviews || 0),
+    duration: calcDur || p.duration_days || p.duration || 0,
+    type: p.type || 'Adventure',
+    spots: Number(p.spots_available || p.spots || 0),
+    activeOffer: offer,
+    startDate,
+    endDate,
     agency_id: p.agency_id || p.userId || p.owner_id || null,
   }
 }
@@ -321,6 +340,13 @@ function normalizeService(s) {
     availability: !!Number(s.is_available),
     startDate: s.start_date || s.startDate,
     endDate: s.end_date || s.endDate,
+    activeOffer: (s.active_offer_id || s.activeOffer?.id) ? {
+      id:        s.active_offer_id       || s.activeOffer?.id,
+      discount:  s.active_offer_discount || s.activeOffer?.discount,
+      startDate: s.active_offer_start    || s.activeOffer?.startDate,
+      endDate:   s.active_offer_end      || s.activeOffer?.endDate,
+      title:     s.active_offer_title    || s.activeOffer?.title
+    } : null,
     provider_id: s.provider_id || s.userId || s.owner_id || null,
   }
 }
@@ -406,7 +432,7 @@ async function runSearch() {
 
     // 2. Merge Packages (Deduplicate by ID or Title)
     const dbPkgs = (pkgData.packages || []).map(normalizePackage)
-    const demoPkgs = (demoPackages || []).map(p => ({ ...p, category: 'package' }))
+    const demoPkgs = (demoPackages || []).map(p => normalizePackage({ ...p, category: 'package' }))
 
     const finalPkgs = [...demoPkgs]
     dbPkgs.forEach(dbItem => {
@@ -418,11 +444,16 @@ async function runSearch() {
       if (!exists) {
         finalPkgs.push(dbItem)
       } else {
-        const idx = finalPkgs.findIndex(p => 
-          p.id === dbItem.id || 
-          String(p.title || '').toLowerCase().trim() === dbTitle
-        )
-        finalPkgs[idx] = { ...dbItem, ...finalPkgs[idx] }
+        const idx = finalPkgs.findIndex(p => p.id === dbItem.id || String(p.title || '').toLowerCase().trim() === dbTitle)
+        finalPkgs[idx] = {
+          ...dbItem,
+          ...finalPkgs[idx],
+          // Prioritize DB for offers and ownership
+          activeOffer: dbItem.activeOffer || finalPkgs[idx].activeOffer || null,
+          agency_id:   dbItem.agency_id   ?? finalPkgs[idx].agency_id   ?? null,
+          // Keep the demo's recalculated duration if it's longer (usually more accurate for demo)
+          duration:    Math.max(dbItem.duration || 0, finalPkgs[idx].duration || 0)
+        }
       }
     })
 
@@ -432,7 +463,7 @@ async function runSearch() {
       .filter(s => !s.img_url) // ✅ EXCLUDE services with images
       .map(normalizeService)
     
-    const demoSvcs = (demoServices || []).map(s => ({ ...s, category: 'service' }))
+    const demoSvcs = (demoServices || []).map(s => normalizeService({ ...s, category: 'service' }))
 
     const finalSvcs = [...demoSvcs]
     dbSvcs.forEach(dbItem => {
@@ -448,7 +479,12 @@ async function runSearch() {
           s.id === dbItem.id || 
           String(s.title || '').toLowerCase().trim() === dbTitle
         )
-        finalSvcs[idx] = { ...dbItem, ...finalSvcs[idx] }
+        finalSvcs[idx] = { 
+          ...dbItem, 
+          ...finalSvcs[idx],
+          activeOffer: dbItem.activeOffer || finalSvcs[idx].activeOffer || null,
+          provider_id: dbItem.provider_id || finalSvcs[idx].provider_id || null
+        }
       }
     })
 
@@ -646,7 +682,7 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
-  align-items: stretch; /* 👈 ADD THIS */
+  align-items: stretch;
 }
 .results-list { display: flex; flex-direction: column; gap: 18px; }
 
@@ -661,7 +697,9 @@ watch(allFiltered, () => { if (page.value > totalPages.value) page.value = 1 })
 .empty-state        { text-align: center; padding: 80px 20px; }
 .empty-state__icon  { font-size: 3.5rem; margin-bottom: 16px; }
 .empty-state__title { font-family: 'Fraunces', serif; font-size: 1.5rem; font-weight: 700; margin-bottom: 10px; }
-.empty-state__sub   { font-size: .95rem; color: var(--gray-400); margin-bottom: 28px; }
+.result-detail        { font-size: .8rem; color: var(--gray-600); }
+.result-detail.scarce { color: var(--coral); font-weight: 600; }
+.result-detail--offer { color: var(--coral); font-weight: 700; }
 
 .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 60; }
 .backdrop-fade-enter-active, .backdrop-fade-leave-active { transition: opacity .25s ease; }

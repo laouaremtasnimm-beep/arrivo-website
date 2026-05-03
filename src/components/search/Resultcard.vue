@@ -24,8 +24,11 @@
       <h3 class="result-card__title">{{ item.title }}</h3>
       <p class="result-card__desc">{{ item.desc }}</p>
 
-      <div class="result-card__details" v-if="item.duration || item.spots">
+      <div class="result-card__details" v-if="item.duration || item.spots || item.activeOffer">
         <span class="result-detail" v-if="item.duration">📅 {{ item.duration }} days</span>
+        <span class="result-detail result-detail--offer" v-if="item.activeOffer">
+          ⏳ Ends {{ item.activeOffer.endDate }}
+        </span>
         <span class="result-detail" :class="{ scarce: item.spots <= 3 }" v-if="item.spots">
           {{ item.spots <= 3 ? '🔥' : '👥' }} {{ item.spots }} spots
         </span>
@@ -103,6 +106,7 @@ defineEmits(['select', 'book', 'toggle-wishlist', 'manage'])
 .result-card__details { display: flex; gap: 14px; margin-bottom: 14px; }
 .result-detail        { font-size: .8rem; color: var(--gray-600); }
 .result-detail.scarce { color: var(--coral); font-weight: 600; }
+.result-detail--offer { color: var(--coral); font-weight: 700; }
 
 .result-card__footer {
   display: flex; align-items: center; justify-content: space-between;

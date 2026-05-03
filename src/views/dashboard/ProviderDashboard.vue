@@ -106,6 +106,7 @@
     <OfferFormModal
       v-model="offerFormOpen"
       :offer="editingOffer"
+      :agency-id="user?.userID ?? user?.id"
       @save="handleSaveOffer"
     />
 

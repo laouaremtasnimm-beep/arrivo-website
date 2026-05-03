@@ -115,7 +115,11 @@ try {
             ]);
             $offerId = (int) $pdo->lastInsertId();
 
-            /* Link packages and hide them from normal listings */
+            /* Link packages to this offer.
+               IMPORTANT: Only set offer_only=1 on packages that were ALREADY
+               flagged as offer_only (i.e. new packages created exclusively for this offer).
+               Pre-existing packages must remain visible on the public listing —
+               they should just show the offer badge. */
             if ($offerType === 'package' && !empty($packageIds)) {
                 $linkStmt = $pdo->prepare(
                     'INSERT IGNORE INTO offer_packages (offer_id, package_id) VALUES (?, ?)'
@@ -123,7 +127,18 @@ try {
                 foreach ($packageIds as $pkgId) {
                     $linkStmt->execute([$offerId, $pkgId]);
                 }
-                setPackagesOfferOnly($pdo, $packageIds, 1);
+
+                /* Only flag packages that are truly offer-only (newly created for this offer) */
+                if (!empty($packageIds)) {
+                    $placeholders = implode(',', array_fill(0, count($packageIds), '?'));
+                    $offerOnlyStmt = $pdo->prepare(
+                        "SELECT id FROM packages WHERE id IN ($placeholders) AND (offer_only = 1 OR offer_only IS NOT NULL AND offer_only != 0)"
+                    );
+                    $offerOnlyStmt->execute($packageIds);
+                    $alreadyOfferOnly = array_column($offerOnlyStmt->fetchAll(), 'id');
+                    // Only existing offer_only packages keep that flag — pre-existing packages are NOT touched
+                    // (no setPackagesOfferOnly call here for pre-existing packages)
+                }
             }
 
             $pdo->commit();
@@ -191,15 +206,28 @@ try {
             $toAdd    = array_diff($packageIds, $oldPackageIds);
             $toRemove = array_diff($oldPackageIds, $packageIds);
 
-            /* Remove old links */
+            /* Remove old links — only reset offer_only=0 if the package has no other active offers */
             if (!empty($toRemove)) {
                 $pl = implode(',', array_fill(0, count($toRemove), '?'));
                 $pdo->prepare("DELETE FROM offer_packages WHERE offer_id = ? AND package_id IN ($pl)")
                     ->execute(array_merge([$offerId], $toRemove));
-                setPackagesOfferOnly($pdo, $toRemove, 0); // unhide removed packages
+                
+                /* Only reset offer_only for packages that truly have no other active offer */
+                foreach ($toRemove as $pkgId) {
+                    $checkStmt = $pdo->prepare('
+                        SELECT COUNT(*) FROM offer_packages op
+                        JOIN special_offers o ON o.id = op.offer_id AND o.is_active = 1
+                        WHERE op.package_id = ?
+                    ');
+                    $checkStmt->execute([$pkgId]);
+                    $hasOtherOffer = $checkStmt->fetchColumn() > 0;
+                    if (!$hasOtherOffer) {
+                        setPackagesOfferOnly($pdo, [$pkgId], 0);
+                    }
+                }
             }
 
-            /* Add new links */
+            /* Add new links — do NOT set offer_only=1 on pre-existing packages */
             if (!empty($toAdd)) {
                 $linkStmt = $pdo->prepare(
                     'INSERT IGNORE INTO offer_packages (offer_id, package_id) VALUES (?, ?)'
@@ -207,7 +235,8 @@ try {
                 foreach ($toAdd as $pkgId) {
                     $linkStmt->execute([$offerId, $pkgId]);
                 }
-                setPackagesOfferOnly($pdo, $toAdd, 1);
+                // Note: we deliberately do NOT call setPackagesOfferOnly here
+                // Pre-existing packages should remain visible on the listing with an offer badge
             }
 
             $pdo->commit();

@@ -75,7 +75,7 @@ try {
                 LEFT JOIN reviews r ON r.package_id = p.id
                 LEFT JOIN offer_packages op ON op.package_id = p.id
                 LEFT JOIN special_offers o ON o.id = op.offer_id AND o.is_active = 1
-                WHERE p.is_active = 1 AND (p.offer_only = 0 OR p.offer_only IS NULL)
+                WHERE p.is_active = 1
                 GROUP BY p.id
                 ORDER BY p.created_at DESC
             ');
@@ -189,10 +189,52 @@ try {
             exit();
         }
 
-        $stmt = $pdo->prepare('DELETE FROM packages WHERE id = ?');
-        $stmt->execute([$data['id']]);
+        $pkgId = (int) $data['id'];
 
-        echo json_encode(["message" => "Package deleted"]);
+        $pdo->beginTransaction();
+        try {
+            /* ── Cascade: handle linked offers ──────────────────────────────
+               For each offer that includes this package:
+               - If this package is the ONLY one in the offer → delete the offer entirely
+               - If the offer has multiple packages → just unlink this one
+            ─────────────────────────────────────────────────────────────── */
+            $linkedOffersStmt = $pdo->prepare('SELECT offer_id FROM offer_packages WHERE package_id = ?');
+            $linkedOffersStmt->execute([$pkgId]);
+            $linkedOfferIds = $linkedOffersStmt->fetchAll(PDO::FETCH_COLUMN);
+            $deletedOfferIds = [];
+
+            foreach ($linkedOfferIds as $offerId) {
+                /* Count how many packages this offer has in total */
+                $countStmt = $pdo->prepare('SELECT COUNT(*) FROM offer_packages WHERE offer_id = ?');
+                $countStmt->execute([$offerId]);
+                $packageCount = (int) $countStmt->fetchColumn();
+
+                if ($packageCount <= 1) {
+                    /* This was the only package → delete the whole offer */
+                    $pdo->prepare('DELETE FROM offer_packages WHERE offer_id = ?')->execute([$offerId]);
+                    $pdo->prepare('DELETE FROM special_offers WHERE id = ?')->execute([$offerId]);
+                    $deletedOfferIds[] = $offerId;
+                } else {
+                    /* Offer still has other packages → just unlink this one */
+                    $pdo->prepare('DELETE FROM offer_packages WHERE offer_id = ? AND package_id = ?')
+                        ->execute([$offerId, $pkgId]);
+                }
+            }
+
+            /* ── Delete the package itself ─────────────────────────────── */
+            $pdo->prepare('DELETE FROM packages WHERE id = ?')->execute([$pkgId]);
+
+            $pdo->commit();
+            echo json_encode([
+                "message"          => "Package deleted",
+                "deleted_offer_ids" => $deletedOfferIds,
+            ]);
+
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            http_response_code(500);
+            echo json_encode(["error" => $e->getMessage()]);
+        }
 
     } else {
         http_response_code(405);

@@ -116,6 +116,7 @@
     <OfferFormModal
       v-model="offerFormOpen"
       :offer="editingOffer"
+      :agency-id="user?.userID ?? user?.id"
       @save="handleSaveOffer"
     />
 
@@ -407,7 +408,14 @@ async function handleDeletePackage(pkg) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: pkg.id }),
     })
+    const data = await res.json()
     if (!res.ok) throw new Error('Delete failed')
+
+    // Cascade: remove any linked offers from the in-memory store immediately
+    if (data.deleted_offer_ids?.length) {
+      data.deleted_offer_ids.forEach(id => deleteOffer(id))
+    }
+
     await fetchPackages()   // ← re-fetch
   } catch (e) {
     loadError.value = e.message

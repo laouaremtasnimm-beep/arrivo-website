@@ -99,6 +99,8 @@ import ResultsToolbar   from '@/components/search/ResultsToolbar.vue'
 import SearchPagination from '@/components/search/SearchPagination.vue'
 import BookingModal     from '@/components/home/BookingModal.vue'
 
+import { calculateDays } from '@/utils/dateUtils.js'
+
 const router       = useRouter()
 const sidebarOpen  = ref(false)
 const bookingOpen  = ref(false)
@@ -111,31 +113,41 @@ const DEMO_IDS = new Set(packages.map(p => p.id))
 const allItems = ref([...packages])
 
 function normalizePackage(p) {
+  const startDate = p.start_date || p.startDate
+  const endDate   = p.end_date   || p.endDate
+
+  const offer = (p.active_offer_id || p.activeOffer?.id) ? {
+    id:        p.active_offer_id       || p.activeOffer?.id,
+    discount:  p.active_offer_discount || p.activeOffer?.discount,
+    startDate: p.active_offer_start    || p.activeOffer?.startDate,
+    endDate:   p.active_offer_end      || p.activeOffer?.endDate,
+    title:     p.active_offer_title    || p.activeOffer?.title
+  } : null
+
+  // If offer exists, use its dates for duration, otherwise use standard dates
+  const calcDur = offer 
+    ? calculateDays(offer.startDate, offer.endDate)
+    : calculateDays(startDate, endDate)
+
   return {
     id:         p.id,
     title:      p.title,
-    agency:     p.agency_name  ?? p.agency    ?? 'Agency',
-    img:        p.img_url || p.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
+    agency:     p.agency_name  ?? p.agency      ?? 'Agency',
+    img:        p.img_url      ?? p.img         ?? 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
     type:       p.type         ?? 'Adventure',
-    duration:   p.duration_days ?? p.duration ?? 1,
+    duration:   calcDur || p.duration_days || p.duration || 0,
     rating:     p.rating       ?? 4.5,
-    reviews:    p.review_count ?? p.reviews   ?? 0,
-    spots:      p.spots_available ?? p.spots  ?? 10,
+    reviews:    p.review_count ?? p.reviews      ?? 0,
+    spots:      p.spots_available ?? p.spots     ?? 0,
     price:      p.price,
     desc:       p.description  ?? p.desc      ?? '',
     agency_id:  p.agency_id    ?? null,
     includes:   typeof p.includes === 'string'
                   ? JSON.parse(p.includes || '[]')
                   : (p.includes ?? []),
-    activeOffer: p.active_offer_id ? {
-      id: p.active_offer_id,
-      discount: p.active_offer_discount,
-      startDate: p.active_offer_start,
-      endDate: p.active_offer_end,
-      title: p.active_offer_title
-    } : null,
-    startDate: p.start_date ?? p.startDate,
-    endDate: p.end_date ?? p.endDate,
+    activeOffer: offer,
+    startDate,
+    endDate,
   }
 }
 
@@ -152,7 +164,7 @@ onMounted(async () => {
     const data = await res.json()
     const dbRows = (data.packages ?? []).map(normalizePackage)
 
-    const final = [...packages]
+    const final = packages.map(normalizePackage)
     dbRows.forEach(dbItem => {
       const exists = final.find(p => p.id === dbItem.id || p.title === dbItem.title)
       if (!exists) {
@@ -163,8 +175,11 @@ onMounted(async () => {
         final[idx] = {
           ...dbItem,
           ...final[idx],
-          // Always keep the real DB ownership ID so isItemOwner() works correctly
-          agency_id: dbItem.agency_id ?? final[idx].agency_id ?? null,
+          // Prioritize DB for offers and ownership
+          activeOffer: dbItem.activeOffer || final[idx].activeOffer || null,
+          agency_id:   dbItem.agency_id   ?? final[idx].agency_id   ?? null,
+          // Keep the demo's recalculated duration if it's longer (usually more accurate for demo)
+          duration:    Math.max(dbItem.duration || 0, final[idx].duration || 0)
         }
       }
     })
