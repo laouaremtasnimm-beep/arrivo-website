@@ -33,7 +33,7 @@
         style="cursor: pointer"
       >
         <div class="pkg-img">
-          <img :src="pkg.img" :alt="pkg.title" loading="lazy" />
+          <img :src="pkg.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg'" :alt="pkg.title" loading="lazy" />
           <span class="pkg-tag">{{ pkg.type }}</span>
         </div>
 

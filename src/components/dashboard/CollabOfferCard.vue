@@ -160,8 +160,7 @@
                     v-model="form.selectedPackageIds"
                   />
                   <div class="pkg-img-wrap">
-                    <img v-if="pkg.img_url" :src="pkg.img_url" class="pkg-thumb" />
-                    <div v-else class="pkg-thumb pkg-thumb--fallback">🏔️</div>
+                    <img :src="pkg.img_url || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg'" class="pkg-thumb" />
                   </div>
                   <div class="pkg-info">
                     <div class="pkg-name">{{ pkg.title }}</div>

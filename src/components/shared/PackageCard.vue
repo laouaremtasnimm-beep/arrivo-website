@@ -2,7 +2,7 @@
   <article class="pkg-card" @click="$emit('select', item)">
 
     <div class="pkg-card__img">
-      <img :src="item.img" :alt="item.title" loading="lazy" />
+      <img :src="item.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg'" :alt="item.title" loading="lazy" />
 
       <button
         class="wishlist-btn"

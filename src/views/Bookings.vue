@@ -75,7 +75,13 @@
             @click="handleView(b)"
           >
             <div class="bk-card__thumb">
-              <div class="bk-card__thumb-bg">{{ typeIcon(b.booking_type) }}</div>
+              <img 
+                v-if="bookingImage(b)"
+                :src="bookingImage(b)" 
+                class="bk-card__img" 
+                alt=""
+              />
+              <div v-else class="bk-card__thumb-bg">{{ typeIcon(b.booking_type) }}</div>
               <span class="bk-card__type-tag">{{ typeName(b.booking_type) }}</span>
               <span class="status-badge" :class="`status--${b.status}`">{{ statusLabel(b.status) }}</span>
             </div>
@@ -184,6 +190,13 @@ const emptyState = computed(() => emptyStates[activeTab.value] ?? emptyStates.al
 function bookingTitle(b) {
   return b.package_title || b.service_title || b.destination_name || b.offer_title || `Booking #${b.id}`
 }
+function bookingImage(b) {
+  const img = b.package_img || b.service_img || b.destination_img || b.img_url
+  if (b.booking_type === 'package' && !img) {
+    return 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg'
+  }
+  return img
+}
 function typeIcon(type) { return { package: '✈️', service: '🎯', destination: '📍', offer: '🏷️' }[type] ?? '📋' }
 function typeName(type) { return { package: 'Package', service: 'Service', destination: 'Destination', offer: 'Offer' }[type] ?? 'Booking' }
 function statusLabel(s) {
@@ -277,7 +290,8 @@ onMounted(() => {
 .bk-card:hover { box-shadow: var(--shadow-lg, 0 8px 32px rgba(0,0,0,.1)); transform: translateY(-3px); }
 .bk-card--cancelled { opacity: .62; }
 
-.bk-card__thumb { position: relative; height: 140px; background: linear-gradient(135deg, var(--sand, #f5ede0) 0%, var(--gray-100) 100%); display: flex; align-items: center; justify-content: center; }
+.bk-card__thumb { position: relative; height: 140px; background: linear-gradient(135deg, var(--sand, #f5ede0) 0%, var(--gray-100) 100%); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.bk-card__img { width: 100%; height: 100%; object-fit: cover; }
 .bk-card__thumb-bg { font-size: 3rem; }
 .bk-card__type-tag { position: absolute; top: 12px; left: 12px; background: rgba(45,49,66,.7); backdrop-filter: blur(6px); color: #fff; font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 10px; border-radius: 50px; }
 .status-badge { position: absolute; top: 12px; right: 12px; font-size: .68rem; font-weight: 700; text-transform: capitalize; padding: 3px 10px; border-radius: 50px; }

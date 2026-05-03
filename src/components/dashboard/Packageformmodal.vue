@@ -83,8 +83,8 @@
             <div class="form-group">
               <label class="form-label">Cover image URL</label>
               <input class="form-input" v-model="form.img" placeholder="https://…" />
-              <div class="img-preview" v-if="form.img">
-                <img :src="form.img" alt="Preview" @error="form.img = ''" />
+              <div class="img-preview">
+                <img :src="form.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg'" alt="Preview" />
               </div>
             </div>
 
