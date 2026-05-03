@@ -12,10 +12,17 @@ try {
             $stmt = $pdo->prepare('
                 SELECT p.*, u.company_name AS agency_name,
                        IFNULL(AVG(r.rating), 0) AS rating,
-                       COUNT(r.id) AS review_count
+                       COUNT(r.id) AS review_count,
+                       MAX(o.id) AS active_offer_id,
+                       MAX(o.discount_pct) AS active_offer_discount,
+                       MAX(o.start_date) AS active_offer_start,
+                       MAX(o.end_date) AS active_offer_end,
+                       MAX(o.title) AS active_offer_title
                 FROM packages p
                 LEFT JOIN users u ON u.id = p.agency_id
                 LEFT JOIN reviews r ON r.package_id = p.id
+                LEFT JOIN offer_packages op ON op.package_id = p.id
+                LEFT JOIN special_offers o ON o.id = op.offer_id AND o.is_active = 1
                 WHERE p.id = ?
                 GROUP BY p.id
             ');
@@ -33,11 +40,18 @@ try {
             $stmt = $pdo->prepare('
                 SELECT p.*, u.company_name AS agency_name,
                        COUNT(DISTINCT b.id) AS booking_count,
-                       IFNULL(AVG(r.rating), 0) AS rating
+                       IFNULL(AVG(r.rating), 0) AS rating,
+                       MAX(o.id) AS active_offer_id,
+                       MAX(o.discount_pct) AS active_offer_discount,
+                       MAX(o.start_date) AS active_offer_start,
+                       MAX(o.end_date) AS active_offer_end,
+                       MAX(o.title) AS active_offer_title
                 FROM   packages p
                 LEFT   JOIN users u ON u.id = p.agency_id
                 LEFT   JOIN bookings b ON b.package_id = p.id
                 LEFT   JOIN reviews r ON r.package_id = p.id
+                LEFT   JOIN offer_packages op ON op.package_id = p.id
+                LEFT   JOIN special_offers o ON o.id = op.offer_id AND o.is_active = 1
                 WHERE  p.agency_id = ?
                 GROUP  BY p.id
                 ORDER  BY p.created_at DESC
@@ -50,10 +64,17 @@ try {
             $stmt = $pdo->query('
                 SELECT p.*, u.company_name AS agency_name,
                        IFNULL(AVG(r.rating), 0) AS rating,
-                       COUNT(r.id) AS review_count
+                       COUNT(DISTINCT r.id) AS review_count,
+                       MAX(o.id) AS active_offer_id,
+                       MAX(o.discount_pct) AS active_offer_discount,
+                       MAX(o.start_date) AS active_offer_start,
+                       MAX(o.end_date) AS active_offer_end,
+                       MAX(o.title) AS active_offer_title
                 FROM packages p
                 LEFT JOIN users u ON u.id = p.agency_id
                 LEFT JOIN reviews r ON r.package_id = p.id
+                LEFT JOIN offer_packages op ON op.package_id = p.id
+                LEFT JOIN special_offers o ON o.id = op.offer_id AND o.is_active = 1
                 WHERE p.is_active = 1 AND (p.offer_only = 0 OR p.offer_only IS NULL)
                 GROUP BY p.id
                 ORDER BY p.created_at DESC

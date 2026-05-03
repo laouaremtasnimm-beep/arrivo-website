@@ -33,6 +33,13 @@ async function _bootstrap() {
           includes:   typeof dbItem.includes === 'string'
                         ? JSON.parse(dbItem.includes || '[]')
                         : (dbItem.includes ?? []),
+          activeOffer: dbItem.active_offer_id ? {
+            id: dbItem.active_offer_id,
+            discount: dbItem.active_offer_discount,
+            startDate: dbItem.active_offer_start,
+            endDate: dbItem.active_offer_end,
+            title: dbItem.active_offer_title
+          } : null,
         }
         
         const existsIdx = _packages.value.findIndex(p => p.id === mapped.id)

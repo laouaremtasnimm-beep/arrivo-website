@@ -123,10 +123,10 @@
           <div class="deal-footer">
             <button 
               class="btn card-cta" 
-              :class="isOwner(offer) ? 'btn-manage' : (isBooked('offer', offer.offerID) ? 'btn-outline-danger' : 'btn-teal')"
+              :class="isOwner(offer) ? 'btn-manage' : (isBooked('offer', offer.offerID) ? 'btn-outline-teal' : 'btn-teal')"
               @click.stop="isOwner(offer) ? router.push('/dashboard') : handleSelect(offer)"
             >
-              {{ isOwner(offer) ? 'Manage Offer' : (isBooked('offer', offer.offerID) ? 'Cancel booking' : 'Grab deal →') }}
+              {{ isOwner(offer) ? 'Manage Offer' : (isBooked('offer', offer.offerID) ? 'Cancel offer' : 'Grab deal →') }}
             </button>
             <button
               class="deal-save"

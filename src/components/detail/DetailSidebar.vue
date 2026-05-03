@@ -2,11 +2,27 @@
   <aside class="detail-sidebar">
     <div class="detail-sidebar__card">
 
+      <!-- Active Offer Banner -->
+      <div class="detail-sidebar__offer-banner" v-if="activeOffer">
+        <span class="banner-icon">🔥</span>
+        <div class="banner-text">
+          <strong>Special Offer Active!</strong>
+          <div>{{ activeOffer.title }} (-{{ activeOffer.discount }}%)</div>
+        </div>
+      </div>
+
       <!-- Price -->
       <div class="detail-sidebar__price-row">
         <div>
           <div class="detail-sidebar__price-from">{{ priceLabel }}</div>
-          <div class="detail-sidebar__price">
+          <div class="detail-sidebar__price-wrap" v-if="activeOffer">
+            <s class="detail-sidebar__price-old">${{ price?.toLocaleString() }}</s>
+            <div class="detail-sidebar__price detail-sidebar__price--sale">
+              ${{ (price * (1 - activeOffer.discount / 100)).toLocaleString(undefined, {maximumFractionDigits: 0}) }}
+              <span class="detail-sidebar__unit" v-if="unit">/ {{ unit }}</span>
+            </div>
+          </div>
+          <div class="detail-sidebar__price" v-else>
             ${{ price?.toLocaleString() }}
             <span class="detail-sidebar__unit" v-if="unit">/ {{ unit }}</span>
           </div>
@@ -36,7 +52,7 @@
       <!-- CTA -->
       <button 
         class="btn detail-sidebar__cta" 
-        :class="isOwner ? 'btn-manage' : (ctaDanger ? 'btn-outline-danger' : 'btn-coral')"
+        :class="isOwner ? 'btn-manage' : (ctaDanger ? (activeOffer ? 'btn-outline-teal' : 'btn-outline-danger') : (activeOffer ? 'btn-teal' : 'btn-coral'))"
         @click="$emit(ctaDanger ? 'cancel' : 'book')"
       >
         {{ ctaLabel }}
@@ -74,6 +90,7 @@ defineProps({
   note:        { type: String, default: "You won't be charged yet." },
   ctaDanger:   { type: Boolean, default: false },
   isOwner:     { type: Boolean, default: false },
+  activeOffer: { type: Object,  default: null  },
 })
 
 defineEmits(['book', 'cancel', 'message'])
@@ -92,15 +109,27 @@ defineEmits(['book', 'cancel', 'message'])
 }
 
 /* Price */
+.detail-sidebar__offer-banner {
+  background: rgba(255, 90, 95, 0.08); border: 1.5px solid var(--coral); border-radius: 12px;
+  padding: 12px; display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+}
+.banner-icon { font-size: 1.4rem; }
+.banner-text { display: flex; flex-direction: column; }
+.banner-text strong { color: var(--coral); font-size: .85rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.banner-text div { color: var(--indigo); font-size: .85rem; font-weight: 600; }
+
 .detail-sidebar__price-row {
   display: flex; align-items: flex-start; justify-content: space-between;
   margin-bottom: 16px; gap: 8px;
 }
 .detail-sidebar__price-from { font-size: .78rem; color: var(--gray-400); margin-bottom: 2px; }
+.detail-sidebar__price-wrap { display: flex; flex-direction: column; }
+.detail-sidebar__price-old { font-size: 1rem; color: var(--gray-400); text-decoration: line-through; margin-bottom: -2px; }
 .detail-sidebar__price {
   font-family: 'Fraunces', serif;
   font-size: 2rem; font-weight: 700; color: var(--indigo); line-height: 1;
 }
+.detail-sidebar__price--sale { color: var(--teal); }
 .detail-sidebar__unit { font-size: .9rem; color: var(--gray-400); font-family: 'DM Sans', sans-serif; font-weight: 400; }
 .detail-sidebar__rating {
   display: flex; align-items: center; gap: 4px;

@@ -10,7 +10,8 @@
         @click.stop="$emit('toggle-wishlist', item.id)"
       >{{ saved ? '❤️' : '🤍' }}</button>
 
-      <span class="pkg-card__type-tag">{{ item.type }}</span>
+      <span class="pkg-card__type-tag" v-if="!item.activeOffer">{{ item.type }}</span>
+      <span class="pkg-card__offer-tag" v-else>Special Offer</span>
 
       <div class="pkg-card__spots" v-if="item.spots <= 5">
         🔥 {{ item.spots }} spots left
@@ -23,7 +24,11 @@
       <h3 class="pkg-card__title">{{ item.title }}</h3>
 
       <div class="pkg-card__meta">
-        <span class="pkg-meta-item">📅 {{ item.duration }} days</span>
+        <span class="pkg-meta-item pkg-meta-item--offer" v-if="item.activeOffer?.startDate">
+          📅 <span class="old-val">{{ item.duration }} days</span> 
+          <span class="new-val">{{ item.activeOffer.startDate }} → {{ item.activeOffer.endDate }}</span>
+        </span>
+        <span class="pkg-meta-item" v-else>📅 {{ item.duration }} days</span>
         <span class="pkg-meta-item">⭐ {{ Number(item.rating).toFixed(1) }}
           <span class="pkg-meta-reviews">({{ item.reviews }})</span>
         </span>
@@ -42,14 +47,21 @@
       <div class="pkg-card__footer">
         <div>
           <div class="pkg-card__from">per person</div>
-          <div class="pkg-card__price">${{ item.price?.toLocaleString() }}</div>
+          <div class="pkg-card__price-wrap" v-if="item.activeOffer">
+            <div class="price-old-row">
+              <span class="pkg-card__price-old">${{ item.price?.toLocaleString() }}</span>
+              <span class="pkg-card__discount-pill">-{{ item.activeOffer.discount }}%</span>
+            </div>
+            <div class="pkg-card__price pkg-card__price--sale">${{ (item.price * (1 - item.activeOffer.discount / 100)).toLocaleString(undefined, {maximumFractionDigits: 0}) }}</div>
+          </div>
+          <div class="pkg-card__price" v-else>${{ item.price?.toLocaleString() }}</div>
         </div>
         <button
           class="btn card-cta"
-          :class="isOwner ? 'btn-manage' : (booked ? 'btn-outline-danger' : 'btn-coral')"
+          :class="isOwner ? 'btn-manage' : (booked ? (item.activeOffer ? 'btn-outline-teal' : 'btn-outline-danger') : (item.activeOffer ? 'btn-teal' : 'btn-coral'))"
           @click.stop="isOwner ? $emit('manage', item) : $emit(booked ? 'cancel' : 'book', item)"
         >
-          {{ isOwner ? 'Manage package' : (booked ? 'Cancel Booking' : 'Book now') }}
+          {{ isOwner ? 'Manage package' : (booked ? (item.activeOffer ? 'Cancel Offer' : 'Cancel Booking') : (item.activeOffer ? 'Book Offer' : 'Book now')) }}
         </button>
       </div>
     </div>
@@ -97,28 +109,37 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist', 'manage'])
   font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
   padding: 4px 12px; border-radius: 50px;
 }
+.pkg-card__offer-tag {
+  position: absolute; top: 12px; left: 12px;
+  background: var(--teal); color: #fff;
+  font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  padding: 5px 14px; border-radius: 50px;
+  box-shadow: 0 4px 12px rgba(46, 196, 182, 0.35);
+  animation: pulse-teal 2s infinite;
+}
+@keyframes pulse-teal {
+  0% { box-shadow: 0 0 0 0 rgba(46, 196, 182, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(46, 196, 182, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(46, 196, 182, 0); }
+}
 
 .pkg-card__spots {
   position: absolute; bottom: 12px; left: 12px;
-  background: rgba(255,90,95,.92); color: #fff;
-  font-size: .72rem; font-weight: 700;
-  padding: 4px 12px; border-radius: 50px;
+  background: rgba(255,255,255,.95); color: var(--coral);
+  font-size: .7rem; font-weight: 700; padding: 4px 10px; border-radius: 8px;
 }
 
 /* Body */
-.pkg-card__body { padding: 20px; }
+.pkg-card__body  { padding: 20px; display: flex; flex-direction: column; height: calc(100% - 210px); }
+.pkg-card__agency { font-size: .7rem; font-weight: 700; color: var(--gray-400); text-transform: uppercase; margin-bottom: 6px; letter-spacing: .05em; }
+.pkg-card__title { font-size: 1.1rem; font-weight: 700; color: var(--indigo); line-height: 1.35; margin-bottom: 12px; }
 
-.pkg-card__agency {
-  font-size: .74rem; font-weight: 700; color: var(--teal);
-  text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px;
-}
-.pkg-card__title {
-  font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 700; margin-bottom: 10px;
-}
-
-.pkg-card__meta { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+.pkg-card__meta { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
 .pkg-meta-item  { font-size: .8rem; color: var(--gray-600); display: flex; align-items: center; gap: 4px; }
-.pkg-meta-reviews { color: var(--gray-400); }
+.pkg-meta-reviews { color: var(--gray-400); font-size: .75rem; }
+.pkg-meta-item--offer { gap: 6px; }
+.pkg-meta-item--offer .old-val { text-decoration: line-through; opacity: 0.5; font-size: 0.75rem; }
+.pkg-meta-item--offer .new-val { color: var(--teal); font-weight: 700; font-size: 0.82rem; }
 
 .pkg-card__desc {
   font-size: .83rem; color: var(--gray-600); line-height: 1.6; margin-bottom: 12px;
@@ -128,11 +149,15 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist', 'manage'])
 .pkg-card__includes { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
 .pkg-include { font-size: .76rem; color: var(--gray-600); }
 
-.pkg-card__footer {
-  display: flex; align-items: center; justify-content: space-between;
-  padding-top: 14px; border-top: 1px solid var(--gray-100);
+.pkg-card__footer { display: flex; align-items: flex-end; justify-content: space-between; margin-top: auto; padding-top: 16px; border-top: 1px solid var(--gray-100); }
+.pkg-card__from { font-size: .68rem; color: var(--gray-400); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 2px; }
+.pkg-card__price { font-family: 'Fraunces', serif; font-size: 1.35rem; font-weight: 700; color: var(--indigo); }
+.pkg-card__price-wrap { display: flex; flex-direction: column; }
+.price-old-row { display: flex; align-items: center; gap: 8px; margin-bottom: -2px; }
+.pkg-card__price-old { font-size: .85rem; color: var(--gray-400); text-decoration: line-through; }
+.pkg-card__discount-pill {
+  font-size: .65rem; font-weight: 800; background: var(--teal-lt); color: var(--teal-dk);
+  padding: 2px 6px; border-radius: 4px; text-transform: uppercase;
 }
-.pkg-card__from  { font-size: .72rem; color: var(--gray-400); }
-.pkg-card__price { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; color: var(--coral); }
-
+.pkg-card__price--sale { color: var(--teal); }
 </style>

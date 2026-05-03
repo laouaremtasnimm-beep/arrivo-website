@@ -64,6 +64,8 @@ a   { color:inherit; text-decoration:none; }
 .btn-manage:hover  { background:var(--indigo) !important; color:#fff !important; box-shadow:0 4px 12px rgba(45,49,66,.20); transform:translateY(-1px); }
 .btn-outline-danger { background:transparent; color:var(--coral); border:1.5px solid var(--coral); font-weight:600; }
 .btn-outline-danger:hover { background:var(--coral-lt); transform:translateY(-1px); }
+.btn-outline-teal { background:transparent; color:var(--teal); border:1.5px solid var(--teal); font-weight:600; }
+.btn-outline-teal:hover { background:var(--teal-lt); transform:translateY(-1px); }
 .card-cta { padding: 9px 22px; font-size: .85rem; border-radius: 12px !important; }
 
 /* ── Sections ─────────────────────────────── */

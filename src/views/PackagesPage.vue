@@ -58,7 +58,7 @@
             :key="item.id"
             :item="item"
             :saved="isItemSaved(item)"
-            :booked="isBooked('package', item.id)"
+            :booked="isBooked('package', item.id) || (item.activeOffer ? isBooked('offer', item.activeOffer.id) : false)"
             :is-owner="isItemOwner(item)"
             @select="goToDetail"
             @book="openBooking"
@@ -127,6 +127,13 @@ function normalizePackage(p) {
     includes:   typeof p.includes === 'string'
                   ? JSON.parse(p.includes || '[]')
                   : (p.includes ?? []),
+    activeOffer: p.active_offer_id ? {
+      id: p.active_offer_id,
+      discount: p.active_offer_discount,
+      startDate: p.active_offer_start,
+      endDate: p.active_offer_end,
+      title: p.active_offer_title
+    } : null,
   }
 }
 
@@ -170,12 +177,19 @@ function openBooking(item) { selectedItem.value = item; bookingOpen.value = true
 async function handleBooking(payload) {
   if (!isLoggedIn.value) { alert('Please log in to book.'); return }
 
+  let finalPrice = selectedItem.value.price;
+  const isOffer = !!selectedItem.value.activeOffer;
+  
+  if (isOffer) {
+    finalPrice = Math.round(finalPrice * (1 - selectedItem.value.activeOffer.discount / 100));
+  }
+
   const result = await createBooking({
     user_id:  user.value?.userID ?? user.value?.id,
-    type:     'package',
-    item_id:  selectedItem.value.id,
-    title:    selectedItem.value.title,
-    price:    selectedItem.value.price,
+    type:     isOffer ? 'offer' : 'package',
+    item_id:  isOffer ? selectedItem.value.activeOffer.id : selectedItem.value.id,
+    title:    isOffer ? selectedItem.value.activeOffer.title : selectedItem.value.title,
+    price:    finalPrice,
     check_in: payload.checkin,
     guests:   parseInt(payload.guests) || 1,
     notes:    payload.notes,
@@ -183,14 +197,17 @@ async function handleBooking(payload) {
 
   if (result.ok) {
     bookingOpen.value = false
-    alert('Package booked successfully!')
+    alert(isOffer ? 'Offer booked successfully!' : 'Package booked successfully!')
   } else {
     alert('Failed to book: ' + result.error)
   }
 }
 
 async function handleCancel(item) {
-  const id = getBookingId('package', item.id)
+  const offId = item.activeOffer ? getBookingId('offer', item.activeOffer.id) : null
+  const pkgId = getBookingId('package', item.id)
+  const id = offId || pkgId
+
   if (!id) return
   const res = await cancelBooking(id)
   if (res.ok) alert('Booking cancelled successfully.')

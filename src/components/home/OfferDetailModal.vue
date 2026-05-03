@@ -102,12 +102,13 @@
             <button 
               class="btn-book" 
               :class="{
-                'btn-outline-danger': alreadyBooked && !isOwner,
+                'btn-outline-teal': alreadyBooked && !isOwner,
+                'btn-teal': !alreadyBooked && !isOwner,
                 'btn-manage': isOwner
               }"
               @click="isOwner ? handleManage() : (alreadyBooked ? handleCancel() : bookDeal())"
             >
-              {{ isOwner ? 'Manage Offer' : (alreadyBooked ? 'Cancel Booking' : 'Book this deal') }}
+              {{ isOwner ? 'Manage Offer' : (alreadyBooked ? 'Cancel Offer' : 'Grab this Deal') }}
             </button>
           </div>
 
@@ -149,7 +150,11 @@ const bookingOpen  = ref(false)
 const bookingTarget = ref(null)
 
 const alreadyBooked = computed(() => {
-  return props.offer ? isBooked('offer', props.offer.offerID || props.offer.id) : false
+  if (!props.offer) return false
+  const offerId = props.offer.offerID || props.offer.id
+  const offBooked = isBooked('offer', offerId)
+  const anyPkgBooked = matchedPackages.value.some(p => isBooked('package', p.id))
+  return offBooked || anyPkgBooked
 })
 
 const isOwner = computed(() => {
@@ -286,7 +291,12 @@ async function handleBookingSubmit(payload) {
 }
 
 async function handleCancel() {
-  const id = getBookingId('offer', props.offer?.offerID || props.offer?.id)
+  const offerId = props.offer?.offerID || props.offer?.id
+  const offId = getBookingId('offer', offerId)
+  // Find any of the packages' booking IDs
+  const pkgId = matchedPackages.value.map(p => getBookingId('package', p.id)).find(id => !!id)
+  const id = offId || pkgId
+
   if (!id) return
   const res = await cancelBooking(id)
   if (res.ok) {
@@ -374,13 +384,13 @@ function close() { emit('update:modelValue', false) }
   gap: 12px;
 }
 
-.btn-book.btn-outline-danger {
+.btn-book.btn-outline-teal {
   background: transparent;
-  border: 1.5px solid var(--coral);
-  color: var(--coral);
+  border: 1.5px solid var(--teal);
+  color: var(--teal);
 }
-.btn-book.btn-outline-danger:hover {
-  background: rgba(255, 90, 95, 0.1);
+.btn-book.btn-outline-teal:hover {
+  background: var(--teal-lt);
 }
 .mini-card {
   background: var(--white); border-radius: var(--radius-sm);
@@ -450,12 +460,12 @@ function close() { emit('update:modelValue', false) }
 }
 .footer-note { font-size: .78rem; color: var(--gray-400); }
 .btn-book {
-  background: var(--coral); color: #fff; border: none;
+  background: var(--teal); color: #fff; border: none;
   padding: 12px 28px; border-radius: 14px; font-size: .92rem;
   font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif;
   transition: all var(--transition); white-space: nowrap;
 }
-.btn-book:hover { background: var(--coral-dk); transform: translateY(-1px); }
+.btn-book:hover { background: var(--teal-dk); transform: translateY(-1px); }
 
 /* Manage override specific to this modal if needed, but we rely on main.css */
 .btn-manage {

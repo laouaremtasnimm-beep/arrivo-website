@@ -14,7 +14,7 @@
     <!-- Live preview hint -->
     <div class="live-hint">
       <span class="live-dot" />
-      <span>{{ activeOffers.length }} offer{{ activeOffers.length !== 1 ? 's' : '' }} currently live on the site</span>
+      <span>You have {{ userActiveOffers.length }} offer{{ userActiveOffers.length !== 1 ? 's' : '' }} currently live</span>
       <RouterLink to="/deals" class="live-link" target="_blank">Preview →</RouterLink>
     </div>
 
@@ -75,8 +75,8 @@
 
     <!-- Footer -->
     <div class="dash-card__footer">
-      <span class="dash-card__count">{{ allOffers.length }} total · {{ collabOffers.length }} joint · {{ manualOffers.length }} manual</span>
-      <span class="dash-card__count">{{ activeOffers.length }} active</span>
+      <span class="dash-card__count">{{ (collabOffers.length + manualOffers.length) }} total · {{ collabOffers.length }} joint · {{ manualOffers.length }} manual</span>
+      <span class="dash-card__count">{{ userActiveOffers.length }} active</span>
     </div>
 
   </div>
@@ -92,12 +92,21 @@ const props = defineProps({
 })
 defineEmits(['add', 'edit'])
 
-const { allOffers, activeOffers, collabOffers, manualOffers, deleteOfferFromDB } = useOffers()
+const { allOffers, activeOffers: allActiveOffers, collabOffers: allCollabOffers, manualOffers: allManualOffers, deleteOfferFromDB } = useOffers()
 
-// Only show THIS user's non-collab offers in the dashboard panel
-const userManualOffers = computed(() =>
-  manualOffers.value.filter(o => !props.userId || o.owner_id === Number(props.userId))
+// Filter all categories by current owner/agency
+const userActiveOffers = computed(() =>
+  allActiveOffers.value.filter(o => !props.userId || o.owner_id === Number(props.userId))
 )
+const collabOffers = computed(() =>
+  allCollabOffers.value.filter(o => !props.userId || o.owner_id === Number(props.userId))
+)
+const manualOffers = computed(() =>
+  allManualOffers.value.filter(o => !props.userId || o.owner_id === Number(props.userId))
+)
+
+// Legacy alias for template consistency
+const userManualOffers = manualOffers
 
 function handleDelete(offer) {
   deleteOfferFromDB(offer.offerID)

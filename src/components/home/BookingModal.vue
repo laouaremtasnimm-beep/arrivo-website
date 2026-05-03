@@ -18,7 +18,11 @@
               <div class="pkg-summary__name">{{ pkg.title }}</div>
               <div class="pkg-summary__meta">{{ pkg.duration }} days · {{ pkg.agency }}</div>
             </div>
-            <div class="pkg-summary__price">${{ pkg.price?.toLocaleString() }}</div>
+            <div class="pkg-summary__price-wrap" v-if="pkg.activeOffer">
+              <s class="pkg-summary__price-old">${{ pkg.price?.toLocaleString() }}</s>
+              <div class="pkg-summary__price pkg-summary__price--sale">${{ (pkg.price * (1 - pkg.activeOffer.discount / 100)).toLocaleString(undefined, {maximumFractionDigits: 0}) }}</div>
+            </div>
+            <div class="pkg-summary__price" v-else>${{ pkg.price?.toLocaleString() }}</div>
           </div>
 
           <!-- Form -->
@@ -104,10 +108,14 @@ function submit() { emit('submit', { ...form.value }); close() }
 .pkg-summary__img img { height: 100%; }
 .pkg-summary__name { font-weight: 600; font-size: .92rem; color: var(--indigo); }
 .pkg-summary__meta { font-size: .78rem; color: var(--gray-400); margin-top: 2px; }
+.pkg-summary__price-wrap { display: flex; flex-direction: column; align-items: flex-end; margin-left: auto; }
+.pkg-summary__price-old { font-size: .8rem; color: var(--gray-400); text-decoration: line-through; margin-bottom: -2px; }
 .pkg-summary__price {
   font-family: 'Fraunces', serif; font-size: 1.15rem; font-weight: 700;
-  color: var(--coral); margin-left: auto;
+  color: var(--indigo); margin-left: auto;
 }
+.pkg-summary__price--sale { color: var(--coral); margin-left: 0; }
+
 
 /* Form */
 .form-row   { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

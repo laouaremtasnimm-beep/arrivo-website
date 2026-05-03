@@ -103,6 +103,7 @@
           :cta-label="ctaLabel"
           :cta-danger="alreadyBooked && !isOwner"
           :is-owner="isOwner"
+          :active-offer="item.activeOffer"
           entity-label="Contact Agency"
           @book="handleCTAClick"
           @cancel="handleCancel"
@@ -192,6 +193,13 @@ async function loadItem(id) {
           includes:  p.includes  && p.includes  !== 'null' ? JSON.parse(p.includes)  : [],
           excludes:  p.excludes  && p.excludes  !== 'null' ? JSON.parse(p.excludes)  : [],
           itinerary: p.itinerary && p.itinerary !== 'null' ? JSON.parse(p.itinerary) : [],
+          activeOffer: p.active_offer_id ? {
+            id: p.active_offer_id,
+            discount: p.active_offer_discount,
+            startDate: p.active_offer_start,
+            endDate: p.active_offer_end,
+            title: p.active_offer_title
+          } : null,
         }
         const demo = packages.find(x => x.id === id)
         if (demo) {
@@ -256,7 +264,12 @@ const isDemo = computed(() => {
 })
 
 const isSavedVal    = computed(() => item.value ? isSaved.value('package', item.value.id) : false)
-const alreadyBooked = computed(() => item.value ? isBooked('package', item.value.id) : false)
+const alreadyBooked = computed(() => {
+  if (!item.value) return false
+  const pkgBooked = isBooked('package', item.value.id)
+  const offBooked = item.value.activeOffer ? isBooked('offer', item.value.activeOffer.id) : false
+  return pkgBooked || offBooked
+})
 const isOwner = computed(() => {
   if (!item.value || !user.value) return false
   const uid = String(user.value.userID || user.value.id)
@@ -273,7 +286,10 @@ const isOwner = computed(() => {
 
 const ctaLabel = computed(() => {
   if (isOwner.value) return 'Manage Package'
-  return alreadyBooked.value ? 'Cancel Booking' : 'Book this package'
+  if (alreadyBooked.value) {
+    return item.value?.activeOffer ? 'Cancel Offer' : 'Cancel Booking'
+  }
+  return item.value?.activeOffer ? 'Book Offer' : 'Book this package'
 })
 
 function handleCTAClick() {
@@ -301,12 +317,19 @@ function handleContact() {
 async function handleBooking(payload) {
   if (!isLoggedIn.value) { alert('Please log in to book.'); return }
 
+  let finalPrice = item.value.price;
+  const isOffer = !!item.value.activeOffer;
+  
+  if (isOffer) {
+    finalPrice = Math.round(finalPrice * (1 - item.value.activeOffer.discount / 100));
+  }
+
   const result = await createBooking({
     user_id:  user.value?.userID ?? user.value?.id,
-    type:     'package',
-    item_id:  item.value.id,
-    title:    item.value.title,
-    price:    item.value.price,
+    type:     isOffer ? 'offer' : 'package',
+    item_id:  isOffer ? item.value.activeOffer.id : item.value.id,
+    title:    isOffer ? item.value.activeOffer.title : item.value.title,
+    price:    finalPrice,
     check_in: payload.checkin,
     guests:   parseInt(payload.guests) || 1,
     notes:    payload.notes,
@@ -315,14 +338,17 @@ async function handleBooking(payload) {
 
   if (result.ok) {
     bookingOpen.value = false
-    alert('Package booked successfully!')
+    alert(isOffer ? 'Offer booked successfully!' : 'Package booked successfully!')
   } else {
     alert('Failed to book: ' + result.error)
   }
 }
 
 async function handleCancel() {
-  const id = getBookingId('package', item.value.id)
+  const offId = item.value.activeOffer ? getBookingId('offer', item.value.activeOffer.id) : null
+  const pkgId = getBookingId('package', item.value.id)
+  const id = offId || pkgId
+
   if (!id) return
   const res = await cancelBooking(id)
   if (res.ok) alert('Booking cancelled successfully.')
@@ -382,6 +408,7 @@ function updateStats(stats) {
 .pkg-detail__agency strong { color: var(--indigo); }
 .pkg-detail__rating { display: flex; align-items: center; gap: 4px; font-weight: 600; color: var(--indigo); }
 .pkg-detail__star { color: #FFB400; }
+.detail-sidebar__price--sale { color: var(--teal); }
 .pkg-detail__rev-count { color: var(--gray-400); font-weight: 400; }
 
 /* ─── Two-column body ──────────────────────────────── */
