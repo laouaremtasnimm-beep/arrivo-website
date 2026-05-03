@@ -134,6 +134,8 @@ function normalizePackage(p) {
       endDate: p.active_offer_end,
       title: p.active_offer_title
     } : null,
+    startDate: p.start_date ?? p.startDate,
+    endDate: p.end_date ?? p.endDate,
   }
 }
 

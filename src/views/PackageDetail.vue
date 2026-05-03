@@ -104,6 +104,9 @@
           :cta-danger="alreadyBooked && !isOwner"
           :is-owner="isOwner"
           :active-offer="item.activeOffer"
+          :duration="item.duration ? `${item.duration} days` : ''"
+          :start-date="item.startDate"
+          :end-date="item.endDate"
           entity-label="Contact Agency"
           @book="handleCTAClick"
           @cancel="handleCancel"
@@ -200,6 +203,8 @@ async function loadItem(id) {
             endDate: p.active_offer_end,
             title: p.active_offer_title
           } : null,
+          startDate: p.start_date,
+          endDate: p.end_date,
         }
         const demo = packages.find(x => x.id === id)
         if (demo) {

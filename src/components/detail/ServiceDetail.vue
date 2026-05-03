@@ -71,6 +71,9 @@
           :rating="item.rating"
           :reviews="item.reviews"
           :facts="item.facts"
+          :duration="item.duration || 'Standard service'"
+          :start-date="item.startDate"
+          :end-date="item.endDate"
           cta-label="Book this service"
           entity-label="provider"
           note="You won't be charged until confirmed."
@@ -106,16 +109,59 @@ import EntityCard       from '@/components/detail/EntityCard.vue'
 import ServiceFeatures  from '@/components/detail/svc/ServiceFeatures.vue'
 import BookingModal     from '@/components/BookingModal.vue'
 
+import { onMounted, watch } from 'vue'
+
 const route  = useRoute()
 const router = useRouter()
 
-const item = computed(() => services.find(s => s.id === Number(route.params.id)))
+const item = ref(null)
+const loading = ref(true)
 const saved = ref(false)
 const bookingOpen = ref(false)
+const moreLike = ref([])
 
-const moreLike = computed(() =>
-  services.filter(s => s.id !== item.value?.id && s.type === item.value?.type).slice(0, 6)
-)
+async function loadItem(id) {
+  loading.value = true
+  try {
+    const res = await fetch(`/arrivo-website/backend/api/v1/services.php?id=${id}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data.service) {
+        const s = data.service
+        const dbItem = {
+          ...s,
+          id: s.id, title: s.title, provider: s.provider_name || 'Provider',
+          price: Number(s.price), rating: Number(s.rating || 0), reviews: Number(s.review_count || 0),
+          img: s.img_url || s.img,
+          startDate: s.start_date,
+          endDate: s.end_date,
+          activeOffer: s.active_offer_id ? {
+            id: s.active_offer_id,
+            discount: s.active_offer_discount,
+            endDate: s.active_offer_end,
+            title: s.active_offer_title
+          } : null
+        }
+        item.value = dbItem
+      }
+    }
+  } catch (e) {
+    console.error('Failed to fetch service:', e)
+  }
+
+  if (!item.value) {
+    const mock = services.find(s => s.id === Number(id))
+    if (mock) item.value = mock
+  }
+  
+  if (item.value) {
+    moreLike.value = services.filter(s => s.id !== item.value.id && s.type === item.value.type).slice(0, 6)
+  }
+  loading.value = false
+}
+
+onMounted(() => loadItem(route.params.id))
+watch(() => route.params.id, (newId) => loadItem(newId))
 
 function goToService(svc)        { router.push(`/services/${svc.id}`) }
 function handleContact()         { console.log('Contact provider') }

@@ -47,6 +47,24 @@
             <div class="detail-sidebar__fact-val">{{ f.value }}</div>
           </div>
         </div>
+        <!-- Promotional Deadline -->
+        <div class="detail-sidebar__fact" v-if="activeOffer?.endDate">
+          <span class="detail-sidebar__fact-icon">⏳</span>
+          <div>
+            <div class="detail-sidebar__fact-label" style="color: var(--coral); font-weight: 700;">Exclusive Deal Ends</div>
+            <div class="detail-sidebar__fact-val" style="color: var(--coral); font-weight: 800;">
+              {{ activeOffer.endDate }}
+            </div>
+          </div>
+        </div>
+        <!-- Standard Dates (for non-offer items) -->
+        <div class="detail-sidebar__fact" v-else-if="startDate">
+          <span class="detail-sidebar__fact-icon">📅</span>
+          <div>
+            <div class="detail-sidebar__fact-label">Travel Window</div>
+            <div class="detail-sidebar__fact-val">{{ startDate }} <span v-if="endDate">→ {{ endDate }}</span></div>
+          </div>
+        </div>
       </div>
 
       <!-- CTA -->
@@ -91,6 +109,9 @@ defineProps({
   ctaDanger:   { type: Boolean, default: false },
   isOwner:     { type: Boolean, default: false },
   activeOffer: { type: Object,  default: null  },
+  duration:    { type: String,  default: ''    },
+  startDate:   { type: String,  default: ''    },
+  endDate:     { type: String,  default: ''    },
 })
 
 defineEmits(['book', 'cancel', 'message'])
@@ -106,6 +127,12 @@ defineEmits(['book', 'cancel', 'message'])
   background: var(--white); border-radius: var(--radius-xl);
   padding: 28px; box-shadow: var(--shadow-md);
   border: 1px solid var(--gray-200);
+}
+
+.detail-sidebar__item-duration {
+  text-align: center; font-size: .95rem; font-weight: 700; color: var(--indigo);
+  margin-bottom: 12px; padding: 10px; background: var(--gray-50);
+  border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 
 /* Price */
@@ -129,7 +156,7 @@ defineEmits(['book', 'cancel', 'message'])
   font-family: 'Fraunces', serif;
   font-size: 2rem; font-weight: 700; color: var(--indigo); line-height: 1;
 }
-.detail-sidebar__price--sale { color: var(--teal); }
+.detail-sidebar__price--sale { color: var(--coral); }
 .detail-sidebar__unit { font-size: .9rem; color: var(--gray-400); font-family: 'DM Sans', sans-serif; font-weight: 400; }
 .detail-sidebar__rating {
   display: flex; align-items: center; gap: 4px;

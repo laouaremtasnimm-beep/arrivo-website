@@ -99,7 +99,7 @@ export const destinations = [
 
 export const packages = [
   {
-    id: 1001, title: 'Swiss Alps Winter Retreat', agency: 'Alpine Escapes', agency_id: 1, img: 'https://i.pinimg.com/1200x/23/c2/fd/23c2fd9b59a69106db324c0022d7d051.jpg', type: 'Adventure', duration: 8, rating: 4.9, reviews: 214, spots: 4, price: 2490, desc: 'Ski, snowboard and relax in cozy mountain chalets with breathtaking alpine views.', includes: ['Ski pass', 'Chalet accommodation', 'Airport transfer'], itinerary: [
+    id: 1001, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Swiss Alps Winter Retreat', agency: 'Alpine Escapes', agency_id: 1, img: 'https://i.pinimg.com/1200x/23/c2/fd/23c2fd9b59a69106db324c0022d7d051.jpg', type: 'Adventure', duration: 8, rating: 4.9, reviews: 214, spots: 4, price: 2490, desc: 'Ski, snowboard and relax in cozy mountain chalets with breathtaking alpine views.', includes: ['Ski pass', 'Chalet accommodation', 'Airport transfer'], itinerary: [
       { day: 1, title: 'Arrival & Zermatt Transfer', desc: 'Arrive in Zurich and take the scenic train to the car-free village of Zermatt.' },
       { day: 2, title: 'Matterhorn Slopes', desc: 'Hit the world-class slopes of the Matterhorn Ski Paradise.' },
       { day: 3, title: 'Glacier Excursion', desc: 'Visit the highest cable car station in Europe for stunning 360-degree views.' },
@@ -111,7 +111,7 @@ export const packages = [
     ]
   },
   {
-    id: 1002, title: 'Bali Spiritual Journey', agency: 'Serenity Travels', agency_id: 1, img: 'https://images.pexels.com/photos/34136179/pexels-photo-34136179/free-photo-of-ornate-balinese-temple-tower-in-clear-sky.jpeg', type: 'Cultural', duration: 10, rating: 4.8, reviews: 183, spots: 8, price: 1650, desc: 'Discover temples, rice terraces and traditional healing rituals across the island of gods.', includes: ['Temple visits', 'Healing ceremony', 'Rice terrace trek'], itinerary: [
+    id: 1002, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Bali Spiritual Journey', agency: 'Serenity Travels', agency_id: 1, img: 'https://images.pexels.com/photos/34136179/pexels-photo-34136179/free-photo-of-ornate-balinese-temple-tower-in-clear-sky.jpeg', type: 'Cultural', duration: 10, rating: 4.8, reviews: 183, spots: 8, price: 1650, desc: 'Discover temples, rice terraces and traditional healing rituals across the island of gods.', includes: ['Temple visits', 'Healing ceremony', 'Rice terrace trek'], itinerary: [
       { day: 1, title: 'Welcome to Ubud', desc: 'Arrive in Balis cultural heart and settle into your jungle villa.' },
       { day: 2, title: 'Yoga & Monkey Forest', desc: 'Start with morning yoga followed by a visit to the sacred Monkey Forest.' },
       { day: 3, title: 'Rice Terrace Hike', desc: 'Trek through the stunning Tegalalang Rice Terraces at sunrise.' },
@@ -125,7 +125,7 @@ export const packages = [
     ]
   },
   {
-    id: 1003, title: 'Greek Island Odyssey', agency: 'Aegean Blue Tours', agency_id: 1, img: 'https://i.pinimg.com/1200x/45/b0/50/45b05007a015ceb5bbe3da40adffda62.jpg', type: 'Beach', duration: 14, rating: 4.9, reviews: 320, spots: 2, price: 3100, desc: 'Sail between Santorini, Mykonos and Crete on a private yacht with full crew.', includes: ['Private yacht', 'All meals', 'Island hopping'], itinerary: [
+    id: 1003, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Greek Island Odyssey', agency: 'Aegean Blue Tours', agency_id: 1, img: 'https://i.pinimg.com/1200x/45/b0/50/45b05007a015ceb5bbe3da40adffda62.jpg', type: 'Beach', duration: 14, rating: 4.9, reviews: 320, spots: 2, price: 3100, desc: 'Sail between Santorini, Mykonos and Crete on a private yacht with full crew.', includes: ['Private yacht', 'All meals', 'Island hopping'], itinerary: [
       { day: 1, title: 'Athens Arrival', desc: 'Check in to your hotel with views of the Parthenon.' },
       { day: 2, title: 'Acropolis & Ferry', desc: 'Morning Acropolis tour then ferry to the vibrant Mykonos.' },
       { day: 3, title: 'Mykonos Bliss', desc: 'Relax on sandy beaches and explore the iconic white alleys.' },
@@ -143,7 +143,7 @@ export const packages = [
     ]
   },
   {
-    id: 1004, title: 'Sahara Desert Adventure', agency: 'Desert Wind Co.', agency_id: 1, img: 'https://i.pinimg.com/736x/32/50/c9/3250c9de2436cea0d407fd390169b779.jpg', type: 'Adventure', duration: 6, rating: 4.7, reviews: 98, spots: 12, price: 980, desc: 'Ride camels at sunset, sleep under the stars and explore ancient kasbahs in Morocco.', includes: ['Camel trek', 'Desert camp', 'Guide included'], itinerary: [
+    id: 1004, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Sahara Desert Adventure', agency: 'Desert Wind Co.', agency_id: 1, img: 'https://i.pinimg.com/736x/32/50/c9/3250c9de2436cea0d407fd390169b779.jpg', type: 'Adventure', duration: 6, rating: 4.7, reviews: 98, spots: 12, price: 980, desc: 'Ride camels at sunset, sleep under the stars and explore ancient kasbahs in Morocco.', includes: ['Camel trek', 'Desert camp', 'Guide included'], itinerary: [
       { day: 1, title: 'Marrakech Arrival', desc: 'Experience the magic of the Jemaa el-Fnaa square at night.' },
       { day: 2, title: 'Atlas Mountains', desc: 'Cross the High Atlas and visit the Ait Ben Haddou Kasbah.' },
       { day: 3, title: 'Dades Valley', desc: 'Journey through the "Road of a Thousand Kasbahs" to the gorges.' },
@@ -153,7 +153,7 @@ export const packages = [
     ]
   },
   {
-    id: 1005, title: 'Tokyo Family Explorer', agency: 'Rising Sun Tours', agency_id: 1, img: 'https://i.pinimg.com/736x/3d/29/3d/3d293ddd78de491adc8ce3809facdb05.jpg', type: 'Family', duration: 9, rating: 4.8, reviews: 145, spots: 6, price: 2200, desc: 'Anime, tech, temples and theme parks — a magical Japanese adventure for the whole family.', includes: ['Theme park tickets', 'Family room', 'Kid-friendly tours'], itinerary: [
+    id: 1005, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Tokyo Family Explorer', agency: 'Rising Sun Tours', agency_id: 1, img: 'https://i.pinimg.com/736x/3d/29/3d/3d293ddd78de491adc8ce3809facdb05.jpg', type: 'Family', duration: 9, rating: 4.8, reviews: 145, spots: 6, price: 2200, desc: 'Anime, tech, temples and theme parks — a magical Japanese adventure for the whole family.', includes: ['Theme park tickets', 'Family room', 'Kid-friendly tours'], itinerary: [
       { day: 1, title: 'Arrival & Shinjuku', desc: 'Welcome to Tokyo! See the city from the Metropolitan Government Building.' },
       { day: 2, title: 'Harajuku & Tech', desc: 'Trendy Harajuku fashion and the latest gadgets in Akihabara.' },
       { day: 3, title: 'Disneyland Magic', desc: 'Full day of fun and parades at Tokyo Disneyland.' },
@@ -166,7 +166,7 @@ export const packages = [
     ]
   },
   {
-    id: 1006, title: 'Amalfi Coast Drive', agency: 'Bella Italia', agency_id: 1, img: 'https://i.pinimg.com/736x/72/6c/62/726c62674167d509eb6e9b8ee805aa24.jpg', type: 'Beach', duration: 7, rating: 4.9, reviews: 267, spots: 5, price: 1890, desc: 'Wind along the cliffside roads of southern Italy, stopping in Positano, Ravello and Capri.', includes: ['Car hire', 'Boutique hotels', 'Wine tasting'], itinerary: [
+    id: 1006, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Amalfi Coast Drive', agency: 'Bella Italia', agency_id: 1, img: 'https://i.pinimg.com/736x/72/6c/62/726c62674167d509eb6e9b8ee805aa24.jpg', type: 'Beach', duration: 7, rating: 4.9, reviews: 267, spots: 5, price: 1890, desc: 'Wind along the cliffside roads of southern Italy, stopping in Positano, Ravello and Capri.', includes: ['Car hire', 'Boutique hotels', 'Wine tasting'], itinerary: [
       { day: 1, title: 'Arrival in Sorrento', desc: 'Transfer from Naples to the "City of Lemons" overlooking the bay.' },
       { day: 2, title: 'Sorrento Walk', desc: 'Limoncello tasting and a stroll through the historic town center.' },
       { day: 3, title: 'Positano Views', desc: 'Drive the spectacular Amalfi Road to the vertical village of Positano.' },
@@ -177,7 +177,7 @@ export const packages = [
     ]
   },
   {
-    id: 1007, title: 'Morocco Medina Discovery', agency: 'Silk Road Travel', img: 'https://i.pinimg.com/1200x/5a/a4/8a/5aa48a5822ac97db831d72f594a3ee43.jpg', type: 'Cultural', duration: 8, rating: 4.7, reviews: 112, spots: 10, price: 1100, desc: 'Explore the souks, palaces and riads of Fez, Marrakech and Chefchaouen.', includes: ['Riad stay', 'Cooking class', 'Guided medina tour'], itinerary: [
+    id: 1007, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Morocco Medina Discovery', agency: 'Silk Road Travel', img: 'https://i.pinimg.com/1200x/5a/a4/8a/5aa48a5822ac97db831d72f594a3ee43.jpg', type: 'Cultural', duration: 8, rating: 4.7, reviews: 112, spots: 10, price: 1100, desc: 'Explore the souks, palaces and riads of Fez, Marrakech and Chefchaouen.', includes: ['Riad stay', 'Cooking class', 'Guided medina tour'], itinerary: [
       { day: 1, title: 'Casablanca Arrival', desc: 'Visit the magnificent Hassan II Mosque on the Atlantic coast.' },
       { day: 2, title: 'Rabat Imperial', desc: 'Explore the Oudaya Kasbah and the Hassan Tower in the capital.' },
       { day: 3, title: 'Fez Medina', desc: 'Enter the largest car-free urban space in the world with a local guide.' },
@@ -189,7 +189,7 @@ export const packages = [
     ]
   },
   {
-    id: 1008, title: 'Maldives Overwater Escape', agency: 'Island Dreams', img: 'https://i.pinimg.com/1200x/a8/12/46/a81246a58f15413006e470cbd6f498fd.jpg', type: 'Beach', duration: 7, rating: 5.0, reviews: 89, spots: 4, price: 4200, desc: 'Luxury overwater bungalows, snorkelling, spa and pristine private beaches.', includes: ['Overwater villa', 'Spa credit', 'Reef snorkelling'], itinerary: [
+    id: 1008, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Maldives Overwater Escape', agency: 'Island Dreams', img: 'https://i.pinimg.com/1200x/a8/12/46/a81246a58f15413006e470cbd6f498fd.jpg', type: 'Beach', duration: 7, rating: 5.0, reviews: 89, spots: 4, price: 4200, desc: 'Luxury overwater bungalows, snorkelling, spa and pristine private beaches.', includes: ['Overwater villa', 'Spa credit', 'Reef snorkelling'], itinerary: [
       { day: 1, title: 'Welcome to Paradise', desc: 'Speedboat transfer to your luxury overwater villa.' },
       { day: 2, title: 'House Reef Discovery', desc: 'Morning snorkelling guided by a marine biologist.' },
       { day: 3, title: 'Sandbank Picnic', desc: 'Private lunch on a secluded patch of white sand in the ocean.' },
@@ -200,7 +200,7 @@ export const packages = [
     ]
   },
   {
-    id: 1009, title: 'Patagonia Trekking', agency: 'Wild South Tours', img: 'https://i.pinimg.com/1200x/c4/6d/ea/c46dea8c1c524db6f4cf5922cbc9626b.jpg', type: 'Adventure', duration: 12, rating: 4.9, reviews: 76, spots: 8, price: 3400, desc: 'Hike the W Trek through Torres del Paine, camp by glaciers and spot Andean condors.', includes: ['Guided trek', 'All camping gear', 'Park fees'], itinerary: [
+    id: 1009, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Patagonia Trekking', agency: 'Wild South Tours', img: 'https://i.pinimg.com/1200x/c4/6d/ea/c46dea8c1c524db6f4cf5922cbc9626b.jpg', type: 'Adventure', duration: 12, rating: 4.9, reviews: 76, spots: 8, price: 3400, desc: 'Hike the W Trek through Torres del Paine, camp by glaciers and spot Andean condors.', includes: ['Guided trek', 'All camping gear', 'Park fees'], itinerary: [
       { day: 1, title: 'Calafate Arrival', desc: 'Arrive in the gateway to the glaciers and enjoy a welcome steak.' },
       { day: 2, title: 'Perito Moreno', desc: 'Trek on top of the world-famous advancing glacier.' },
       { day: 3, title: 'To El Chalten', desc: 'Scenic bus ride to the trekking capital of Argentina.' },
@@ -216,7 +216,7 @@ export const packages = [
     ]
   },
   {
-    id: 1010, title: 'Tuscany Wine & Culture', agency: 'La Dolce Vita', img: 'https://i.pinimg.com/736x/4a/9e/eb/4a9eebfbab9ad17bbea93e616c082f28.jpg', type: 'Cultural', duration: 6, rating: 4.8, reviews: 198, spots: 7, price: 1750, desc: 'Roll through vineyards, medieval hilltowns and Renaissance art in the heart of Italy.', includes: ['Wine tastings', 'Villa stay', 'Cooking class'], itinerary: [
+    id: 1010, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Tuscany Wine & Culture', agency: 'La Dolce Vita', img: 'https://i.pinimg.com/736x/4a/9e/eb/4a9eebfbab9ad17bbea93e616c082f28.jpg', type: 'Cultural', duration: 6, rating: 4.8, reviews: 198, spots: 7, price: 1750, desc: 'Roll through vineyards, medieval hilltowns and Renaissance art in the heart of Italy.', includes: ['Wine tastings', 'Villa stay', 'Cooking class'], itinerary: [
       { day: 1, title: 'Florence Magic', desc: 'Check in to your boutique riad and walk the Uffizi galleries.' },
       { day: 2, title: 'Chianti Hills', desc: 'Private winery tour and lunch in a historic castle cellar.' },
       { day: 3, title: 'Medieval Towers', desc: 'Visit the stunning San Gimignano and the Shell Square in Siena.' },
@@ -226,7 +226,7 @@ export const packages = [
     ]
   },
   {
-    id: 1011, title: 'Serengeti Safari', agency: 'Wild Africa Co.', img: 'https://i.pinimg.com/736x/5f/a2/f4/5fa2f4fe88f8857b928bb894520625b7.jpg', type: 'Adventure', duration: 8, rating: 5.0, reviews: 134, spots: 6, price: 3800, desc: 'Game drives at dawn, sundowners on the savannah and sleeping under a canvas of stars.', includes: ['All game drives', 'Lodge accommodation', 'Park fees'], itinerary: [
+    id: 1011, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Serengeti Safari', agency: 'Wild Africa Co.', img: 'https://i.pinimg.com/736x/5f/a2/f4/5fa2f4fe88f8857b928bb894520625b7.jpg', type: 'Adventure', duration: 8, rating: 5.0, reviews: 134, spots: 6, price: 3800, desc: 'Game drives at dawn, sundowners on the savannah and sleeping under a canvas of stars.', includes: ['All game drives', 'Lodge accommodation', 'Park fees'], itinerary: [
       { day: 1, title: 'Arusha Arrival', desc: 'Briefing and dinner at the foot of Mount Meru.' },
       { day: 2, title: 'Tarangire Elephants', desc: 'Game drive among the giant baobab trees and elephant herds.' },
       { day: 3, title: 'Ngorongoro Crater', desc: 'Descend into the caldera for a unique density of wildlife.' },
@@ -238,7 +238,7 @@ export const packages = [
     ]
   },
   {
-    id: 1012, title: 'Bali Wellness Retreat', agency: 'Serenity Travels', img: 'https://i.pinimg.com/736x/a8/61/72/a86172559a586f641fbf5b348222a0dd.jpg', type: 'Wellness', duration: 7, rating: 4.9, reviews: 92, spots: 10, price: 1400, desc: 'Daily yoga, traditional Balinese massage, meditation and organic plant-based meals.', includes: ['Daily yoga', 'Spa treatments', 'Organic meals'], itinerary: [
+    id: 1012, startDate: '2026-06-01', endDate: '2026-06-15', title: 'Bali Wellness Retreat', agency: 'Serenity Travels', img: 'https://i.pinimg.com/736x/a8/61/72/a86172559a586f641fbf5b348222a0dd.jpg', type: 'Wellness', duration: 7, rating: 4.9, reviews: 92, spots: 10, price: 1400, desc: 'Daily yoga, traditional Balinese massage, meditation and organic plant-based meals.', includes: ['Daily yoga', 'Spa treatments', 'Organic meals'], itinerary: [
       { day: 1, title: 'Soul Consultation', desc: 'Arrival and private meeting with a wellness expert.' },
       { day: 2, title: 'Sunrise Yoga', desc: 'Gentle flow overlooking the rice fields and a full body massage.' },
       { day: 3, title: 'Silent Meditation', desc: 'A day of digital detox and guided breathwork.' },
@@ -251,20 +251,20 @@ export const packages = [
 ]
 
 export const services = [
-  { id: 2001, icon: '🚐', iconBg: 'svc-icon-coral', title: 'Private Airport Transfer', provider: 'Swift Transfers', provider_id: 1, type: 'Transport', price: 45, unit: 'trip', rating: 4.9, reviews: 540, availability: true, desc: 'Comfortable door-to-door transfers from any airport. Available 24/7, all vehicle sizes.', features: ['Meet & greet', 'Flight tracking', 'Free waiting time'] },
-  { id: 2002, icon: '🧗', iconBg: 'svc-icon-teal', title: 'Certified Mountain Guide', provider: 'Peak Adventures', provider_id: 1, type: 'Adventure', price: 120, unit: 'day', rating: 4.8, reviews: 312, availability: true, desc: 'Expert local guides for hiking, climbing and multi-day treks in any terrain.', features: ['Safety gear provided', 'First aid certified', 'Custom routes'] },
-  { id: 2003, icon: '🍽️', iconBg: 'svc-icon-sand', title: 'Private Chef Experience', provider: 'Taste of Place', provider_id: 1, type: 'Food', price: 180, unit: 'evening', rating: 5.0, reviews: 178, availability: false, desc: 'A local chef comes to your villa and prepares a fully authentic multi-course dinner.', features: ['Market shopping', '3-course menu', 'Dietary options'] },
-  { id: 2004, icon: '🤿', iconBg: 'svc-icon-coral', title: 'Scuba Diving Lessons', provider: 'Blue Ocean Dive', type: 'Adventure', price: 95, unit: 'session', rating: 4.9, reviews: 223, availability: true, desc: 'PADI-certified instructors for beginners through advanced divers.', features: ['All equipment', 'Safety briefing', 'Reef dive included'] },
-  { id: 2005, icon: '📸', iconBg: 'svc-icon-teal', title: 'Travel Photography', provider: 'Frame & Wander', type: 'Photography', price: 150, unit: 'day', rating: 4.7, reviews: 98, availability: true, desc: 'Professional photographer to document your journey with stunning editorial-style shots.', features: ['Same-day previews', '100+ edited photos', 'Drone shots'] },
-  { id: 2006, icon: '🏨', iconBg: 'svc-icon-sand', title: 'Luxury Hotel Concierge', provider: 'Premier Stays', type: 'Tours', price: 30, unit: 'day', rating: 4.8, reviews: 431, availability: true, desc: 'Premium hotel bookings with curated insider recommendations for every destination.', features: ['24/7 support', 'Exclusive rates', 'VIP check-in'] },
-  { id: 2007, icon: '🗺️', iconBg: 'svc-icon-coral', title: 'City Walking Tour', provider: 'Local Lens Tours', type: 'Tours', price: 35, unit: 'person', rating: 4.9, reviews: 764, availability: true, desc: 'Immersive 3-hour walking tours in 50+ cities with expert local storytellers.', features: ['Small groups (max 8)', 'Free cancellation', 'Multiple languages'] },
-  { id: 2008, icon: '🧘', iconBg: 'svc-icon-teal', title: 'Wellness & Spa Day', provider: 'Zen Journey', type: 'Wellness', price: 200, unit: 'day', rating: 4.8, reviews: 156, availability: true, desc: 'Full-day yoga, meditation and spa treatments at partner wellness resorts.', features: ['Yoga class', '2 treatments', 'Organic meals'] },
-  { id: 2009, icon: '🚴', iconBg: 'svc-icon-sand', title: 'Cycling Tour', provider: 'Wheel & Trail', type: 'Adventure', price: 60, unit: 'day', rating: 4.7, reviews: 289, availability: true, desc: 'Guided cycling tours through countryside, vineyards and coastal roads.', features: ['Bike hire', 'Helmet & gear', 'Snack stops'] },
-  { id: 2010, icon: '🍷', iconBg: 'svc-icon-coral', title: 'Wine Tasting Experience', provider: 'Vineyard Routes', type: 'Food', price: 85, unit: 'person', rating: 4.9, reviews: 203, availability: true, desc: 'Guided tastings at boutique wineries with expert sommeliers and stunning cellar tours.', features: ['6 wines', 'Cheese pairing', 'Cellar tour'] },
-  { id: 2011, icon: '🚤', iconBg: 'svc-icon-teal', title: 'Private Boat Charter', provider: 'Blue Horizon Sail', type: 'Transport', price: 350, unit: 'day', rating: 4.9, reviews: 87, availability: true, desc: 'Charter a private boat and explore hidden coves, beaches and sea caves at your own pace.', features: ['Captain included', 'Snorkelling gear', 'Refreshments'] },
-  { id: 2012, icon: '🎭', iconBg: 'svc-icon-sand', title: 'Cultural Immersion Day', provider: 'Living Culture Co', type: 'Tours', price: 110, unit: 'person', rating: 4.8, reviews: 142, availability: true, desc: 'Spend a day with local families, learning crafts, cooking traditional dishes and sharing stories.', features: ['Home visit', 'Cooking class', 'Traditional meal'] },
-  { id: 2013, icon: '🏄', iconBg: 'svc-icon-coral', title: 'Surf Lessons', provider: 'Ride The Wave', type: 'Adventure', price: 70, unit: 'session', rating: 4.7, reviews: 318, availability: true, desc: 'Learn to surf with certified instructors on the best beginner and intermediate breaks.', features: ['Board & wetsuit', 'Video analysis', '2-hour session'] },
-  { id: 2014, icon: '🌿', iconBg: 'svc-icon-teal', title: 'Eco Nature Walk', provider: 'Green Paths', type: 'Wellness', price: 55, unit: 'person', rating: 4.8, reviews: 195, availability: true, desc: 'Guided nature walks through national parks, forests and wetlands with a naturalist.', features: ['Binoculars provided', 'Wildlife spotting', 'Photography tips'] },
+  { id: 2001, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🚐', iconBg: 'svc-icon-coral', title: 'Private Airport Transfer', provider: 'Swift Transfers', provider_id: 1, type: 'Transport', price: 45, unit: 'trip', rating: 4.9, reviews: 540, availability: true, desc: 'Comfortable door-to-door transfers from any airport. Available 24/7, all vehicle sizes.', features: ['Meet & greet', 'Flight tracking', 'Free waiting time'] },
+  { id: 2002, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🧗', iconBg: 'svc-icon-teal', title: 'Certified Mountain Guide', provider: 'Peak Adventures', provider_id: 1, type: 'Adventure', price: 120, unit: 'day', rating: 4.8, reviews: 312, availability: true, desc: 'Expert local guides for hiking, climbing and multi-day treks in any terrain.', features: ['Safety gear provided', 'First aid certified', 'Custom routes'] },
+  { id: 2003, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🍽️', iconBg: 'svc-icon-sand', title: 'Private Chef Experience', provider: 'Taste of Place', provider_id: 1, type: 'Food', price: 180, unit: 'evening', rating: 5.0, reviews: 178, availability: false, desc: 'A local chef comes to your villa and prepares a fully authentic multi-course dinner.', features: ['Market shopping', '3-course menu', 'Dietary options'] },
+  { id: 2004, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🤿', iconBg: 'svc-icon-coral', title: 'Scuba Diving Lessons', provider: 'Blue Ocean Dive', type: 'Adventure', price: 95, unit: 'session', rating: 4.9, reviews: 223, availability: true, desc: 'PADI-certified instructors for beginners through advanced divers.', features: ['All equipment', 'Safety briefing', 'Reef dive included'] },
+  { id: 2005, startDate: '2026-06-01', endDate: '2026-08-31', icon: '📸', iconBg: 'svc-icon-teal', title: 'Travel Photography', provider: 'Frame & Wander', type: 'Photography', price: 150, unit: 'day', rating: 4.7, reviews: 98, availability: true, desc: 'Professional photographer to document your journey with stunning editorial-style shots.', features: ['Same-day previews', '100+ edited photos', 'Drone shots'] },
+  { id: 2006, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🏨', iconBg: 'svc-icon-sand', title: 'Luxury Hotel Concierge', provider: 'Premier Stays', type: 'Tours', price: 30, unit: 'day', rating: 4.8, reviews: 431, availability: true, desc: 'Premium hotel bookings with curated insider recommendations for every destination.', features: ['24/7 support', 'Exclusive rates', 'VIP check-in'] },
+  { id: 2007, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🗺️', iconBg: 'svc-icon-coral', title: 'City Walking Tour', provider: 'Local Lens Tours', type: 'Tours', price: 35, unit: 'person', rating: 4.9, reviews: 764, availability: true, desc: 'Immersive 3-hour walking tours in 50+ cities with expert local storytellers.', features: ['Small groups (max 8)', 'Free cancellation', 'Multiple languages'] },
+  { id: 2008, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🧘', iconBg: 'svc-icon-teal', title: 'Wellness & Spa Day', provider: 'Zen Journey', type: 'Wellness', price: 200, unit: 'day', rating: 4.8, reviews: 156, availability: true, desc: 'Full-day yoga, meditation and spa treatments at partner wellness resorts.', features: ['Yoga class', '2 treatments', 'Organic meals'] },
+  { id: 2009, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🚴', iconBg: 'svc-icon-sand', title: 'Cycling Tour', provider: 'Wheel & Trail', type: 'Adventure', price: 60, unit: 'day', rating: 4.7, reviews: 289, availability: true, desc: 'Guided cycling tours through countryside, vineyards and coastal roads.', features: ['Bike hire', 'Helmet & gear', 'Snack stops'] },
+  { id: 2010, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🍷', iconBg: 'svc-icon-coral', title: 'Wine Tasting Experience', provider: 'Vineyard Routes', type: 'Food', price: 85, unit: 'person', rating: 4.9, reviews: 203, availability: true, desc: 'Guided tastings at boutique wineries with expert sommeliers and stunning cellar tours.', features: ['6 wines', 'Cheese pairing', 'Cellar tour'] },
+  { id: 2011, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🚤', iconBg: 'svc-icon-teal', title: 'Private Boat Charter', provider: 'Blue Horizon Sail', type: 'Transport', price: 350, unit: 'day', rating: 4.9, reviews: 87, availability: true, desc: 'Charter a private boat and explore hidden coves, beaches and sea caves at your own pace.', features: ['Captain included', 'Snorkelling gear', 'Refreshments'] },
+  { id: 2012, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🎭', iconBg: 'svc-icon-sand', title: 'Cultural Immersion Day', provider: 'Living Culture Co', type: 'Tours', price: 110, unit: 'person', rating: 4.8, reviews: 142, availability: true, desc: 'Spend a day with local families, learning crafts, cooking traditional dishes and sharing stories.', features: ['Home visit', 'Cooking class', 'Traditional meal'] },
+  { id: 2013, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🏄', iconBg: 'svc-icon-coral', title: 'Surf Lessons', provider: 'Ride The Wave', type: 'Adventure', price: 70, unit: 'session', rating: 4.7, reviews: 318, availability: true, desc: 'Learn to surf with certified instructors on the best beginner and intermediate breaks.', features: ['Board & wetsuit', 'Video analysis', '2-hour session'] },
+  { id: 2014, startDate: '2026-06-01', endDate: '2026-08-31', icon: '🌿', iconBg: 'svc-icon-teal', title: 'Eco Nature Walk', provider: 'Green Paths', type: 'Wellness', price: 55, unit: 'person', rating: 4.8, reviews: 195, availability: true, desc: 'Guided nature walks through national parks, forests and wetlands with a naturalist.', features: ['Binoculars provided', 'Wildlife spotting', 'Photography tips'] },
 ]
 
 export const offers = [

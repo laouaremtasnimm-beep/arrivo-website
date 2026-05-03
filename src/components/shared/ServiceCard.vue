@@ -9,7 +9,8 @@
         :class="{ saved }"
         @click.stop="$emit('toggle-wishlist', item.id)"
       >{{ saved ? '❤️' : '🤍' }}</button>
-      <span class="svc-card__type-tag">{{ item.type }}</span>
+      <span class="svc-card__type-tag" v-if="!item.activeOffer">{{ item.type }}</span>
+      <span class="svc-card__offer-tag" v-else>Special Offer</span>
     </div>
 
     <div class="svc-card__icon-header" v-else>
@@ -48,11 +49,24 @@
           >
             {{ item.availability !== false ? '● Available' : '○ Unavailable' }}
           </span>
+          <span class="svc-card__dates" v-if="item.startDate">
+            📅 {{ item.startDate }} <span v-if="item.endDate">→ {{ item.endDate }}</span>
+          </span>
+          <span class="svc-card__offer-dates" v-if="item.activeOffer?.endDate">
+            ⏳ Ends {{ item.activeOffer.endDate }}
+          </span>
         </div>
 
         <div class="svc-card__pricing">
           <div class="svc-card__price-label">{{ item.priceLabel || ' ' }}</div>
-          <div class="svc-card__price">
+          <div class="svc-card__price-wrap" v-if="item.activeOffer">
+            <span class="svc-card__price-old">${{ item.price }}</span>
+            <div class="svc-card__price svc-card__price--sale">
+              ${{ (item.price * (1 - item.activeOffer.discount / 100)).toLocaleString(undefined, {maximumFractionDigits: 0}) }}
+              <span class="svc-card__unit">/{{ item.unit || 'day' }}</span>
+            </div>
+          </div>
+          <div class="svc-card__price" v-else>
             ${{ item.price }}
             <span class="svc-card__unit">/{{ item.unit || 'day' }}</span>
           </div>
@@ -137,6 +151,19 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist', 'manage'])
   font-size: .7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
   padding: 4px 12px; border-radius: 50px;
 }
+.svc-card__offer-tag {
+  position: absolute; bottom: 12px; left: 12px;
+  background: var(--coral); color: #fff;
+  font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  padding: 5px 14px; border-radius: 50px;
+  box-shadow: 0 4px 12px rgba(255, 90, 95, 0.35);
+  animation: pulse-coral 2s infinite;
+}
+@keyframes pulse-coral {
+  0% { box-shadow: 0 0 0 0 rgba(255, 90, 95, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(255, 90, 95, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 90, 95, 0); }
+}
 
 /* Icon variant header */
 .svc-card__icon-header {
@@ -194,8 +221,13 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist', 'manage'])
 
 .svc-card__pricing    { text-align: right; }
 .svc-card__price-label{ font-size: .72rem; color: var(--gray-400); }
+.svc-card__price-wrap { display: flex; flex-direction: column; align-items: flex-end; }
+.svc-card__price-old  { font-size: .8rem; color: var(--gray-400); text-decoration: line-through; }
 .svc-card__price      { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; color: var(--coral); }
+.svc-card__price--sale { color: var(--coral); }
 .svc-card__unit       { font-size: .75rem; color: var(--gray-400); font-family: 'DM Sans', sans-serif; font-weight: 400; }
+.svc-card__dates      { font-size: .72rem; color: var(--gray-500); }
+.svc-card__offer-dates { font-size: .72rem; color: var(--coral); font-weight: 700; }
 
 
 </style>

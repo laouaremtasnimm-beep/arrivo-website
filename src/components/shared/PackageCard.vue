@@ -24,11 +24,11 @@
       <h3 class="pkg-card__title">{{ item.title }}</h3>
 
       <div class="pkg-card__meta">
-        <span class="pkg-meta-item pkg-meta-item--offer" v-if="item.activeOffer?.startDate">
-          📅 <span class="old-val">{{ item.duration }} days</span> 
-          <span class="new-val">{{ item.activeOffer.startDate }} → {{ item.activeOffer.endDate }}</span>
+        <span class="pkg-meta-item">📅 {{ item.duration }} days</span>
+        <span class="pkg-meta-item" v-if="item.startDate">· {{ item.startDate }} <span v-if="item.endDate">→ {{ item.endDate }}</span></span>
+        <span class="pkg-meta-item pkg-meta-item--offer" v-if="item.activeOffer">
+          ⏳ <span class="new-val">Ends {{ item.activeOffer.endDate }}</span>
         </span>
-        <span class="pkg-meta-item" v-else>📅 {{ item.duration }} days</span>
         <span class="pkg-meta-item">⭐ {{ Number(item.rating).toFixed(1) }}
           <span class="pkg-meta-reviews">({{ item.reviews }})</span>
         </span>
@@ -111,16 +111,16 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist', 'manage'])
 }
 .pkg-card__offer-tag {
   position: absolute; top: 12px; left: 12px;
-  background: var(--teal); color: #fff;
+  background: var(--coral); color: #fff;
   font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
   padding: 5px 14px; border-radius: 50px;
-  box-shadow: 0 4px 12px rgba(46, 196, 182, 0.35);
-  animation: pulse-teal 2s infinite;
+  box-shadow: 0 4px 12px rgba(255, 90, 95, 0.35);
+  animation: pulse-coral 2s infinite;
 }
-@keyframes pulse-teal {
-  0% { box-shadow: 0 0 0 0 rgba(46, 196, 182, 0.4); }
-  70% { box-shadow: 0 0 0 6px rgba(46, 196, 182, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(46, 196, 182, 0); }
+@keyframes pulse-coral {
+  0% { box-shadow: 0 0 0 0 rgba(255, 90, 95, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(255, 90, 95, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 90, 95, 0); }
 }
 
 .pkg-card__spots {
@@ -139,7 +139,7 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist', 'manage'])
 .pkg-meta-reviews { color: var(--gray-400); font-size: .75rem; }
 .pkg-meta-item--offer { gap: 6px; }
 .pkg-meta-item--offer .old-val { text-decoration: line-through; opacity: 0.5; font-size: 0.75rem; }
-.pkg-meta-item--offer .new-val { color: var(--teal); font-weight: 700; font-size: 0.82rem; }
+.pkg-meta-item--offer .new-val { color: var(--coral); font-weight: 700; font-size: 0.82rem; }
 
 .pkg-card__desc {
   font-size: .83rem; color: var(--gray-600); line-height: 1.6; margin-bottom: 12px;
@@ -156,8 +156,8 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist', 'manage'])
 .price-old-row { display: flex; align-items: center; gap: 8px; margin-bottom: -2px; }
 .pkg-card__price-old { font-size: .85rem; color: var(--gray-400); text-decoration: line-through; }
 .pkg-card__discount-pill {
-  font-size: .65rem; font-weight: 800; background: var(--teal-lt); color: var(--teal-dk);
+  font-size: .65rem; font-weight: 800; background: var(--coral-lt); color: var(--coral);
   padding: 2px 6px; border-radius: 4px; text-transform: uppercase;
 }
-.pkg-card__price--sale { color: var(--teal); }
+.pkg-card__price--sale { color: var(--coral); }
 </style>

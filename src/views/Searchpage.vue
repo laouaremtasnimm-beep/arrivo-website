@@ -296,8 +296,9 @@ function normalizePackage(p) {
     rating: Number(p.rating || 4.5),
     reviews: Number(p.review_count || 0),
     duration: p.duration_days,
-    type: p.type || 'Adventure',
     spots: Number(p.spots_available || 0),
+    startDate: p.start_date || p.startDate,
+    endDate: p.end_date || p.endDate,
     agency_id: p.agency_id || p.userId || p.owner_id || null,
   }
 }
@@ -318,6 +319,8 @@ function normalizeService(s) {
     reviews: Number(s.review_count || 0),
     type: s.type || 'Transport',
     availability: !!Number(s.is_available),
+    startDate: s.start_date || s.startDate,
+    endDate: s.end_date || s.endDate,
     provider_id: s.provider_id || s.userId || s.owner_id || null,
   }
 }

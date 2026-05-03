@@ -126,6 +126,8 @@ function normalizeService(s) {
     desc:         s.description   ?? s.desc         ?? '',
     img:          null, // ✅ Legacy image removal
     provider_id:  s.provider_id   ?? null,
+    startDate:    s.start_date    ?? s.startDate,
+    endDate:      s.end_date      ?? s.endDate,
     features:     typeof s.features === 'string'
                     ? JSON.parse(s.features || '[]')
                     : (s.features ?? []),

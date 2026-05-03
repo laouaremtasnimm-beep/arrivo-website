@@ -12,8 +12,8 @@
             <div class="offer-hero__discount">{{ offer?.discount }}% OFF</div>
             <div class="offer-hero__right">
               <div class="offer-hero__title">{{ offer?.title }}</div>
-              <div class="offer-hero__dates" v-if="offer?.startDate">
-                📅 {{ offer.startDate }} → {{ offer.endDate }}
+              <div class="offer-hero__dates" v-if="offer?.endDate">
+                ⏳ Ends {{ offer.endDate }}
               </div>
             </div>
           </div>
