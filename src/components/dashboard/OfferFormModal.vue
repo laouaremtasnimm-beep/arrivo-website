@@ -111,7 +111,7 @@
 
             <div class="form-group" v-if="!selectedPackage">
               <label class="form-label">Offer title *</label>
-              <input class="form-input" v-model="form.title" placeholder="e.g. Adventure Bundle Deal" />
+              <input class="form-input" v-model="form.title" placeholder="e.g. Adventure Bundle Deal" :disabled="isEdit" />
               <p class="field-error" v-if="errors.title">{{ errors.title }}</p>
             </div>
 
@@ -119,7 +119,7 @@
               <div class="form-group">
                 <label class="form-label">Discount (%) *</label>
                 <input type="number" min="1" max="80" class="form-input"
-                  v-model.number="form.discount" placeholder="e.g. 20" />
+                  v-model.number="form.discount" placeholder="e.g. 20" :disabled="isEdit" />
                 <p class="field-error" v-if="errors.discount">{{ errors.discount }}</p>
               </div>
               <div class="form-group" v-if="!selectedPackage">
@@ -140,7 +140,7 @@
               <div class="form-group">
                 <label class="form-label">Start Date *</label>
                 <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="form.startDate" :min="today" />
+                  <input type="date" class="form-input" v-model="form.startDate" :min="today" :disabled="isEdit" />
                   <span class="date-icon">🗓️</span>
                 </div>
                 <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
@@ -148,7 +148,7 @@
               <div class="form-group">
                 <label class="form-label">End Date *</label>
                 <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="form.endDate" :min="today" :max="maxOfferEndDate" />
+                  <input type="date" class="form-input" v-model="form.endDate" :min="today" :max="maxOfferEndDate" :disabled="isEdit" />
                   <span class="date-icon">🗓️</span>
                 </div>
                 <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
@@ -160,6 +160,15 @@
               <textarea class="form-input form-textarea" v-model="form.description"
                 placeholder="Describe what makes this offer special…" />
               <p class="field-error" v-if="errors.description">{{ errors.description }}</p>
+            </div>
+
+            <!-- Image URL (For any offer that has linked packages) -->
+            <div class="form-group" v-if="form.selectedPackageIds.length > 0">
+              <label class="form-label">Cover image URL</label>
+              <input class="form-input" v-model="form.img_url" placeholder="https://…" />
+              <div class="img-preview" v-if="form.img_url">
+                <img :src="form.img_url || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg'" alt="Preview" />
+              </div>
             </div>
 
             <!-- What's included -->
@@ -192,7 +201,7 @@
           <!-- ── Footer ── -->
           <div class="modal__footer">
             <button class="btn btn-outline" @click="back">
-              {{ step === 1 ? 'Cancel' : '← Back' }}
+              {{ (step === 1 || (isEdit && step === 2)) ? 'Cancel' : '← Back' }}
             </button>
             <button class="btn btn-coral" @click="next" :disabled="submitting">
               <span v-if="submitting" class="btn-spinner"></span>
@@ -410,6 +419,7 @@ const blankForm = () => ({
   type:               'Bundle',
   selectedPackageIds: [],
   includes:           [],
+  img_url:            '',
 })
 const form = ref(blankForm())
 
@@ -429,6 +439,11 @@ const maxOfferEndDate = computed(() => {
   const firstPkg = selectedPackage.value
   if (firstPkg && firstPkg.start_date) return firstPkg.start_date
   return null
+})
+
+const isExclusive = computed(() => {
+  if (!selectedPackage.value) return false
+  return selectedPackage.value.offer_only == 1 || selectedPackage.value.offer_only == true
 })
 
 const today = computed(() => new Date().toISOString().split('T')[0])
@@ -644,7 +659,7 @@ watch(
   () => [props.modelValue, props.offer],
   ([open, offer]) => {
     if (open) {
-      step.value   = 1
+      step.value   = offer ? 2 : 1
       errors.value = {}
       existingOpen.value = false
       form.value   = offer
@@ -657,6 +672,7 @@ watch(
             type:               offer.type         ?? 'Bundle',
             selectedPackageIds: offer.packageIds   ?? [],
             includes:           offer.includes     ?? [],
+            img_url:            offer.packages?.[0]?.img_url ?? '',
           }
         : blankForm()
 
@@ -715,7 +731,7 @@ function next() {
 }
 
 function back() {
-  if (step.value === 1) { close(); return }
+  if (step.value === 1 || (isEdit.value && step.value === 2)) { close(); return }
   step.value--
   errors.value = {}
 }
@@ -737,6 +753,7 @@ async function submit() {
       source:     'manual',
       offerID:    props.offer?.offerID ?? props.offer?.id ?? null,
       is_active:  1,
+      img_url:    form.value.img_url,
     }
     emit('save', payload)
     close()
@@ -890,6 +907,17 @@ function close() {
   transition: border-color var(--transition);
 }
 .form-input:focus { border-color: var(--coral); }
+.form-input:disabled, .form-textarea:disabled {
+  background-color: var(--gray-50);
+  color: var(--gray-400);
+  border-color: var(--gray-100);
+  cursor: not-allowed;
+  opacity: 0.8;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a0aec0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2' ry='2'%3E%3C/rect%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
 .form-textarea { resize: vertical; min-height: 86px; }
 .form-select   { cursor: pointer; }
 .field-error   { font-size: .78rem; color: var(--coral); margin: 0; }

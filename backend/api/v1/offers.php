@@ -240,6 +240,19 @@ try {
             }
 
             $pdo->commit();
+
+            /* If an img_url is provided and we have linked packages, update them.
+               This reflects changes everywhere (home, search, etc.) just like a package edit. */
+            if (!empty($data['img_url']) && !empty($packageIds)) {
+                $placeholders = implode(',', array_fill(0, count($packageIds), '?'));
+                $imgStmt = $pdo->prepare("
+                    UPDATE packages 
+                    SET    img_url = ? 
+                    WHERE  id IN ($placeholders)
+                ");
+                $imgStmt->execute(array_merge([$data['img_url']], $packageIds));
+            }
+
             echo json_encode(['message' => 'Offer updated']);
 
         } catch (Exception $e) {

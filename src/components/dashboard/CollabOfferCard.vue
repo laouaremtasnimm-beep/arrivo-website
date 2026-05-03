@@ -69,6 +69,7 @@
             <div class="form-group">
               <label class="form-label">Title *</label>
               <input class="form-input" v-model="form.title"
+                :disabled="isEdit"
                 :placeholder="form.offerType === 'package' ? 'e.g. Adventure Bundle Deal' : 'e.g. Early Bird Summer Special'" />
               <p class="field-error" v-if="errors.title">{{ errors.title }}</p>
             </div>
@@ -77,7 +78,7 @@
               <div class="form-group">
                 <label class="form-label">Discount (%) *</label>
                 <input type="number" min="1" max="80" class="form-input"
-                  v-model.number="form.discount" placeholder="e.g. 20" />
+                  v-model.number="form.discount" placeholder="e.g. 20" :disabled="isEdit" />
                 <p class="field-error" v-if="errors.discount">{{ errors.discount }}</p>
               </div>
               <div class="form-group">
@@ -98,7 +99,7 @@
               <div class="form-group">
                 <label class="form-label">Start Date *</label>
                 <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="form.startDate" />
+                  <input type="date" class="form-input" v-model="form.startDate" :disabled="isEdit" />
                   <span class="date-icon">🗓️</span>
                 </div>
                 <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
@@ -106,7 +107,7 @@
               <div class="form-group">
                 <label class="form-label">End Date *</label>
                 <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="form.endDate" />
+                  <input type="date" class="form-input" v-model="form.endDate" :disabled="isEdit" />
                   <span class="date-icon">🗓️</span>
                 </div>
                 <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
@@ -120,6 +121,15 @@
                   ? 'Describe what makes this bundle special…'
                   : 'e.g. Book 3 months in advance and save big on beachfront resorts.'" />
               <p class="field-error" v-if="errors.description">{{ errors.description }}</p>
+            </div>
+
+            <!-- Image URL (For any offer that has linked packages) -->
+            <div class="form-group" v-if="form.selectedPackageIds.length > 0">
+              <label class="form-label">Cover image URL</label>
+              <input class="form-input" v-model="form.img_url" placeholder="https://…" />
+              <div class="img-preview" v-if="form.img_url">
+                <img :src="form.img_url || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg'" alt="Preview" />
+              </div>
             </div>
 
           </div>
@@ -209,7 +219,7 @@
           <!-- ── Footer nav ── -->
           <div class="modal__footer">
             <button class="btn btn-outline" @click="back">
-              {{ step === 1 ? 'Cancel' : '← Back' }}
+              {{ (step === 1 || (isEdit && step === 2)) ? 'Cancel' : '← Back' }}
             </button>
             <button class="btn btn-coral" @click="next" :disabled="submitting">
               <span v-if="submitting" class="btn-spinner"></span>
@@ -249,6 +259,7 @@ const blankForm = () => ({
   description:        '',
   type:               'General',
   selectedPackageIds: [],
+  img_url:            '',
 })
 
 const form = ref(blankForm())
@@ -275,6 +286,16 @@ async function fetchPackages() {
 /* ── Computed helpers ─────────────────────────── */
 const progressWidth = computed(() => `${(step.value / 3) * 100}%`)
 
+const isExclusive = computed(() => {
+  if (!form.value.selectedPackageIds.length) return false
+  // For simplicity during edit, we check if ANY of the selected packages are exclusive
+  // In CollabOfferCard, usually it's existing packages, but if they were created as offer_only...
+  return agencyPackages.value.some(p => 
+    form.value.selectedPackageIds.includes(p.id) && 
+    (p.offer_only == 1 || p.offer_only == true)
+  )
+})
+
 const stepTitle = computed(() => {
   if (step.value === 1) return isEdit.value ? 'Edit Offer' : 'New Offer'
   if (step.value === 2) return 'Offer Details'
@@ -286,7 +307,7 @@ watch(
   () => [props.modelValue, props.offer],
   ([open, offer]) => {
     if (open) {
-      step.value  = 1
+      step.value  = offer ? 2 : 1
       errors.value = {}
       if (offer) {
         form.value = {
@@ -298,6 +319,7 @@ watch(
           description:        offer.description  ?? '',
           type:               offer.type         ?? 'General',
           selectedPackageIds: offer.packageIds   ?? [],
+          img_url:            offer.packages?.[0]?.img_url ?? '',
         }
       } else {
         form.value = blankForm()
@@ -350,7 +372,7 @@ function next() {
 }
 
 function back() {
-  if (step.value === 1) { close(); return }
+  if (step.value === 1 || (isEdit.value && step.value === 2)) { close(); return }
   step.value--
   errors.value = {}
 }
@@ -366,6 +388,7 @@ async function submit() {
       active:   true,
       // Pass package ids so parent / backend can mark them offer_only
       packageIds: form.value.offerType === 'package' ? form.value.selectedPackageIds : [],
+      img_url:    form.value.img_url,
     })
     close()
   } finally {
@@ -487,6 +510,17 @@ function close() {
   transition: border-color var(--transition);
 }
 .form-input:focus { border-color: var(--coral); }
+.form-input:disabled, .form-textarea:disabled {
+  background-color: var(--gray-50);
+  color: var(--gray-400);
+  border-color: var(--gray-100);
+  cursor: not-allowed;
+  opacity: 0.8;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a0aec0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2' ry='2'%3E%3C/rect%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
 .form-textarea { resize: vertical; min-height: 88px; }
 .form-select   { cursor: pointer; }
 .field-error   { font-size: .78rem; color: var(--coral); margin: 0; }

@@ -14,7 +14,7 @@
             <!-- Title -->
             <div class="form-group">
               <label class="form-label">Package title *</label>
-              <input class="form-input" v-model="form.title" placeholder="e.g. Swiss Alps Winter Retreat" />
+              <input class="form-input" v-model="form.title" placeholder="e.g. Swiss Alps Winter Retreat" :disabled="isEdit" />
               <p class="field-error" v-if="errors.title">{{ errors.title }}</p>
             </div>
 
@@ -22,7 +22,7 @@
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Destination *</label>
-                <input class="form-input" v-model="form.destination" placeholder="e.g. Switzerland" />
+                <input class="form-input" v-model="form.destination" placeholder="e.g. Switzerland" :disabled="isEdit" />
                 <p class="field-error" v-if="errors.destination">{{ errors.destination }}</p>
               </div>
               <div class="form-group">
@@ -39,12 +39,12 @@
           <div class="form-row">
   <div class="form-group">
     <label class="form-label">Price per person ($) *</label>
-    <input class="form-input" v-model.number="form.price" type="number" min="0" placeholder="e.g. 2490" />
+    <input class="form-input" v-model.number="form.price" type="number" min="0" placeholder="e.g. 2490" :disabled="isEdit" />
     <p class="field-error" v-if="errors.price">{{ errors.price }}</p>
   </div>
   <div class="form-group">
     <label class="form-label">Spots available</label>
-    <input class="form-input" v-model.number="form.spots" type="number" min="0" placeholder="e.g. 8" />
+    <input class="form-input" v-model.number="form.spots" type="number" min="0" placeholder="e.g. 8" :disabled="isEdit" />
   </div>
 </div>
 
@@ -52,7 +52,7 @@
   <div class="form-group">
     <label class="form-label">Start date *</label>
     <div class="date-input-wrap">
-      <input class="form-input" v-model="form.startDate" type="date" />
+      <input class="form-input" v-model="form.startDate" type="date" :disabled="isEdit" />
       <span class="date-icon">🗓️</span>
     </div>
     <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
@@ -60,7 +60,7 @@
   <div class="form-group">
     <label class="form-label">End date *</label>
     <div class="date-input-wrap">
-      <input class="form-input" v-model="form.endDate" type="date" />
+      <input class="form-input" v-model="form.endDate" type="date" :disabled="isEdit" />
       <span class="date-icon">🗓️</span>
     </div>
     <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
@@ -256,6 +256,17 @@ function close() { emit('update:modelValue', false) }
   outline: none; transition: border-color var(--transition); background: var(--white);
 }
 .form-input:focus { border-color: var(--coral); }
+.form-input:disabled, .form-textarea:disabled {
+  background-color: var(--gray-50);
+  color: var(--gray-400);
+  border-color: var(--gray-100);
+  cursor: not-allowed;
+  opacity: 0.8;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a0aec0' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2' ry='2'%3E%3C/rect%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'%3E%3C/path%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
 .form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
 .field-error { font-size: .76rem; color: #e74c3c; margin-top: 4px; }
 
