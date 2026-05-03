@@ -36,30 +36,34 @@
             </div>
 
             <!-- Duration + Price -->
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Duration (days) *</label>
-                <input class="form-input" v-model.number="form.duration" type="number" min="1" placeholder="e.g. 8" />
-                <p class="field-error" v-if="errors.duration">{{ errors.duration }}</p>
-              </div>
-              <div class="form-group">
-                <label class="form-label">Price per person ($) *</label>
-                <input class="form-input" v-model.number="form.price" type="number" min="0" placeholder="e.g. 2490" />
-                <p class="field-error" v-if="errors.price">{{ errors.price }}</p>
-              </div>
-            </div>
+          <div class="form-row">
+  <div class="form-group">
+    <label class="form-label">Price per person ($) *</label>
+    <input class="form-input" v-model.number="form.price" type="number" min="0" placeholder="e.g. 2490" />
+    <p class="field-error" v-if="errors.price">{{ errors.price }}</p>
+  </div>
+  <div class="form-group">
+    <label class="form-label">Spots available</label>
+    <input class="form-input" v-model.number="form.spots" type="number" min="0" placeholder="e.g. 8" />
+  </div>
+</div>
 
-            <!-- Max group size + Spots available -->
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Max group size</label>
-                <input class="form-input" v-model.number="form.groupSize" type="number" min="1" placeholder="e.g. 12" />
-              </div>
-              <div class="form-group">
-                <label class="form-label">Spots available</label>
-                <input class="form-input" v-model.number="form.spots" type="number" min="0" placeholder="e.g. 8" />
-              </div>
-            </div>
+<div class="form-group">
+  <label class="form-label">Start date *</label>
+  <div class="date-input-wrap">
+    <input class="form-input" v-model="form.startDate" type="date" />
+    <span class="date-icon">🗓️</span>
+  </div>
+  <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
+</div>
+<div class="form-group">
+  <label class="form-label">End date *</label>
+  <div class="date-input-wrap">
+    <input class="form-input" v-model="form.endDate" type="date" />
+    <span class="date-icon">🗓️</span>
+  </div>
+  <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
+</div>
 
             <!-- Description -->
             <div class="form-group">
@@ -127,29 +131,28 @@ const types = ['Adventure', 'Beach', 'Cultural', 'Family', 'Wellness', 'City Bre
 
 // ── Form state ─────────────────────────────────────────────────────────────
 const defaultForm = () => ({
-  title: '', destination: '', type: '', duration: null,
-  price: null, groupSize: null, spots: null, desc: '', img: '',
+  title: '', destination: '', type: '',
+  price: null, spots: null, startDate: '', endDate: '', desc: '', img: '',
   includes: [],
 })
-
 const form        = ref(defaultForm())
 const includesRaw = ref('')
 
 // Populate form when editing
 watch(() => props.package, (pkg) => {
   if (pkg) {
-    form.value = {
-      id:          pkg.id,
-      title:       pkg.title           || '',
-      destination: pkg.destination     || '',
-      type:        pkg.type            || '',
-      duration:    pkg.duration_days   || pkg.duration || null,
-      price:       pkg.price           || null,
-      groupSize:   pkg.group_size_max  || pkg.groupSize || null,
-      spots:       pkg.spots_available || pkg.spots || null,
-      desc:        pkg.description     || pkg.desc || '',
-      img:         pkg.img_url         || pkg.img || '',
-    }
+   form.value = {
+  id:          pkg.id,
+  title:       pkg.title           || '',
+  destination: pkg.destination     || '',
+  type:        pkg.type            || '',
+  price:       pkg.price           || null,
+  spots:       pkg.spots_available || pkg.spots || null,
+  startDate:   pkg.start_date      || '',
+  endDate:     pkg.end_date        || '',
+  desc:        pkg.description     || pkg.desc || '',
+  img:         pkg.img_url         || pkg.img  || '',
+}
     
     // Handle includes - might be JSON string or array
     let inc = []
@@ -170,9 +173,13 @@ function validate() {
   if (!form.value.title?.trim())       e.title       = 'Title is required.'
   if (!form.value.destination?.trim()) e.destination = 'Destination is required.'
   if (!form.value.type)               e.type        = 'Please select a type.'
-  if (!form.value.duration || form.value.duration < 1) e.duration = 'Enter a valid duration.'
-  if (!form.value.price    || form.value.price    < 0) e.price    = 'Enter a valid price.'
-  if (!form.value.desc?.trim())        e.desc        = 'Description is required.'
+
+  if (!form.value.price || form.value.price < 0) e.price = 'Enter a valid price.'
+if (!form.value.startDate) e.startDate = 'Start date is required.'
+if (!form.value.endDate)   e.endDate   = 'End date is required.'
+if (form.value.startDate && form.value.endDate && form.value.endDate < form.value.startDate)
+  e.endDate = 'End date must be after start date.'
+if (!form.value.desc?.trim()) e.desc = 'Description is required.'
   errors.value = e
   return Object.keys(e).length === 0
 }
@@ -185,19 +192,19 @@ async function submit() {
   await new Promise(r => setTimeout(r, 400))
   loading.value = false
 
-  const payload = {
-    id:              props.package?.id,
-    title:           form.value.title,
-    destination:     form.value.destination,
-    type:            form.value.type,
-    duration_days:   form.value.duration,
-    price:           form.value.price,
-    group_size_max:  form.value.groupSize,
-    spots_available: form.value.spots,
-    description:     form.value.desc,
-    img_url:         form.value.img,
-    includes:        includesRaw.value.split('\n').map(s => s.trim()).filter(Boolean),
-  }
+ const payload = {
+  id:              props.package?.id,
+  title:           form.value.title,
+  destination:     form.value.destination,
+  type:            form.value.type,
+  price:           form.value.price,
+  spots_available: form.value.spots,
+  start_date:      form.value.startDate || null,
+  end_date:        form.value.endDate   || null,
+  description:     form.value.desc,
+  img_url:         form.value.img,
+  includes:        includesRaw.value.split('\n').map(s => s.trim()).filter(Boolean),
+}
 
   emit('save', payload)
   close()
@@ -277,5 +284,26 @@ function close() { emit('update:modelValue', false) }
   .modal__body  { padding: 0 24px; }
   .modal__footer{ padding: 16px 24px; }
   .form-row { grid-template-columns: 1fr; }
+}
+.date-input-wrap {
+  position: relative;
+}
+.date-input-wrap .form-input {
+  padding-right: 36px;
+  cursor: pointer;
+}
+/* Hide native calendar icon but keep it clickable */
+.date-input-wrap input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 40px;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.date-icon {
+  position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%); pointer-events: none; font-size: 1rem;
 }
 </style>

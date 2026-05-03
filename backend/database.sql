@@ -196,7 +196,10 @@ INSERT INTO destinations (name, country, region, type, badge, description, long_
 ('Swiss Alps', 'Switzerland', 'Valais',               'Adventure', '❄️ Winter',  'World-class skiing and dramatic mountain scenery.',          'World-class skiing, charming chalets and some of the most dramatic mountain scenery anywhere.',                   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=80', 'December - March',         'Alpine',            'German / French',      'Swiss Franc (CHF)',   1400.00, 4.90,  870);
 
 
-INSERT INTO packages (agency_id, title, destination, type, duration_days, price, spots_available, group_size_max, description, long_desc, img_url, includes, excludes, itinerary, rating, review_count) VALUES
+INSERT INTO packages (agency_id, title, destination, type, price,
+     spots_available, start_date, end_date, description, long_desc,
+     img_url, includes, excludes, itinerary)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 (3, 'Swiss Alps Winter Retreat', 'Switzerland', 'Adventure', 8,  2490.00,  4, 12,
  'Ski, snowboard and relax in cozy mountain chalets.',
  'Escape to the pristine powder slopes of the Swiss Alps on this ultimate winter retreat.',

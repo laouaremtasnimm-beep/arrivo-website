@@ -77,24 +77,6 @@
               />
             </div>
 
-
-            <!-- Availability -->
-            <div class="form-group">
-              <label class="avail-toggle-row">
-                <div class="avail-toggle-row__text">
-                  <span class="form-label" style="margin:0">Available for booking</span>
-                  <span class="avail-toggle-row__hint">Customers can see and book this service</span>
-                </div>
-                <div
-                  class="toggle-switch"
-                  :class="{ active: form.availability }"
-                  @click="form.availability = !form.availability"
-                >
-                  <div class="toggle-switch__knob" />
-                </div>
-              </label>
-            </div>
-
           </div>
 
           <div class="modal__footer">
@@ -237,29 +219,6 @@ function close() { emit('update:modelValue', false) }
 
 .img-preview { margin-top: 10px; height: 100px; border-radius: 10px; overflow: hidden; }
 .img-preview img { width: 100%; height: 100%; object-fit: cover; }
-
-/* Availability toggle */
-.avail-toggle-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; cursor: pointer;
-  background: var(--gray-50); border-radius: 12px; padding: 14px 16px;
-}
-.avail-toggle-row__text { display: flex; flex-direction: column; gap: 3px; }
-.avail-toggle-row__hint { font-size: .78rem; color: var(--gray-400); }
-
-.toggle-switch {
-  width: 46px; height: 26px; border-radius: 13px;
-  background: var(--gray-200); position: relative; flex-shrink: 0;
-  transition: background var(--transition); cursor: pointer;
-}
-.toggle-switch.active { background: var(--teal); }
-.toggle-switch__knob {
-  width: 20px; height: 20px; border-radius: 50%; background: #fff;
-  position: absolute; top: 3px; left: 3px;
-  transition: transform var(--transition);
-  box-shadow: 0 1px 4px rgba(0,0,0,.2);
-}
-.toggle-switch.active .toggle-switch__knob { transform: translateX(20px); }
 
 /* Footer */
 .modal__footer {
