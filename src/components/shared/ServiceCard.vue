@@ -75,10 +75,10 @@
 
       <button
         class="btn card-cta"
-        :class="isOwner ? 'btn-manage' : (booked ? 'btn-outline-danger' : 'btn-teal')"
+        :class="isOwner ? 'btn-manage' : (booked ? (item.activeOffer ? 'btn-outline-teal' : 'btn-outline-danger') : (item.activeOffer ? 'btn-teal' : 'btn-coral'))"
         @click.stop="$emit(isOwner ? 'manage' : (booked ? 'cancel' : 'book'), item)"
       >
-        {{ isOwner ? 'Manage service' : (booked ? 'Cancel Booking' : 'Book service') }}
+        {{ isOwner ? 'Manage service' : (booked ? (item.activeOffer ? 'Cancel Offer' : 'Cancel Booking') : (item.activeOffer ? 'Book Offer' : 'Book service')) }}
       </button>
     </div>
 
@@ -207,7 +207,7 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist', 'manage'])
   gap: 18px;
 
   margin-top: auto;   /* ✅ THIS pushes it down */
-  margin-bottom: 0x;
+  margin-bottom: 14px;
 }
 .svc-card__meta { display: flex; flex-direction: column; gap: 4px; }
 .svc-card__rating {
