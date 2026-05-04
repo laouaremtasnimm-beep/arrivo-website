@@ -51,14 +51,14 @@ export function useCollabActions({ collaborations, user, addOffer, deleteOffer, 
    */
   function normalizeCollab(c) {
     const myId = uid()
-    const isInitiator = c.initiator_id === myId
+    const isInitiator = Number(c.initiator_id) === myId
 
     return {
       // Identity
       collabID: c.id,
       direction: isInitiator ? 'outgoing' : 'incoming',
       status: c.status,
-      isCounter: !!c.is_counter,
+      isCounter: c.status === 'countered' || !!c.is_counter,
       offer_id: c.offer_id ?? null,
       package_id: c.package_id ?? null,
       service_id: c.service_id ?? null,
@@ -232,6 +232,13 @@ export function useCollabActions({ collaborations, user, addOffer, deleteOffer, 
    * then sees the counter in their incoming tab and can accept or decline it.
    */
   async function handleCounterCollab({ original, counter }) {
+    // If counter is already a full collaboration object (e.g. from CollabCounterForm's internal fetch)
+    if (counter && (counter.collabID || counter.id)) {
+      const confirmed = counter.collabID ? counter : normalizeCollab(counter)
+      patchLocal(original.collabID, confirmed)
+      return
+    }
+
     patchLocal(original.collabID, { status: 'countered' })
 
     // Map CollabCounterForm output → collaborations.php counter field names

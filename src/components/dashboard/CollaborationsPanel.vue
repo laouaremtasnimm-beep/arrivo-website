@@ -16,6 +16,7 @@
         >
           {{ tab.label }}
           <span class="tab-count" v-if="countFor(tab.key)">{{ countFor(tab.key) }}</span>
+          <span class="tab-dot" v-if="hasActionable(tab.key)"></span>
         </button>
       </div>
     </div>
@@ -81,6 +82,15 @@ function countFor(key) {
   return props.collaborations.filter(c => c.status === key).length
 }
 
+function hasActionable(key) {
+  return props.collaborations.some(c => {
+    if (c.status !== key) return false
+    if (c.status === 'pending'   && c.direction === 'incoming') return true
+    if (c.status === 'countered' && c.direction === 'outgoing') return true
+    return false
+  })
+}
+
 </script>
 
 <style scoped>
@@ -116,6 +126,13 @@ function countFor(key) {
 .tab-btn:not(.active) .tab-count {
   background: var(--gray-100); color: var(--gray-600);
 }
+.tab-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--coral);
+  position: absolute; top: -4px; right: -4px;
+  border: 2px solid #fff;
+}
+.tab-btn { position: relative; }
 
 /* ── States ─────────────────────────────────────────────────────────────────── */
 .state-box {

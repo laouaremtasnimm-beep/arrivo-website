@@ -4,7 +4,7 @@
     <!-- Status ribbon -->
     <div class="req-ribbon">
       <span class="req-badge" :class="`badge--${collab.status}`">
-        {{ statusLabel }}
+        {{ displayStatus }}
       </span>
       <div class="req-ribbon-right">
         <span v-if="collab.isCounter" class="req-counter-tag">↩ Counter proposal</span>
@@ -32,35 +32,33 @@
     <div class="req-body">
       <div class="req-offer-title">{{ collab.title }}</div>
       <div class="req-tags">
-        <span class="req-tag req-tag--discount">{{ collab.discount }}% off</span>
+        <span class="req-tag req-tag--discount">{{ displayDiscount }}% off</span>
         <span v-if="collab.type"      class="req-tag req-tag--type">{{ collab.type }}</span>
-        <span v-if="collab.startDate" class="req-tag req-tag--date">
-          {{ formatDate(collab.startDate) }} – {{ formatDate(collab.endDate) }}
+        <span v-if="displayStartDate" class="req-tag req-tag--date">
+          {{ formatDate(displayStartDate) }} – {{ formatDate(displayEndDate) }}
         </span>
       </div>
-      <p class="req-desc">{{ collab.description }}</p>
+      <p class="req-desc" v-if="displayMessage">{{ displayMessage }}</p>
     </div>
 
-    <!-- ── Actions (pending only) ── -->
-    <template v-if="collab.status === 'pending'">
-
-      <!-- Normal action row — hidden while counter form is open -->
+    <!-- ── Actions ── -->
+    <template v-if="showActions">
       <div class="req-actions" v-if="!counterOpen">
         <button class="btn-decline" @click="$emit('decline', collab)">Decline</button>
-        <button class="btn-counter" @click="counterOpen = true">↩ Counter</button>
+        <button v-if="canCounter" class="btn-counter" @click="counterOpen = true">↩ Counter</button>
         <button class="btn-accept"  @click="$emit('accept',  collab)">Accept</button>
       </div>
 
-      <!-- Inline counter-proposal form -->
+      <!-- Inline counter-proposal form (only for providers) -->
       <CollabCounterForm
+        v-if="canCounter"
         v-model="counterOpen"
         :collab="collab"
         @submitted="handleCounter"
       />
-
     </template>
 
-    <!-- Resolved state -->
+    <!-- Resolved / Awaiting state -->
     <div v-else class="req-resolved">
       <span v-if="collab.status === 'accepted'" class="resolved-text resolved-text--accepted">
         ✓ Accepted — collaboration is now active
@@ -77,7 +75,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import CollabCounterForm from '@/components/dashboard/CollabCounterForm.vue'
 
 const props = defineProps({
@@ -91,9 +89,38 @@ const statusLabel = {
   pending:   'Pending',
   accepted:  'Accepted',
   declined:  'Declined',
-  countered: 'Counter sent',
+  countered: 'Counter',
   ended:     'Ended',
 }[props.collab.status] || ''
+
+const isIncoming = props.collab.direction === 'incoming' // Provider side
+const isOutgoing = props.collab.direction === 'outgoing' // Agency side
+
+const displayStatus = computed(() => {
+  if (props.collab.status === 'countered') {
+    return isOutgoing ? 'Counter Received' : 'Counter Sent'
+  }
+  return statusLabel
+})
+
+/**
+ * Agencies (outgoing) can respond to counters.
+ * Providers (incoming) can respond to pending requests.
+ */
+const showActions = computed(() => {
+  if (props.collab.status === 'pending'   && isIncoming) return true
+  if (props.collab.status === 'countered' && isOutgoing) return true
+  return false
+})
+
+/** Only Providers can send a counter-proposal in this flow */
+const canCounter = computed(() => props.collab.status === 'pending' && isIncoming)
+
+// ── Terms Resolution (Show counter terms if active) ──
+const displayDiscount = computed(() => props.collab.counterData?.discount_pct ?? props.collab.discount)
+const displayStartDate = computed(() => props.collab.counterData?.start_date  ?? props.collab.startDate)
+const displayEndDate   = computed(() => props.collab.counterData?.end_date    ?? props.collab.endDate)
+const displayMessage   = computed(() => props.collab.counterData?.message     ?? props.collab.description)
 
 const initiatorName = props.collab.initiator?.name || 'Partner'
 

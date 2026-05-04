@@ -254,7 +254,13 @@ function setSection(s) {
 
 // ── Counts ────────────────────────────────────────────────────────────────
 const unreadMessages    = computed(() => getMsgUnreadCount(user.value?.userID ?? user.value?.id).value)
-const pendingCollabs    = computed(() => collaborations.value.filter(c => c.direction === 'incoming' && c.status === 'pending').length)
+const pendingCollabs    = computed(() => {
+  return collaborations.value.filter(c => {
+    if (c.status === 'pending'   && c.direction === 'incoming') return true
+    if (c.status === 'countered' && c.direction === 'outgoing') return true
+    return false
+  }).length
+})
 const notificationCount = computed(() => getUnreadCount(user.value?.role, user.value?.userID ?? user.value?.id, 'notification').value)
 
 // ── Auth ──────────────────────────────────────────────────────────────────

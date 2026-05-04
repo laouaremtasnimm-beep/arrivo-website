@@ -157,9 +157,9 @@ async function submit() {
   submitting.value = true
 
   const payload = {
-    id:       props.collab.id,
+    id:       props.collab.collabID || props.collab.id,
     action:   'counter',
-    actor_id: user.value?.id,
+    actor_id: user.value?.userID || user.value?.id,
   }
   if (form.value.counter_discount_pct) payload.counter_discount_pct = form.value.counter_discount_pct
   if (form.value.counter_start_date)   payload.counter_start_date   = form.value.counter_start_date
