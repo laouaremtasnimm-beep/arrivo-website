@@ -277,7 +277,8 @@ export const offers = [
     endDate: '2026-08-31',
     type: 'Beach',
     active: true,
-    source: 'manual'
+    source: 'manual',
+    serviceId: 2011
   },
   {
     offerID: 'demo-2', agency_id: 1,
@@ -300,7 +301,8 @@ export const offers = [
     endDate: '2026-05-31',
     type: 'Cultural',
     active: true,
-    source: 'manual'
+    source: 'manual',
+    packageIds: [1005]
   },
   {
     offerID: 'demo-4',
@@ -314,4 +316,5 @@ export const offers = [
     source: 'manual'
   }
 ]
+
 

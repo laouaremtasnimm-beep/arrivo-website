@@ -201,6 +201,17 @@ watch(() => props.modelValue, async (isOpen) => {
     exactPackages.value = []
     exactServices.value = []
     const id = props.offer.offerID || props.offer.id
+    
+    // Resolve static demo links if present
+    if (String(id).startsWith('demo-')) {
+      if (props.offer.packageIds?.length) {
+        exactPackages.value = allPackages.value.filter(p => props.offer.packageIds.includes(p.id))
+      }
+      if (props.offer.serviceId) {
+        exactServices.value = allServices.value.filter(s => s.id === props.offer.serviceId)
+      }
+    }
+    
     if (id && !String(id).startsWith('demo-')) {
       try {
         const res = await fetch(`/arrivo-website/backend/api/v1/offers.php?id=${id}`)
