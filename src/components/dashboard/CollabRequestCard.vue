@@ -53,10 +53,9 @@
 
       <!-- Inline counter-proposal form -->
       <CollabCounterForm
-        :open="counterOpen"
-        :original="collab"
-        @submit="handleCounter"
-        @cancel="counterOpen = false"
+        v-model="counterOpen"
+        :collab="collab"
+        @submitted="handleCounter"
       />
 
     </template>

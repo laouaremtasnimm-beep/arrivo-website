@@ -40,148 +40,47 @@
       <TransitionGroup name="collab-item">
         <CollabCard
           v-for="collab in filtered"
-          :key="collab.id"
+          :key="collab.collabID || collab.id"
           :collab="collab"
-          :current-user-id="userId"
-          @action="handleAction"
+          @accept="$emit('accept', $event)"
+          @decline="$emit('decline', $event)"
+          @counter="$emit('counter', $event)"
         />
       </TransitionGroup>
     </div>
-
-    <!-- ── Counter modal ── -->
-    <CounterModal
-      v-model="showCounterModal"
-      :collab="counterTarget"
-      @submitted="onCounterSubmitted"
-    />
 
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useAuth } from '@/composables/useAuth'
-import { useNotifications } from '@/composables/useNotifications'
-import CollabCard from '@/components/dashboard/CollabOfferCard.vue'
-import CounterModal from '@/components/dashboard/CollabCounterForm.vue'
+import { ref, computed } from 'vue'
+import CollabCard from '@/components/dashboard/CollabRequestCard.vue'
 
-const props  = defineProps({ userId: { type: [Number, String], required: true } })
-const emit   = defineEmits(['collab-accepted'])
+const props = defineProps({
+  userId:         { type: [Number, String], default: '' },
+  collaborations: { type: Array,            default: () => [] },
+  loading:        { type: Boolean,          default: false }
+})
 
-const { user }            = useAuth()
-const { push: pushNotif } = useNotifications()
+defineEmits(['accept', 'decline', 'counter'])
 
-const BASE = import.meta.env.VITE_API_URL ?? '/arrivo-website/backend/api/v1'
-
-// ─── State ────────────────────────────────────────────────────────────────────
-const loading      = ref(true)
-const collabs      = ref([])
-const activeTab    = ref('pending')
-const tabs         = [
-  { key: 'pending',  label: 'Pending'  },
-  { key: 'countered',label: 'Countered' },
-  { key: 'accepted', label: 'Accepted' },
-  { key: 'declined', label: 'Declined' },
+const activeTab = ref('pending')
+const tabs = [
+  { key: 'pending',   label: 'Pending'   },
+  { key: 'countered', label: 'Countered' },
+  { key: 'accepted',  label: 'Accepted'  },
+  { key: 'declined',  label: 'Declined'  },
 ]
-
-const showCounterModal = ref(false)
-const counterTarget    = ref(null)
 
 // ─── Derived ──────────────────────────────────────────────────────────────────
 const filtered = computed(() =>
-  collabs.value.filter(c => c.status === activeTab.value)
+  props.collaborations.filter(c => c.status === activeTab.value)
 )
 
 function countFor(key) {
-  const n = collabs.value.filter(c => c.status === key).length
-  return n || 0
+  return props.collaborations.filter(c => c.status === key).length
 }
 
-// ─── Fetch ────────────────────────────────────────────────────────────────────
-async function fetchCollabs() {
-  loading.value = true
-  try {
-    const res  = await fetch(`${BASE}/collaborations.php?user_id=${props.userId}`)
-    const data = await res.json()
-    collabs.value = data.collaborations ?? []
-  } catch (err) {
-    console.error('CollaborationsPanel: fetch error', err)
-  } finally {
-    loading.value = false
-  }
-}
-
-onMounted(fetchCollabs)
-
-// ─── Actions ──────────────────────────────────────────────────────────────────
-async function handleAction({ action, collabId }) {
-  if (action === 'counter') {
-    counterTarget.value    = collabs.value.find(c => c.id === collabId) ?? null
-    showCounterModal.value = true
-    return
-  }
-
-  try {
-    const res  = await fetch(`${BASE}/collaborations.php`, {
-      method:  'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        id:       collabId,
-        action,
-        actor_id: props.userId,
-      }),
-    })
-    const data = await res.json()
-
-    if (!res.ok) {
-      console.error('CollaborationsPanel action error:', data.error)
-      return
-    }
-
-    /* Splice updated collab back into list */
-    const idx = collabs.value.findIndex(c => c.id === collabId)
-    if (idx !== -1) collabs.value[idx] = data.collaboration
-
-    if (action === 'accept') {
-      emit('collab-accepted', data.collaboration)
-      const other = data.collaboration.initiator_id === props.userId
-        ? data.collaboration.partner_id
-        : data.collaboration.initiator_id
-
-      pushNotif({
-        targetUserId: other,
-        type:         'collab',
-        icon:         '✅',
-        title:        'Collaboration accepted!',
-        body:         `"${data.collaboration.title}" is now live.`,
-        link:         '/dashboard',
-        section:      'collaborations',
-      })
-      activeTab.value = 'accepted'
-    }
-
-    if (action === 'decline') {
-      activeTab.value = 'declined'
-    }
-
-  } catch (err) {
-    console.error('CollaborationsPanel: action error', err)
-  }
-}
-
-function onCounterSubmitted(updatedCollab) {
-  const idx = collabs.value.findIndex(c => c.id === updatedCollab.id)
-  if (idx !== -1) collabs.value[idx] = updatedCollab
-  showCounterModal.value = false
-  activeTab.value = 'countered'
-}
-
-// Exposed so parent can call after CollabFormModal emits 'created'
-function prependCollab(collab) {
-  collabs.value.unshift(collab)
-  activeTab.value = 'pending'
-}
-defineExpose({ prependCollab, fetchCollabs })
 </script>
 
 <style scoped>

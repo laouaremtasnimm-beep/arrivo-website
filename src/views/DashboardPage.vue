@@ -125,8 +125,9 @@
           <CollaborationsPanel
             v-else-if="activeSection === 'collaborations'"
             key="collaborations"
+            :user-id="user?.userID ?? user?.id"
             :collaborations="collaborations"
-            @open-form="collabFormOpen = true"
+            :loading="loadingCollabs"
             @accept="handleAcceptCollab"
             @decline="handleDeclineCollab"
             @counter="handleCounterCollab"
@@ -270,24 +271,7 @@ const bookings       = ref([])
 const packages       = ref([])
 const services       = ref([])
 const messages       = dbMessages
-const collaborations = ref([
-  // Collaborations are not yet stored in the DB, so we keep the demo seed here.
-  // Replace with a real fetch when you add a collaborations table.
-  {
-    collabID:    9001,
-    direction:   'incoming',
-    status:      'pending',
-    initiator:   { name: 'Wanderlust Travels', role: 'agency' },
-    partner:     { id: 'p1', name: 'Alpine Escapes', role: 'Service Provider', color: '#2EC4B6' },
-    title:       'Alps Fly & Drive Bundle',
-    discount:    20,
-    type:        'Bundle',
-    startDate:   '2025-07-01',
-    endDate:     '2025-07-31',
-    description: 'We propose a joint summer bundle combining your Mountain Guide service with our Swiss Alps Winter Retreat package at a 20% combined discount.',
-    sentDate:    'Jun 11, 2025',
-  },
-])
+const collaborations = ref([])
 
 // ─────────────────────────────────────────────────────────────────────────
 // FETCH HELPERS  — all use the full /arrivo-website/... path
@@ -699,9 +683,10 @@ async function handleSaveOffer(payload) {
   editingOffer.value  = null // Clear state after saving
 }
 // ─────────────────────────────────────────────────────────────────────────
-// COLLABORATION HANDLERS  (in-memory only until a DB table is added)
+// COLLABORATION HANDLERS
 // ─────────────────────────────────────────────────────────────────────────
 const collabFormOpen = ref(false)
+const loadingCollabs = ref(false)
 const {
   fetchCollaborations,
   handleAcceptCollab,
@@ -715,20 +700,6 @@ const collabLockedPackage = ref(null)
 function handleCollabCreated() {
   collabLockedPackage.value = null
   fetchCollaborations()
-}
-
-function handleSendCollab(payload) {
-  collaborations.value.unshift({ ...payload, direction: 'outgoing', status: 'pending' })
-  setTimeout(() => {
-    collaborations.value.push({
-      ...payload,
-      collabID:  payload.collabID + 0.5,
-      direction: 'incoming',
-      status:    'pending',
-      initiator: { name: payload.partner.name, role: payload.partner.role },
-      partner:   { id: 'self', name: user.value?.name || 'You', role: user.value?.role, color: '#FF5A5F' },
-    })
-  }, 1500)
 }
 
 </script>

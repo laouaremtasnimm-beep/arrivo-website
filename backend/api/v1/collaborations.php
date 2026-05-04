@@ -13,18 +13,19 @@ $method = $_SERVER['REQUEST_METHOD'];
 function createOfferFromCollab(PDO $pdo, array $collab): int {
     $stmt = $pdo->prepare('
         INSERT INTO special_offers
-            (agency_id, provider_id, collab_id, title, discount_pct,
-             start_date, end_date, type, source, description, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, "collab", ?, 1)
+            (agency_id, service_id, collab_id, title, discount_pct,
+             start_date, end_date, type, offer_type, source, description, is_active)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "collab", ?, 1)
     ');
     $stmt->execute([
         $collab['initiator_id'],   // agency always initiates
-        $collab['partner_id'],     // provider
+        $collab['service_id'],     // Correct column: service_id, not provider_id
         $collab['id'],
         $collab['title'],
         $collab['discount_pct'],
         $collab['start_date'],
         $collab['end_date'],
+        $collab['offer_type'] ?? 'Bundle',
         $collab['offer_type'] ?? 'Bundle',
         $collab['message'] ?? null,
     ]);

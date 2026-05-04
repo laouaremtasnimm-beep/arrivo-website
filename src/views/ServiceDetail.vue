@@ -141,11 +141,12 @@
         On success, `created` fires with the new collaboration object.
       -->
       <CollabFormModal
-        v-model="collabModalOpen"
-        :locked-service="collabService"
-        :agency-id="user?.userID ?? user?.id"
-        @created="handleCollabCreated"
-      />
+  v-model="collabModalOpen"
+  initiator-type="agency"
+  :locked-asset="collabService"
+  :own-id="user?.userID ?? user?.id"
+  @created="handleCollabCreated"
+/>
 
       <DetailMoreLike :items="moreLike" see-all-path="/services" @select="goToService" />
     </div>
