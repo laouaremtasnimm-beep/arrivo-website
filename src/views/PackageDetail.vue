@@ -42,6 +42,21 @@
             </span>
           </div>
         </div>
+
+        <!-- 
+          COLLAB BUTTON — visible only to logged-in PROVIDERS.
+          Providers initiate from package pages, locking the package in,
+          then choose which of their services to bundle.
+        -->
+        <div class="pkg-detail__title-actions" v-if="isLoggedIn && isProvider">
+          <button class="pkg-collab-btn" @click="collabModalOpen = true">
+            <span class="pkg-collab-btn__icon">🤝</span>
+            <span class="pkg-collab-btn__text">
+              <strong>Propose Collab</strong>
+              <small>Bundle your service with this package</small>
+            </span>
+          </button>
+        </div>
       </div>
 
       <!-- Two-column body -->
@@ -77,18 +92,18 @@
           <PackageItinerary :itinerary="item.itinerary" />
           <PackageInclusions class="detail-card" :includes="item.includes" :excludes="item.excludes" />
 
-            <EntityCard
-              ref="entityCardRef"
-              :name="item.agency"
-              :bio="item.agencyBio"
-              :img="item.agencyImg"
-              :rating="item.agencyRating || 0"
-              :reviews="item.agencyReviews || 0"
-              :receiver-id="item.agency_id"
-              entity-label="Agency"
-              hide-card
-              @contact="handleContact"
-            />
+          <EntityCard
+            ref="entityCardRef"
+            :name="item.agency"
+            :bio="item.agencyBio"
+            :img="item.agencyImg"
+            :rating="item.agencyRating || 0"
+            :reviews="item.agencyReviews || 0"
+            :receiver-id="item.agency_id"
+            entity-label="Agency"
+            hide-card
+            @contact="handleContact"
+          />
 
         </div>
 
@@ -126,6 +141,18 @@
         @stats-update="updateStats"
       />
 
+      <!--
+        CollabFormModal — receives the full package as `lockedPackage`.
+        The provider picks their service inside the modal.
+        On success, `created` fires with the new collaboration object.
+      -->
+      <CollabFormModal
+        v-model="collabModalOpen"
+        :locked-package="collabPackage"
+        :provider-id="user?.userID ?? user?.id"
+        @created="handleCollabCreated"
+      />
+
       <DetailMoreLike :items="moreLike" see-all-path="/packages" @select="goToPackage" />
     </div>
 
@@ -156,6 +183,7 @@ import EntityCard         from '@/components/detail/EntityCard.vue'
 import PackageItinerary   from '@/components/detail/pkg/PackageItinerary.vue'
 import PackageInclusions  from '@/components/detail/pkg/PackageInclusions.vue'
 import BookingModal       from '@/components/home/BookingModal.vue'
+import CollabFormModal    from '@/components/dashboard/CollabFormModal.vue'
 
 import { calculateDays } from '@/utils/dateUtils.js'
 
@@ -166,11 +194,39 @@ const { isSaved, toggle } = useWishlist()
 const { user, isLoggedIn } = useAuth()
 const { isBooked, createBooking, fetchBookings, loaded, getBookingId, cancelBooking } = useBookings()
 
-const item = ref(null)
-const loading = ref(true)
-const moreLike = ref([])
-const bookingOpen = ref(false)
+const item            = ref(null)
+const loading         = ref(true)
+const moreLike        = ref([])
+const bookingOpen     = ref(false)
 const isAboutModalOpen = ref(false)
+const collabModalOpen = ref(false)
+
+// isProvider — true when the logged-in user is a service provider
+const isProvider = computed(() => user.value?.role === 'provider')
+
+/**
+ * Normalised package object passed to CollabFormModal as `lockedPackage`.
+ * Shape expected by the modal:
+ *   { id, title, type, img_url?, agency_id, agency_name, destination?, duration_days?, price }
+ */
+const collabPackage = computed(() => {
+  if (!item.value) return null
+  return {
+    id:           item.value.id,
+    title:        item.value.title,
+    type:         item.value.type,
+    img_url:      item.value.img,
+    agency_id:    item.value.agency_id,
+    agency_name:  item.value.agency,
+    destination:  item.value.destination,
+    duration_days: item.value.duration,
+    price:        item.value.price,
+  }
+})
+
+function handleCollabCreated(collab) {
+  console.log('Collab created from package detail:', collab)
+}
 
 const API = '/arrivo-website/backend/api/v1'
 
@@ -187,7 +243,6 @@ async function loadItem(id) {
       const data = await res.json()
       if (data.package) {
         const p = data.package
-        
         const offer = p.active_offer_id ? {
           id: p.active_offer_id,
           discount: p.active_offer_discount,
@@ -195,11 +250,9 @@ async function loadItem(id) {
           endDate: p.active_offer_end,
           title: p.active_offer_title
         } : null
-
         const startDate = p.start_date
-        const endDate = p.end_date
-
-        const calcDur = offer 
+        const endDate   = p.end_date
+        const calcDur   = offer
           ? calculateDays(offer.startDate, offer.endDate)
           : calculateDays(startDate, endDate)
 
@@ -207,7 +260,7 @@ async function loadItem(id) {
           agency_id: p.agency_id,
           id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency',
           img: p.img_url || p.img || 'https://i.pinimg.com/1200x/4a/40/9b/4a409b63671d654294bd457c1d1ae220.jpg',
-          type: p.type, 
+          type: p.type,
           duration: calcDur || p.duration_days || 0,
           rating: Number(p.rating ?? 0), reviews: Number(p.review_count || 0),
           spots: Number(p.spots_available || 0), price: Number(p.price || 0),
@@ -215,19 +268,15 @@ async function loadItem(id) {
           includes:  p.includes  && p.includes  !== 'null' ? JSON.parse(p.includes)  : [],
           excludes:  p.excludes  && p.excludes  !== 'null' ? JSON.parse(p.excludes)  : [],
           itinerary: p.itinerary && p.itinerary !== 'null' ? JSON.parse(p.itinerary) : [],
-          activeOffer: offer,
-          startDate,
-          endDate,
+          activeOffer: offer, startDate, endDate,
         }
         const demo = packages.find(x => x.id === id)
         if (demo) {
-          // Merge: demo provides static assets, but DB provides real-time stats
-          item.value = { 
-            ...dbItem, 
-            ...demo, 
-            rating: dbItem.rating > 0 ? dbItem.rating : demo.rating,
-            reviews: dbItem.review_count > 0 ? dbItem.review_count : demo.reviews,
-            agency_id: dbItem.agency_id 
+          item.value = {
+            ...dbItem, ...demo,
+            rating:    dbItem.rating   > 0 ? dbItem.rating   : demo.rating,
+            reviews:   dbItem.review_count > 0 ? dbItem.review_count : demo.reviews,
+            agency_id: dbItem.agency_id
           }
         } else {
           item.value = dbItem
@@ -238,17 +287,15 @@ async function loadItem(id) {
     console.error('Failed to fetch package from DB:', e)
   }
 
-  // Fallback to static data if DB fails
   if (!item.value) {
     const mockP = packages.find(p => p.id === id)
     if (mockP) item.value = { ...mockP, longDesc: mockP.desc, reviews: Number(mockP.reviews), rating: Number(mockP.rating) }
   }
 
-  // Load "More Like This"
   try {
-    const allRes = await fetch(`${API}/packages.php`)
+    const allRes  = await fetch(`${API}/packages.php`)
     const allData = await allRes.json()
-    const dbRows = allData.packages || []
+    const dbRows  = allData.packages || []
     const demoTitles = new Set(packages.map(p => p.title))
     const newOnly = dbRows.filter(p => !demoTitles.has(p.title)).map(p => ({
       id: p.id, title: p.title, agency: p.agency_name || 'Unknown Agency',
@@ -268,14 +315,12 @@ async function loadItem(id) {
   loading.value = false
 }
 
-// FIXED: Properly closed onMounted
 onMounted(() => {
   if (isLoggedIn.value && !loaded.value) fetchBookings(user.value)
   loadItem(route.params.id)
 })
 watch(() => route.params.id, (newId) => { if (newId) loadItem(newId) })
 
-// FIXED: Computed properties moved outside of onMounted
 const isDemo = computed(() => {
   if (!item.value) return false
   return packages.some(p => p.id === item.value.id)
@@ -290,30 +335,18 @@ const isOwner = computed(() => {
   if (!item.value || !user.value) return false
   const uid = String(user.value.userID || user.value.id)
   const oid = String(item.value.agency_id || item.value.userId || item.value.owner_id || item.value.item_owner_id || '')
-  
-  console.log('--- Package Ownership Check ---')
-  console.log('User ID (uid):', uid)
-  console.log('Package Owner ID (oid):', oid)
-  console.log('Is Owner:', oid !== '' && oid === uid)
-  console.log('Raw item data:', item.value)
-  
   return oid !== '' && oid === uid
 })
 
 const ctaLabel = computed(() => {
   if (isOwner.value) return 'Manage Package'
-  if (alreadyBooked.value) {
-    return item.value?.activeOffer ? 'Cancel Offer' : 'Cancel Booking'
-  }
+  if (alreadyBooked.value) return item.value?.activeOffer ? 'Cancel Offer' : 'Cancel Booking'
   return item.value?.activeOffer ? 'Book Offer' : 'Book this package'
 })
 
 function handleCTAClick() {
-  if (isOwner.value) {
-    router.push('/dashboard')
-  } else {
-    bookingOpen.value = true
-  }
+  if (isOwner.value) { router.push('/dashboard'); return }
+  bookingOpen.value = true
 }
 
 function handleToggleWishlist() {
@@ -322,43 +355,30 @@ function handleToggleWishlist() {
 }
 
 const entityCardRef = ref(null)
-
 function goToPackage(pkg) { router.push(`/packages/${pkg.id}`) }
-function handleContact() {
-  if (entityCardRef.value) {
-    entityCardRef.value.modalOpen = true
-  }
-}
+function handleContact() { if (entityCardRef.value) entityCardRef.value.modalOpen = true }
 
 async function handleBooking(payload) {
   if (!isLoggedIn.value) { alert('Please log in to book.'); return }
-
-  let finalPrice = item.value.price;
-  const isOffer = !!item.value.activeOffer;
-  
-  if (isOffer) {
-    finalPrice = Math.round(finalPrice * (1 - item.value.activeOffer.discount / 100));
-  }
+  let finalPrice = item.value.price
+  const isOffer  = !!item.value.activeOffer
+  if (isOffer) finalPrice = Math.round(finalPrice * (1 - item.value.activeOffer.discount / 100))
 
   const result = await createBooking({
-    user_id:  user.value?.userID ?? user.value?.id,
-    type:     isOffer ? 'offer' : 'package',
-    item_id:  isOffer ? item.value.activeOffer.id : item.value.id,
-    package_id: item.value.id,
-    title:    isOffer ? item.value.activeOffer.title : item.value.title,
-    price:    finalPrice,
-    check_in: payload.checkin,
-    guests:   parseInt(payload.guests) || 1,
-    notes:    payload.notes,
-    target_user_id: item.value.agency_id
+    user_id:        user.value?.userID ?? user.value?.id,
+    type:           isOffer ? 'offer' : 'package',
+    item_id:        isOffer ? item.value.activeOffer.id : item.value.id,
+    package_id:     item.value.id,
+    title:          isOffer ? item.value.activeOffer.title : item.value.title,
+    price:          finalPrice,
+    check_in:       payload.checkin,
+    guests:         parseInt(payload.guests) || 1,
+    notes:          payload.notes,
+    target_user_id: item.value.agency_id,
   })
 
-  if (result.ok) {
-    bookingOpen.value = false
-    alert(isOffer ? 'Offer booked successfully!' : 'Package booked successfully!')
-  } else {
-    alert('Failed to book: ' + result.error)
-  }
+  if (result.ok) { bookingOpen.value = false; alert(isOffer ? 'Offer booked successfully!' : 'Package booked successfully!') }
+  else alert('Failed to book: ' + result.error)
 }
 
 async function handleCancel() {
@@ -374,10 +394,7 @@ const mockReviews = [
   { id:2, name:'Thomas K.',  location:'Munich, Germany', rating:5, date:'Feb 2025', text:"Best ski holiday I've ever had." },
 ]
 function updateStats(stats) {
-  if (item.value) {
-    item.value.rating = stats.rating
-    item.value.reviews = stats.count
-  }
+  if (item.value) { item.value.rating = stats.rating; item.value.reviews = stats.count }
 }
 </script>
 
@@ -396,7 +413,11 @@ function updateStats(stats) {
 .pkg-detail__hero { margin: 24px 0 0; }
 
 /* ─── Title Row ──────────────────────────────────── */
-.pkg-detail__title-row { margin: 28px 0 36px; }
+.pkg-detail__title-row {
+  margin: 28px 0 36px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+}
+.pkg-detail__title-left { flex: 1; min-width: 0; }
 .pkg-detail__badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .pkg-badge {
   display: inline-flex; align-items: center; gap: 4px;
@@ -422,8 +443,28 @@ function updateStats(stats) {
 .pkg-detail__agency strong { color: var(--indigo); }
 .pkg-detail__rating { display: flex; align-items: center; gap: 4px; font-weight: 600; color: var(--indigo); }
 .pkg-detail__star { color: #FFB400; }
-.detail-sidebar__price--sale { color: var(--teal); }
 .pkg-detail__rev-count { color: var(--gray-400); font-weight: 400; }
+
+/* ─── Provider collab button ─────────────────────── */
+.pkg-detail__title-actions { flex-shrink: 0; padding-top: 6px; }
+.pkg-collab-btn {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 20px; border-radius: 14px;
+  border: 2px solid rgba(46,196,182,.35);
+  background: rgba(46,196,182,.08);
+  cursor: pointer; transition: all .2s ease;
+  font-family: 'DM Sans', sans-serif; text-align: left;
+}
+.pkg-collab-btn:hover {
+  background: rgba(46,196,182,.16);
+  border-color: var(--teal);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(46,196,182,.18);
+}
+.pkg-collab-btn__icon { font-size: 1.5rem; flex-shrink: 0; }
+.pkg-collab-btn__text { display: flex; flex-direction: column; gap: 2px; }
+.pkg-collab-btn__text strong { font-size: .88rem; font-weight: 700; color: var(--teal); display: block; }
+.pkg-collab-btn__text small  { font-size: .74rem; color: var(--gray-500); display: block; }
 
 /* ─── Two-column body ──────────────────────────────── */
 .pkg-detail__body { display: grid; grid-template-columns: 1fr 360px; gap: 40px; align-items: start; }
@@ -441,17 +482,22 @@ function updateStats(stats) {
 
 /* ─── Responsive ──────────────────────────────────── */
 @media (max-width: 960px) { .pkg-detail__body { grid-template-columns: 1fr; } }
-@media (max-width: 640px)  { .pkg-detail__inner { padding: 0 4% 60px; } }
+@media (max-width: 640px) {
+  .pkg-detail__inner { padding: 0 4% 60px; }
+  .pkg-detail__title-row { flex-direction: column; }
+  .pkg-collab-btn { width: 100%; }
+}
+
 .read-more-btn {
   background: none; border: none; padding: 0;
   color: var(--coral); font-weight: 700; cursor: pointer;
   margin-left: 5px; font-family: inherit; font-size: .95rem;
 }
-.read-more-btn:hover { text-decoration: underline; color: var(--coral-dk); }
+.read-more-btn:hover { text-decoration: underline; }
 
 /* ── Modal Styles ── */
 .desc-modal-overlay {
-  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); z-index: 2000;
+  position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 2000;
   display: flex; align-items: center; justify-content: center; padding: 20px;
 }
 .desc-modal {

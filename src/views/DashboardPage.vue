@@ -166,11 +166,13 @@
       @save="handleSaveOffer"
     />
 
-    <CollabFormModal
-      v-model="collabFormOpen"
-      @send="handleSendCollab"
-    />
-
+  <CollabFormModal
+  v-model="collabFormOpen"
+  :locked-asset="collabLockedPackage"
+  :initiator-type="user?.role"
+  :own-id="user?.userID ?? user?.id"
+  @created="handleCollabCreated"
+/>
     <BookingDetailModal
       v-model="bookingDetailOpen"
       :booking="activeBooking"
@@ -193,6 +195,7 @@ import { useOffers } from '@/composables/useOffers'
 import { useWishlist } from '@/composables/useWishlist'
 import { useNotifications } from '@/composables/useNotifications'
 import { useMessages } from '@/composables/useMessages'
+import { useCollabActions } from '@/composables/useCollabActions'
 
 import DashboardSidebar    from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardHeader     from '@/components/dashboard/DashboardHeader.vue'
@@ -219,7 +222,7 @@ const API = '/arrivo-website/backend/api/v1'
 
 const router = useRouter()
 const { user, isAgency, isProvider, logout } = useAuth()
-const { saveOffer, deleteOffer, saveOfferToDB, deleteOfferFromDB, allOffers } = useOffers()
+const { addOffer, saveOffer, deleteOffer, saveOfferToDB, deleteOfferFromDB, allOffers } = useOffers()
 const { toggle: toggleWishlist } = useWishlist()
 const { startPolling: startNotifPolling, stopPolling: stopNotifPolling, unreadCount: getUnreadCount } = useNotifications()
 const { fetchMessages, getUnreadCount: getMsgUnreadCount, messages: dbMessages, startPolling, stopPolling } = useMessages()
@@ -351,7 +354,7 @@ async function fetchPackages() {
 async function fetchServices() {
   if (!isProvider.value) return
   try {
-    const res  = await fetch(`${API}/services.php?provider_id=${user.value.userID}`)
+    const res = await fetch(`${API}/services.php?user_id=${user.value.userID}`)
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Failed to load services')
     services.value = data.services ?? []
@@ -371,6 +374,8 @@ onMounted(async () => {
   await fetchPackages()
   await fetchServices()
   await fetchMessages(uid)
+  await fetchCollaborations()
+
   startPolling(uid)
 })
 
@@ -499,7 +504,20 @@ async function handleDeletePackage(pkg) {
       body: JSON.stringify({ id: pkg.id }),
     })
     if (!res.ok) throw new Error('Delete failed')
+    
+    // Remove from local packages list
     packages.value = packages.value.filter(p => p.id !== pkg.id)
+    
+    // Cascade cleanup: remove any offers linked to this package in the UI
+    // Note: The backend handles DB cleanup, but we must sync the local useOffers state.
+    allOffers.value.forEach(o => {
+      // Offers can have multiple packages (offer_packages table), but for simplicity
+      // and matching the user's request "an offer cant be empty it must be deleted",
+      // we check if this package was part of it.
+      const isLinked = (o.package_id === pkg.id) || 
+                       (o.packages && o.packages.some(p => p.id === pkg.id))
+      if (isLinked) deleteOffer(o.offerID)
+    })
   } catch (e) {
     loadError.value = e.message
   }
@@ -548,7 +566,14 @@ async function handleDeleteService(svc) {
       body: JSON.stringify({ id: svc.id }),
     })
     if (!res.ok) throw new Error('Delete failed')
+    
+    // Remove from local services list
     services.value = services.value.filter(s => s.id !== svc.id)
+
+    // Cascade cleanup: remove any offers linked to this service in the UI
+    allOffers.value.forEach(o => {
+      if (o.service_id === svc.id) deleteOffer(o.offerID)
+    })
   } catch (e) {
     loadError.value = e.message
   }
@@ -677,32 +702,19 @@ async function handleSaveOffer(payload) {
 // COLLABORATION HANDLERS  (in-memory only until a DB table is added)
 // ─────────────────────────────────────────────────────────────────────────
 const collabFormOpen = ref(false)
+const {
+  fetchCollaborations,
+  handleAcceptCollab,
+  handleDeclineCollab,
+  handleCounterCollab,
+  handleEndCollab,
+  handleWithdrawCollab,
+} = useCollabActions({ collaborations, user, addOffer, deleteOffer, loadError })
 
-function handleCounterCollab({ original, counter }) {
-  const idx = collaborations.value.findIndex(c => c.collabID === original.collabID)
-  if (idx !== -1) collaborations.value[idx].status = 'countered'
-  collaborations.value.unshift({
-    ...counter,
-    collabID:  Date.now(),
-    direction: 'outgoing',
-    status:    'pending',
-    sentDate:  new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-    initiator: { name: user.value?.name || 'You', role: user.value?.role },
-    partner:   original.partner,
-    isCounter: true,
-  })
-  setTimeout(() => {
-    collaborations.value.push({
-      ...counter,
-      collabID:  Date.now() + 0.5,
-      direction: 'incoming',
-      status:    'pending',
-      sentDate:  'Just now',
-      initiator: { name: original.partner?.name, role: original.partner?.role },
-      partner:   { id: 'self', name: user.value?.name || 'You', role: user.value?.role, color: '#FF5A5F' },
-      isCounter: true,
-    })
-  }, 1500)
+const collabLockedPackage = ref(null)
+function handleCollabCreated() {
+  collabLockedPackage.value = null
+  fetchCollaborations()
 }
 
 function handleSendCollab(payload) {
@@ -719,42 +731,6 @@ function handleSendCollab(payload) {
   }, 1500)
 }
 
-async function handleAcceptCollab(collab) {
-  const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
-  if (idx !== -1) collaborations.value[idx].status = 'accepted'
-
-  // This is the object the PHP backend is looking for
-  const offerData = {
-    owner_id: user.value.userID, // CRITICAL: PHP needs agency_id/owner_id
-    title: collab.title,
-    discount: collab.discount,
-    type: collab.type || 'Bundle',
-    startDate: collab.startDate || null,
-    endDate: collab.endDate || null,
-    description: collab.description,
-    source: 'collab',
-    active: 1
-  }
-
-  // Use the function that actually has the FETCH call
-  await saveOfferToDB({
-    ...offerData,
-    owner_id: user.value?.userID || user.value?.id // ensure it's captured reliably
-  })
-}
-function handleDeclineCollab(collab) {
-  const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
-  if (idx !== -1) collaborations.value[idx].status = 'declined'
-}
-
-function handleEndCollab(collab) {
-  if (!confirm(`End the "${collab.title}" collaboration?`)) return
-  collaborations.value = collaborations.value.map(c =>
-    c.title === collab.title ? { ...c, status: 'ended' } : c
-  )
-  const match = allOffers.value.find(o => o.source === 'collab' && o.title === collab.title)
-  if (match) deleteOfferFromDB(match.offerID)
-}
 </script>
 
 <style scoped>

@@ -30,6 +30,18 @@
               @click="handleToggleWishlist"
             >{{ isSavedVal ? '❤️ Saved' : '🤍 Save' }}</button>
             <button class="svc-hero__btn" @click="handleShare">🔗 Share</button>
+            <!--
+              COLLAB BUTTON — visible only to logged-in AGENCIES.
+              Agencies initiate from service pages, locking the service in,
+              then choose which of their packages to bundle.
+            -->
+            <button
+              v-if="isLoggedIn && isAgency"
+              class="svc-hero__btn svc-hero__btn--collab"
+              @click="collabModalOpen = true"
+            >
+              🤝 Propose Collab
+            </button>
           </div>
         </div>
       </div>
@@ -75,17 +87,17 @@
             @select-option="handleOptionSelect"
           />
 
-            <EntityCard
-              ref="entityCardRef"
-              :name="item.provider"
-              :bio="item.providerBio"
-              :rating="item.providerRating || 0"
-              :reviews="item.providerReviews || 0"
-              :receiver-id="item.provider_id"
-              entity-label="Provider"
-              hide-card
-              @contact="handleContact"
-            />
+          <EntityCard
+            ref="entityCardRef"
+            :name="item.provider"
+            :bio="item.providerBio"
+            :rating="item.providerRating || 0"
+            :reviews="item.providerReviews || 0"
+            :receiver-id="item.provider_id"
+            entity-label="Provider"
+            hide-card
+            @contact="handleContact"
+          />
 
         </div>
 
@@ -123,6 +135,18 @@
         @stats-update="updateStats"
       />
 
+      <!--
+        CollabFormModal — receives the full service object as `lockedService`.
+        The agency picks their package inside the modal.
+        On success, `created` fires with the new collaboration object.
+      -->
+      <CollabFormModal
+        v-model="collabModalOpen"
+        :locked-service="collabService"
+        :agency-id="user?.userID ?? user?.id"
+        @created="handleCollabCreated"
+      />
+
       <DetailMoreLike :items="moreLike" see-all-path="/services" @select="goToService" />
     </div>
 
@@ -148,7 +172,8 @@ import EntityCard       from '@/components/detail/EntityCard.vue'
 import ServiceAbout      from '@/components/detail/svc/ServiceAbout.vue'
 import ServiceInclusions from '@/components/detail/svc/ServiceInclusions.vue'
 import ServiceFAQ        from '@/components/detail/svc/ServiceFAQ.vue'
-import BookingModal     from '@/components/home/BookingModal.vue'
+import BookingModal      from '@/components/home/BookingModal.vue'
+import CollabFormModal   from '@/components/dashboard/CollabFormModal.vue'
 
 const route  = useRoute()
 const router = useRouter()
@@ -157,10 +182,37 @@ const { isSaved, toggle }                    = useWishlist()
 const { user, isLoggedIn }                   = useAuth()
 const { isBooked, createBooking, fetchBookings, loaded, getBookingId, cancelBooking } = useBookings()
 
-const item    = ref(null)
-const loading = ref(true)
-const moreLike = ref([])
-const bookingOpen = ref(false)
+const item          = ref(null)
+const loading       = ref(true)
+const moreLike      = ref([])
+const bookingOpen   = ref(false)
+const collabModalOpen = ref(false)
+
+// isAgency — true when the logged-in user is an agency
+const isAgency = computed(() => user.value?.role === 'agency')
+
+/**
+ * Normalised service object passed to CollabFormModal as `lockedService`.
+ * Shape expected by the modal:
+ *   { id, title, type, icon?, img_url?, provider_id, provider_name }
+ */
+const collabService = computed(() => {
+  if (!item.value) return null
+  return {
+    id:            item.value.id,
+    title:         item.value.title,
+    type:          item.value.type,
+    icon:          item.value.icon,
+    img_url:       item.value.img,
+    provider_id:   item.value.provider_id,
+    provider_name: item.value.provider,
+  }
+})
+
+function handleCollabCreated(collab) {
+  // Optionally surface a toast / notification here
+  console.log('Collab created from service detail:', collab)
+}
 
 const API = '/arrivo-website/backend/api/v1'
 
@@ -189,22 +241,15 @@ function normalizeService(s) {
       endDate:   s.active_offer_end      || s.activeOffer?.endDate,
       title:     s.active_offer_title    || s.activeOffer?.title
     } : null,
-    features:     typeof s.features === 'string'
-                    ? JSON.parse(s.features || '[]')
-                    : (s.features ?? []),
-    faqs:         typeof s.faqs === 'string'
-                    ? JSON.parse(s.faqs || '[]')
-                    : (s.faqs ?? []),
+    features: typeof s.features === 'string' ? JSON.parse(s.features || '[]') : (s.features ?? []),
+    faqs:     typeof s.faqs     === 'string' ? JSON.parse(s.faqs     || '[]') : (s.faqs     ?? []),
   }
 }
 
-
-
 async function loadItem(id) {
   window.scrollTo({ top: 0, behavior: 'smooth' })
-  loading.value  = true
-  item.value     = null
-
+  loading.value = true
+  item.value    = null
   moreLike.value = []
   id = Number(id)
 
@@ -213,14 +258,9 @@ async function loadItem(id) {
     if (res.ok) {
       const data = await res.json()
       if (data.service) {
-        const s = normalizeService(data.service)
+        const s    = normalizeService(data.service)
         const demo = services.find(x => x.id === id)
-        if (demo) {
-          // Merge: demo provides fallback for some UI fields, DB/Offer wins for data
-          item.value = { ...normalizeService(demo), ...s }
-        } else {
-          item.value = s
-        }
+        item.value = demo ? { ...normalizeService(demo), ...s } : s
       }
     }
   } catch (e) {
@@ -260,6 +300,7 @@ onMounted(() => {
   loadItem(route.params.id)
 })
 watch(() => route.params.id, (newId) => { if (newId) loadItem(newId) })
+
 const isDemo = computed(() => {
   if (!item.value) return false
   return services.some(s => s.id === item.value.id)
@@ -271,30 +312,18 @@ const isOwner = computed(() => {
   if (!item.value || !user.value) return false
   const uid = String(user.value.userID || user.value.id)
   const oid = String(item.value.provider_id || item.value.userId || item.value.owner_id || item.value.item_owner_id || '')
-  
-  console.log('--- Service Ownership Check ---')
-  console.log('User ID (uid):', uid)
-  console.log('Service Owner ID (oid):', oid)
-  console.log('Is Owner:', oid !== '' && oid === uid)
-  console.log('Raw item data:', item.value)
-  
   return oid !== '' && oid === uid
 })
 
 const ctaLabel = computed(() => {
   if (isOwner.value) return 'Manage Service'
-  if (alreadyBooked.value) {
-    return item.value?.activeOffer ? 'Cancel Offer' : 'Cancel Booking'
-  }
+  if (alreadyBooked.value) return item.value?.activeOffer ? 'Cancel Offer' : 'Cancel Booking'
   return item.value?.activeOffer ? 'Book Offer' : 'Book this service'
 })
 
 function handleCTAClick() {
-  if (isOwner.value) {
-    router.push('/dashboard')
-  } else {
-    bookingOpen.value = true
-  }
+  if (isOwner.value) { router.push('/dashboard'); return }
+  bookingOpen.value = true
 }
 
 function handleToggleWishlist() {
@@ -303,43 +332,31 @@ function handleToggleWishlist() {
 }
 
 const entityCardRef = ref(null)
-
-function goToService(svc)       { router.push(`/services/${svc.id}`) }
-function handleContact() {
-  if (entityCardRef.value) {
-    entityCardRef.value.modalOpen = true
-  }
-}
-function handleOptionSelect()   { bookingOpen.value = true }
+function goToService(svc)  { router.push(`/services/${svc.id}`) }
+function handleContact()   { if (entityCardRef.value) entityCardRef.value.modalOpen = true }
+function handleOptionSelect() { bookingOpen.value = true }
 
 async function handleBooking(payload) {
   if (!isLoggedIn.value) { alert('Please log in to book.'); return }
-
-  const isOffer = !!item.value.activeOffer
+  const isOffer  = !!item.value.activeOffer
   let finalPrice = item.value.price
-  if (isOffer) {
-    finalPrice = Math.round(finalPrice * (1 - item.value.activeOffer.discount / 100))
-  }
+  if (isOffer) finalPrice = Math.round(finalPrice * (1 - item.value.activeOffer.discount / 100))
 
   const result = await createBooking({
-    user_id:  user.value?.userID ?? user.value?.id,
-    type:     isOffer ? 'offer' : 'service',
-    item_id:  isOffer ? item.value.activeOffer.id : item.value.id,
-    service_id: item.value.id,
-    title:    isOffer ? item.value.activeOffer.title : item.value.title,
-    price:    finalPrice,
-    check_in: payload.checkin,
-    guests:   parseInt(payload.guests) || 1,
-    notes:    payload.notes,
-    target_user_id: item.value.provider_id
+    user_id:        user.value?.userID ?? user.value?.id,
+    type:           isOffer ? 'offer' : 'service',
+    item_id:        isOffer ? item.value.activeOffer.id : item.value.id,
+    service_id:     item.value.id,
+    title:          isOffer ? item.value.activeOffer.title : item.value.title,
+    price:          finalPrice,
+    check_in:       payload.checkin,
+    guests:         parseInt(payload.guests) || 1,
+    notes:          payload.notes,
+    target_user_id: item.value.provider_id,
   })
 
-  if (result.ok) {
-    bookingOpen.value = false
-    alert('Service booked successfully!')
-  } else {
-    alert('Failed to book service: ' + result.error)
-  }
+  if (result.ok) { bookingOpen.value = false; alert('Service booked successfully!') }
+  else alert('Failed to book service: ' + result.error)
 }
 
 async function handleCancel() {
@@ -356,11 +373,9 @@ const mockReviews = [
   { id:3, name:'Yuki T.',   location:'Tokyo, Japan',    rating:4, date:'Apr 2025', text:'Good service overall. The vehicle was clean and modern. Slightly difficult to find the driver at first but they were very helpful once we connected.' },
   { id:4, name:'Sophie L.', location:'Paris, France',   rating:5, date:'Mar 2025', text:"Worth every cent. No stress, no searching, just a friendly face with your name on a board. Makes such a difference after a long flight." },
 ]
+
 function updateStats(stats) {
-  if (item.value) {
-    item.value.rating = stats.rating
-    item.value.reviews = stats.count
-  }
+  if (item.value) { item.value.rating = stats.rating; item.value.reviews = stats.count }
 }
 
 function handleShare() {
@@ -420,6 +435,15 @@ function handleShare() {
 }
 .svc-hero__btn:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
 .svc-hero__btn.saved { background: rgba(255,90,95,.1); color: var(--coral); }
+.svc-hero__btn--collab {
+  background: rgba(46,196,182,.15);
+  color: var(--teal);
+  border: 1.5px solid rgba(46,196,182,.3);
+}
+.svc-hero__btn--collab:hover {
+  background: rgba(46,196,182,.25);
+  border-color: var(--teal);
+}
 
 .svc-hero__tags { display: flex; align-items: center; gap: 10px; }
 .svc-hero__offer-tag {

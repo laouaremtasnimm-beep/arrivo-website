@@ -11,25 +11,25 @@ async function _bootstrap() {
   if (_loaded.value || _loading.value) return
   _loading.value = true
   try {
-    const res = await fetch(`${API}/services.php`)
+    const res = await fetch(`${API}/services.php?status=active`)
     const data = await res.json()
     if (data.services) {
       data.services.forEach(dbItem => {
         const mapped = {
-          id:         dbItem.id,
-          title:      dbItem.title,
-          provider:   dbItem.provider_name ?? dbItem.provider ?? 'Provider',
-          icon:       dbItem.icon ?? '🛎️',
-          type:       dbItem.type ?? 'Service',
-          price:      dbItem.price,
-          unit:       dbItem.unit ?? 'trip',
-          rating:     dbItem.rating ?? 4.8,
-          reviews:    dbItem.review_count ?? 0,
-          img:        dbItem.img_url || dbItem.img,
-          img_url:    dbItem.img_url,
+          id: dbItem.id,
+          title: dbItem.title,
+          provider: dbItem.provider_name ?? dbItem.provider ?? 'Provider',
+          icon: dbItem.icon ?? '🛎️',
+          type: dbItem.type ?? 'Service',
+          price: dbItem.price,
+          unit: dbItem.unit ?? 'trip',
+          rating: dbItem.rating ?? 4.8,
+          reviews: dbItem.review_count ?? 0,
+          img: dbItem.img_url || dbItem.img,
+          img_url: dbItem.img_url,
           provider_id: dbItem.provider_id,
         }
-        
+
         const existsIdx = _services.value.findIndex(s => s.id === mapped.id)
         if (existsIdx === -1) {
           _services.value.push(mapped)

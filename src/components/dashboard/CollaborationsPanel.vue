@@ -1,173 +1,242 @@
 <template>
-  <div class="collab-panel">
+  <div class="collabs-panel">
 
-    <!-- Topbar -->
-    <div class="collab-topbar">
-      <div class="collab-tabs">
+    <!-- ── Header ── -->
+    <div class="panel-header">
+      <div class="panel-header__left">
+        <h2 class="panel-title">Collaborations</h2>
+        <p class="panel-sub">Proposals you've sent and received</p>
+      </div>
+      <div class="panel-header__tabs">
         <button
-          v-for="tab in tabs"
-          :key="tab.id"
-          class="collab-tab"
-          :class="{ active: activeTab === tab.id }"
-          @click="activeTab = tab.id"
+          v-for="tab in tabs" :key="tab.key"
+          class="tab-btn"
+          :class="{ active: activeTab === tab.key }"
+          @click="activeTab = tab.key"
         >
           {{ tab.label }}
-          <span v-if="tab.count" class="tab-count">{{ tab.count }}</span>
-        </button>
-      </div>
-      <button class="btn-new" @click="$emit('open-form')">+ New Collaboration</button>
-    </div>
-
-    <!-- INCOMING REQUESTS -->
-    <div v-if="activeTab === 'requests'">
-      <div v-if="incomingRequests.length" class="card-list">
-        <CollabRequestCard
-          v-for="req in incomingRequests"
-          :key="req.collabID"
-          :collab="req"
-          @accept="$emit('accept', req)"
-          @decline="$emit('decline', req)"
-          @counter="payload => $emit('counter', payload)"
-        />
-      </div>
-      <div v-else class="empty-state">
-        <div class="empty-icon">📬</div>
-        <p class="empty-title">No incoming requests</p>
-        <p class="empty-sub">When a partner sends you a collaboration proposal, it will appear here.</p>
-      </div>
-    </div>
-
-    <!-- SENT REQUESTS -->
-    <div v-else-if="activeTab === 'sent'">
-      <div v-if="sentRequests.length" class="card-list">
-        <CollabRequestCard
-          v-for="req in sentRequests"
-          :key="req.collabID"
-          :collab="req"
-          @accept="() => {}"
-          @decline="() => {}"
-          @counter="() => {}"
-        />
-      </div>
-      <div v-else class="empty-state">
-        <div class="empty-icon">📤</div>
-        <p class="empty-title">No sent requests</p>
-        <p class="empty-sub">Use "New Collaboration" to invite a partner.</p>
-      </div>
-    </div>
-
-    <!-- ACTIVE COLLABORATIONS -->
-    <div v-else-if="activeTab === 'active'">
-      <div v-if="activeCollabs.length" class="offer-grid">
-        <CollabOfferCard
-          v-for="c in activeCollabs"
-          :key="c.collabID"
-          :collab="c"
-          @end="$emit('end', c)"
-        />
-      </div>
-      <div v-else class="empty-state">
-        <div class="empty-icon">🤝</div>
-        <p class="empty-title">No active collaborations yet</p>
-        <p class="empty-sub">Once a partner accepts your request, the joint offer will appear here.</p>
-        <button class="btn-new btn-new--center" @click="$emit('open-form')">
-          Propose your first collaboration
+          <span class="tab-count" v-if="countFor(tab.key)">{{ countFor(tab.key) }}</span>
         </button>
       </div>
     </div>
 
-    <!-- ARCHIVE -->
-    <div v-else-if="activeTab === 'archive'">
-      <div v-if="archivedCollabs.length" class="card-list">
-        <CollabRequestCard
-          v-for="req in archivedCollabs"
-          :key="req.collabID"
-          :collab="req"
-          @accept="() => {}"
-          @decline="() => {}"
-          @counter="() => {}"
-        />
-      </div>
-      <div v-else class="empty-state">
-        <div class="empty-icon">🗂️</div>
-        <p class="empty-title">No archived collaborations</p>
-        <p class="empty-sub">Ended and declined collaborations are stored here.</p>
-      </div>
+    <!-- ── Loading ── -->
+    <div v-if="loading" class="state-box">
+      <span class="big-spinner"></span>
+      <p>Loading collaborations…</p>
     </div>
+
+    <!-- ── Empty ── -->
+    <div v-else-if="filtered.length === 0" class="state-box state-box--empty">
+      <div class="empty-icon">🤝</div>
+      <p class="empty-title">No {{ activeTab }} collaborations yet</p>
+      <p class="empty-sub" v-if="activeTab === 'pending'">
+        Browse services and click "Propose Collaboration" to get started.
+      </p>
+    </div>
+
+    <!-- ── List ── -->
+    <div v-else class="collab-list">
+      <TransitionGroup name="collab-item">
+        <CollabCard
+          v-for="collab in filtered"
+          :key="collab.id"
+          :collab="collab"
+          :current-user-id="userId"
+          @action="handleAction"
+        />
+      </TransitionGroup>
+    </div>
+
+    <!-- ── Counter modal ── -->
+    <CounterModal
+      v-model="showCounterModal"
+      :collab="counterTarget"
+      @submitted="onCounterSubmitted"
+    />
 
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import CollabRequestCard from '@/components/dashboard/CollabRequestCard.vue'
-import CollabOfferCard   from '@/components/dashboard/CollabOfferCard.vue'
+import { ref, computed, onMounted } from 'vue'
+import { useAuth } from '@/composables/useAuth'
+import { useNotifications } from '@/composables/useNotifications'
+import CollabCard from '@/components/dashboard/CollabOfferCard.vue'
+import CounterModal from '@/components/dashboard/CollabCounterForm.vue'
 
-const props = defineProps({
-  collaborations: { type: Array, default: () => [] },
-})
-defineEmits(['open-form', 'accept', 'decline', 'counter', 'end'])
+const props  = defineProps({ userId: { type: [Number, String], required: true } })
+const emit   = defineEmits(['collab-accepted'])
 
-const activeTab = ref('requests')
+const { user }            = useAuth()
+const { push: pushNotif } = useNotifications()
 
-const incomingRequests = computed(() =>
-  props.collaborations.filter(c => c.direction === 'incoming' && c.status === 'pending')
-)
-const sentRequests = computed(() =>
-  props.collaborations.filter(c => c.direction === 'outgoing')
-)
-const activeCollabs = computed(() =>
-  props.collaborations.filter(c => c.status === 'accepted')
-)
-const archivedCollabs = computed(() =>
-  props.collaborations.filter(c => c.status === 'declined' || c.status === 'ended' || c.status === 'countered')
+const BASE = import.meta.env.VITE_API_URL ?? '/arrivo-website/backend/api/v1'
+
+// ─── State ────────────────────────────────────────────────────────────────────
+const loading      = ref(true)
+const collabs      = ref([])
+const activeTab    = ref('pending')
+const tabs         = [
+  { key: 'pending',  label: 'Pending'  },
+  { key: 'countered',label: 'Countered' },
+  { key: 'accepted', label: 'Accepted' },
+  { key: 'declined', label: 'Declined' },
+]
+
+const showCounterModal = ref(false)
+const counterTarget    = ref(null)
+
+// ─── Derived ──────────────────────────────────────────────────────────────────
+const filtered = computed(() =>
+  collabs.value.filter(c => c.status === activeTab.value)
 )
 
-const tabs = computed(() => [
-  { id: 'requests', label: 'Incoming', count: incomingRequests.value.length || null },
-  { id: 'sent',     label: 'Sent',     count: null },
-  { id: 'active',   label: 'Active',   count: activeCollabs.value.length || null },
-  { id: 'archive',  label: 'Archive',  count: null },
-])
+function countFor(key) {
+  const n = collabs.value.filter(c => c.status === key).length
+  return n || 0
+}
+
+// ─── Fetch ────────────────────────────────────────────────────────────────────
+async function fetchCollabs() {
+  loading.value = true
+  try {
+    const res  = await fetch(`${BASE}/collaborations.php?user_id=${props.userId}`)
+    const data = await res.json()
+    collabs.value = data.collaborations ?? []
+  } catch (err) {
+    console.error('CollaborationsPanel: fetch error', err)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchCollabs)
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+async function handleAction({ action, collabId }) {
+  if (action === 'counter') {
+    counterTarget.value    = collabs.value.find(c => c.id === collabId) ?? null
+    showCounterModal.value = true
+    return
+  }
+
+  try {
+    const res  = await fetch(`${BASE}/collaborations.php`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        id:       collabId,
+        action,
+        actor_id: props.userId,
+      }),
+    })
+    const data = await res.json()
+
+    if (!res.ok) {
+      console.error('CollaborationsPanel action error:', data.error)
+      return
+    }
+
+    /* Splice updated collab back into list */
+    const idx = collabs.value.findIndex(c => c.id === collabId)
+    if (idx !== -1) collabs.value[idx] = data.collaboration
+
+    if (action === 'accept') {
+      emit('collab-accepted', data.collaboration)
+      const other = data.collaboration.initiator_id === props.userId
+        ? data.collaboration.partner_id
+        : data.collaboration.initiator_id
+
+      pushNotif({
+        targetUserId: other,
+        type:         'collab',
+        icon:         '✅',
+        title:        'Collaboration accepted!',
+        body:         `"${data.collaboration.title}" is now live.`,
+        link:         '/dashboard',
+        section:      'collaborations',
+      })
+      activeTab.value = 'accepted'
+    }
+
+    if (action === 'decline') {
+      activeTab.value = 'declined'
+    }
+
+  } catch (err) {
+    console.error('CollaborationsPanel: action error', err)
+  }
+}
+
+function onCounterSubmitted(updatedCollab) {
+  const idx = collabs.value.findIndex(c => c.id === updatedCollab.id)
+  if (idx !== -1) collabs.value[idx] = updatedCollab
+  showCounterModal.value = false
+  activeTab.value = 'countered'
+}
+
+// Exposed so parent can call after CollabFormModal emits 'created'
+function prependCollab(collab) {
+  collabs.value.unshift(collab)
+  activeTab.value = 'pending'
+}
+defineExpose({ prependCollab, fetchCollabs })
 </script>
 
 <style scoped>
-.collab-panel { display: flex; flex-direction: column; gap: 20px; }
+.collabs-panel { display: flex; flex-direction: column; gap: 20px; }
 
-.collab-topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 12px; flex-wrap: wrap;
+/* ── Header ─────────────────────────────────────────────────────────────────── */
+.panel-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
 }
-.collab-tabs { display: flex; gap: 4px; background: var(--gray-100); border-radius: 50px; padding: 4px; }
-.collab-tab {
-  padding: 7px 18px; border-radius: 50px; border: none; background: transparent;
-  font-size: .84rem; font-weight: 600; color: var(--gray-600);
-  cursor: pointer; transition: all var(--transition);
-  display: flex; align-items: center; gap: 6px; font-family: 'DM Sans', sans-serif;
+.panel-title {
+  font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700;
+  color: var(--indigo); margin: 0;
 }
-.collab-tab.active { background: #fff; color: var(--indigo); box-shadow: 0 2px 8px rgba(45,49,66,.1); }
+.panel-sub { font-size: .82rem; color: var(--gray-600); margin: 2px 0 0; }
+
+.panel-header__tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border-radius: 50px; font-size: .82rem; font-weight: 600;
+  cursor: pointer; border: 1.5px solid var(--gray-200);
+  color: var(--gray-600); background: #fff;
+  transition: all .18s ease;
+}
+.tab-btn:hover { border-color: var(--teal); color: var(--teal); }
+.tab-btn.active {
+  background: var(--teal); border-color: var(--teal); color: #fff;
+}
 .tab-count {
-  background: var(--coral); color: #fff; font-size: .68rem;
-  min-width: 18px; height: 18px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; padding: 0 4px;
+  background: rgba(255,255,255,.25); color: inherit;
+  font-size: .72rem; font-weight: 800; padding: 1px 7px; border-radius: 20px;
 }
-.btn-new {
-  background: var(--indigo); color: #fff; border: none;
-  padding: 9px 22px; border-radius: 50px; font-size: .85rem;
-  font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif;
-  transition: background var(--transition); white-space: nowrap;
+.tab-btn:not(.active) .tab-count {
+  background: var(--gray-100); color: var(--gray-600);
 }
-.btn-new:hover { background: #3d4460; }
-.btn-new--center { margin-top: 12px; }
 
-.card-list  { display: flex; flex-direction: column; gap: 16px; }
-.offer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
-
-.empty-state {
-  text-align: center; padding: 60px 20px;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
+/* ── States ─────────────────────────────────────────────────────────────────── */
+.state-box {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 60px 20px; color: var(--gray-500); text-align: center;
 }
-.empty-icon  { font-size: 2.5rem; }
-.empty-title { font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 700; color: var(--indigo); margin: 0; }
-.empty-sub   { font-size: .85rem; color: var(--gray-600); max-width: 320px; line-height: 1.55; margin: 0; }
+.big-spinner {
+  width: 32px; height: 32px; border: 3px solid var(--gray-200);
+  border-top-color: var(--teal); border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-icon  { font-size: 2.4rem; }
+.empty-title { font-size: 1rem; font-weight: 600; color: var(--indigo); margin: 0; }
+.empty-sub   { font-size: .84rem; margin: 0; max-width: 280px; }
+
+/* ── List ───────────────────────────────────────────────────────────────────── */
+.collab-list { display: flex; flex-direction: column; gap: 12px; }
+
+/* TransitionGroup */
+.collab-item-enter-active, .collab-item-leave-active { transition: all .25s ease; }
+.collab-item-enter-from, .collab-item-leave-to { opacity: 0; transform: translateY(8px); }
 </style>

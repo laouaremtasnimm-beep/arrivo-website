@@ -83,7 +83,7 @@ const props = defineProps({
   anchor:     { type: Object,  default: null  },
   currentUserId: { type: [Number, String], default: null },
 })
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'navigate'])
 
 const router     = useRouter()
 const panelRef   = ref(null)

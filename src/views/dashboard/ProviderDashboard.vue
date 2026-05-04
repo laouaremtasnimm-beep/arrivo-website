@@ -54,7 +54,6 @@
             @view="handleViewBooking"
           />
 
-          <!-- Provider-specific: services, not packages -->
           <div v-else-if="activeSection === 'services'" key="services">
             <ServicesTable
               :services="services"
@@ -82,7 +81,6 @@
             :user-id="user.userID"
           />
 
-          <!-- Provider-specific: offers panel (no collaborations tab) -->
           <OffersPanel
             v-else-if="activeSection === 'offers'"
             key="offers"
@@ -96,7 +94,6 @@
       </div>
     </div>
 
-    <!-- Modals — providers manage services and offers, not packages -->
     <ServiceFormModal
       v-model="serviceFormOpen"
       :service="editingService"
@@ -127,30 +124,28 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
-import { useOffers } from '@/composables/useOffers'
-import { useWishlist } from '@/composables/useWishlist'
+import { useAuth }          from '@/composables/useAuth'
+import { useOffers }        from '@/composables/useOffers'
 import { useNotifications } from '@/composables/useNotifications'
 
-import DashboardSidebar from '@/components/dashboard/DashboardSidebar.vue'
-import DashboardHeader  from '@/components/dashboard/DashboardHeader.vue'
-import OverviewSection  from '@/components/dashboard/OverviewSection.vue'
-import BookingsTable    from '@/components/dashboard/BookingsTable.vue'
-import ServicesTable    from '@/components/dashboard/ServicesTable.vue'
-import MessagesPanel    from '@/components/dashboard/MessagesPanel.vue'
-import DashboardReviews from '@/components/dashboard/DashboardReviews.vue'
-import OffersPanel      from '@/components/dashboard/OffersPanel.vue'
+import DashboardSidebar      from '@/components/dashboard/DashboardSidebar.vue'
+import DashboardHeader       from '@/components/dashboard/DashboardHeader.vue'
+import OverviewSection       from '@/components/dashboard/OverviewSection.vue'
+import BookingsTable         from '@/components/dashboard/BookingsTable.vue'
+import ServicesTable         from '@/components/dashboard/ServicesTable.vue'
+import MessagesPanel         from '@/components/dashboard/MessagesPanel.vue'
+import DashboardReviews      from '@/components/dashboard/DashboardReviews.vue'
+import OffersPanel           from '@/components/dashboard/OffersPanel.vue'
 import ServiceOfferFormModal from '@/components/dashboard/ServiceOfferFormModal.vue'
-import ServiceFormModal from '@/components/dashboard/Serviceformmodal.vue'
-import BookingDetailModal from '@/components/dashboard/BookingDetailModal.vue'
-import OfferDetailModal   from '@/components/home/OfferDetailModal.vue'
+import ServiceFormModal      from '@/components/dashboard/Serviceformmodal.vue'
+import BookingDetailModal    from '@/components/dashboard/BookingDetailModal.vue'
+import OfferDetailModal      from '@/components/home/OfferDetailModal.vue'
 
 const API = '/arrivo-website/backend/api/v1'
 
 const router = useRouter()
-const { user, logout } = useAuth()
-const { saveOffer, saveOfferToDB } = useOffers()
-const { toggle: toggleWishlist } = useWishlist()
+const { user, logout }       = useAuth()
+const { saveOfferToDB }      = useOffers()
 const { push: pushNotification } = useNotifications()
 
 // ── Layout ────────────────────────────────────────────────────────────────
@@ -159,14 +154,13 @@ const mobileSidebarOpen = ref(false)
 const activeSection     = ref('overview')
 const loadError         = ref(null)
 
-// Note: no 'packages' or 'collaborations' sections for providers
 const sectionMap = {
-  overview: { title: 'Overview',      meta: 'Your provider dashboard at a glance'     },
-  bookings: { title: 'Bookings',       meta: 'Manage and track all reservations'       },
-  services: { title: 'My Services',    meta: 'Create and manage your service listings' },
-  messages: { title: 'Messages',       meta: 'Communicate with your customers'         },
-  reviews:  { title: 'Reviews',        meta: 'See what customers are saying'           },
-  offers:   { title: 'Special Offers', meta: 'Run promotions and discount campaigns'   },
+  overview: { title: 'Overview',       meta: 'Your provider dashboard at a glance'     },
+  bookings: { title: 'Bookings',        meta: 'Manage and track all reservations'       },
+  services: { title: 'My Services',     meta: 'Create and manage your service listings' },
+  messages: { title: 'Messages',        meta: 'Communicate with your customers'         },
+  reviews:  { title: 'Reviews',         meta: 'See what customers are saying'           },
+  offers:   { title: 'Special Offers',  meta: 'Run promotions and discount campaigns'   },
 }
 const sectionTitle = computed(() => sectionMap[activeSection.value]?.title || '')
 const sectionMeta  = computed(() => sectionMap[activeSection.value]?.meta  || '')
@@ -177,7 +171,6 @@ function setSection(s) {
 }
 
 const unreadMessages = computed(() => messages.value.filter(m => !m.is_read).length)
-
 function handleLogout() { logout(); router.push('/') }
 
 // ── Data refs ─────────────────────────────────────────────────────────────
@@ -185,7 +178,7 @@ const bookings = ref([])
 const services = ref([])
 const messages = ref([])
 
-// ── Fetches — all use provider_id ─────────────────────────────────────────
+// ── Fetches ───────────────────────────────────────────────────────────────
 async function fetchBookings() {
   try {
     const res  = await fetch(`${API}/bookings.php?provider_id=${user.value.userID}`)
@@ -199,15 +192,11 @@ async function fetchServices() {
   try {
     const res  = await fetch(`${API}/services.php?provider_id=${user.value.userID}`)
     const data = await res.json()
-
-    console.log("SERVICES FROM API:", data.services) // ✅ AFTER
-
     if (!res.ok) throw new Error(data.error || 'Failed to load services')
     services.value = data.services ?? []
   } catch (e) { loadError.value = e.message }
 }
 
-// Normalize raw DB row → shape expected by MessagesPanel / MessageThread
 function normalizeMessage(m) {
   const isSent = String(m.sender_id) === String(user.value?.userID ?? user.value?.id)
   return {
@@ -216,8 +205,8 @@ function normalizeMessage(m) {
     sender_id: parseInt(m.sender_id) || null,
     from:      isSent ? 'You' : (`${m.sender_first ?? ''} ${m.sender_last ?? ''}`).trim() || 'Unknown',
     to:        isSent ? (`${m.receiver_first ?? ''} ${m.receiver_last ?? ''}`).trim() || 'Recipient' : 'You',
-    title:     m.subject  ?? '(no subject)',
-    content:   m.content  ?? '',
+    title:     m.subject   ?? '(no subject)',
+    content:   m.content   ?? '',
     date:      m.created_at ?? '',
     read:      !!parseInt(m.is_read),
     sent:      isSent,
@@ -249,17 +238,11 @@ async function handleConfirmBooking(b) {
       body: JSON.stringify({ id: b.id, status: 'confirmed' }),
     })
     if (!res.ok) throw new Error('Update failed')
-    
     const idx = bookings.value.findIndex(x => x.id === b.id)
     if (idx !== -1) {
       bookings.value[idx].status = 'confirmed'
-      
-      // Notify tourist
       pushNotification({
-        roles: ['tourist'],
-        targetUserId: b.user_id,
-        type: 'booking',
-        icon: '✅',
+        roles: ['tourist'], targetUserId: b.user_id, type: 'booking', icon: '✅',
         title: 'Booking Confirmed!',
         body: `Your reservation for "${b.service_title || b.itemName}" has been confirmed.`,
         link: '/bookings'
@@ -276,17 +259,11 @@ async function handleCancelBooking(b) {
       body: JSON.stringify({ id: b.id, status: 'cancelled' }),
     })
     if (!res.ok) throw new Error('Update failed')
-    
     const idx = bookings.value.findIndex(x => x.id === b.id)
     if (idx !== -1) {
       bookings.value[idx].status = 'cancelled'
-      
-      // Notify tourist
       pushNotification({
-        roles: ['tourist'],
-        targetUserId: b.user_id,
-        type: 'booking',
-        icon: '🚫',
+        roles: ['tourist'], targetUserId: b.user_id, type: 'booking', icon: '🚫',
         title: 'Booking Cancelled',
         body: `Your reservation for "${b.service_title || b.itemName}" has been cancelled.`,
         link: '/bookings'
@@ -301,34 +278,20 @@ const offerDetailOpen   = ref(false)
 const selectedOffer     = ref(null)
 
 function handleViewBooking(b) {
-  const paths = { 
-    package:     '/packages', 
-    service:     '/services', 
-    destination: '/destinations', 
-  }
-  const type = b.booking_type
-  const id   = b.package_id ?? b.service_id ?? b.destination_id
-
-  if (id && type && paths[type]) {
-    router.push(`${paths[type]}/${id}`)
-    return
-  }
-
-  // If it's an offer, show the joint offer detail modal
+  const paths = { package: '/packages', service: '/services', destination: '/destinations' }
+  const type  = b.booking_type
+  const id    = b.package_id ?? b.service_id ?? b.destination_id
+  if (id && type && paths[type]) { router.push(`${paths[type]}/${id}`); return }
   if (type === 'offer') {
     selectedOffer.value = {
-      id: b.item_id || b.offer_id,
-      title: b.itemName || b.offer_title,
-      description: b.description || b.notes || '',
-      discount: b.discount || 0,
-      startDate: b.start_date || '',
-      endDate: b.end_date || '',
+      id: b.item_id || b.offer_id, title: b.itemName || b.offer_title,
+      description: b.description || b.notes || '', discount: b.discount || 0,
+      startDate: b.start_date || '', endDate: b.end_date || '',
       owner_id: b.owner_id || b.agency_id || b.provider_id || b.item_owner_id,
     }
     offerDetailOpen.value = true
     return
   }
-
   activeBooking.value = {
     ...b,
     itemName:   b.itemName   ?? b.offer_title ?? b.package_title ?? b.service_title ?? b.item_title ?? '—',
@@ -348,37 +311,6 @@ function openServiceForm(svc) {
   serviceFormOpen.value = true
 }
 
-async function handleSavePackage(payload) {
-  try {
-    const isNew = !payload.id
-    const res = await fetch(`${API}/packages.php`, {
-      method: isNew ? 'POST' : 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(isNew ? { ...payload, agency_id: user.value.userID } : payload),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Save failed')
-    await fetchPackages()   // ← re-fetch instead of optimistic update
-  } catch (e) {
-    loadError.value = e.message
-  }
-}
-
-async function handleDeletePackage(pkg) {
-  if (!confirm(`Delete "${pkg.title}"? This cannot be undone.`)) return
-  try {
-    const res = await fetch(`${API}/packages.php`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: pkg.id }),
-    })
-    if (!res.ok) throw new Error('Delete failed')
-    await fetchPackages()   // ← re-fetch
-  } catch (e) {
-    loadError.value = e.message
-  }
-}
-
 async function handleSaveService(payload) {
   try {
     const isNew = !payload.id
@@ -389,10 +321,8 @@ async function handleSaveService(payload) {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Save failed')
-    await fetchServices()   // ← re-fetch
-  } catch (e) {
-    loadError.value = e.message
-  }
+    await fetchServices()
+  } catch (e) { loadError.value = e.message }
 }
 
 async function handleDeleteService(svc) {
@@ -404,7 +334,7 @@ async function handleDeleteService(svc) {
       body: JSON.stringify({ id: svc.id }),
     })
     if (!res.ok) throw new Error('Delete failed')
-   await fetchServices()
+    await fetchServices()
   } catch (e) { loadError.value = e.message }
 }
 
@@ -449,51 +379,29 @@ async function handlePermanentDeleteMessage(msg) {
 
 function handleCompose() { console.log('Compose — wire to a compose modal later') }
 
-// ── Review handlers ───────────────────────────────────────────────────────
-function handleReplyReview(r) { console.log('Reply:', r) }
-
-async function handleDeleteReview(r) {
-  if (!confirm('Delete this review?')) return
-  try {
-    const res = await fetch(`${API}/reviews.php`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: r.id }),
-    })
-    if (!res.ok) throw new Error('Delete failed')
-    reviews.value = reviews.value.filter(x => x.id !== r.id)
-  } catch (e) { loadError.value = e.message }
-}
-
 // ── Offer handlers ────────────────────────────────────────────────────────
 const offerFormOpen = ref(false)
 const editingOffer  = ref(null)
 
+function openOfferForm(offer) {                    // ← was orphaned, now fixed
   editingOffer.value  = offer ?? null
   offerFormOpen.value = true
 }
 
-// Persist to DB and update the in-memory store
 async function handleSaveOffer(payload) {
-  // If there's a new service to create from scratch
   if (payload.newService) {
     try {
       const isNewSvc = !payload.newService.id
       const svcRes = await fetch(`${API}/services.php`, {
         method: isNewSvc ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...payload.newService, provider_id: user.value.userID })
+        body: JSON.stringify({ ...payload.newService, provider_id: user.value.userID }),
       })
       const svcData = await svcRes.json()
-      if (svcRes.ok && isNewSvc) {
-        payload.serviceId = svcData.service_id
-      }
-      await fetchServices() // Refresh the main services list
-    } catch (e) {
-      console.error('Failed to save service for offer:', e)
-    }
+      if (svcRes.ok && isNewSvc) payload.serviceId = svcData.service_id
+      await fetchServices()
+    } catch (e) { console.error('Failed to save service for offer:', e) }
   }
-
   await saveOfferToDB({ ...payload, owner_id: user.value?.userID })
 }
 </script>

@@ -1,178 +1,299 @@
 <template>
-  <Transition name="counter-expand">
-    <div v-if="open" class="counter-form">
+  <Teleport to="body">
+    <Transition name="modal-fade">
+      <div v-if="modelValue && collab" class="modal-backdrop" @click.self="close">
+        <div class="modal">
 
-      <div class="counter-form__header">
-        <div class="counter-form__title">Counter Proposal</div>
-        <p class="counter-form__sub">
-          Suggest different terms — your partner will receive this as a new incoming request.
-        </p>
-      </div>
-
-      <div class="counter-form__fields">
-
-        <div class="field-row">
-          <div class="field">
-            <label class="field__label">New title</label>
-            <input
-              v-model="form.title"
-              class="field__input"
-              :placeholder="original.title"
-            />
+          <div class="modal__header">
+            <div>
+              <div class="step-badge">Counter-proposal</div>
+              <h2 class="modal__title">Adjust the terms</h2>
+              <p class="step-sub">
+                You can adjust discount and/or dates. Service and package stay the same.
+              </p>
+            </div>
+            <button class="modal__close" @click="close">✕</button>
           </div>
-          <div class="field field--sm">
-            <label class="field__label">Discount (%)</label>
-            <input
-              v-model.number="form.discount"
-              type="number" min="1" max="80"
-              class="field__input"
-              :placeholder="original.discount"
-            />
+
+          <div class="modal__body">
+
+            <!-- Original terms snapshot -->
+            <div class="original-terms">
+              <div class="original-terms__label">Original terms from agency</div>
+              <div class="original-terms__row">
+                <span>Discount</span><strong>{{ collab.discount_pct }}%</strong>
+              </div>
+              <div class="original-terms__row" v-if="collab.start_date">
+                <span>Dates</span>
+                <strong>{{ fmtDate(collab.start_date) }} → {{ fmtDate(collab.end_date) }}</strong>
+              </div>
+            </div>
+
+            <!-- New discount -->
+            <div class="form-group">
+              <label class="form-label">New discount (%)</label>
+              <div class="discount-input-wrap">
+                <input
+                  type="number" min="1" max="99"
+                  class="form-input"
+                  v-model.number="form.counter_discount_pct"
+                  :placeholder="collab.discount_pct"
+                />
+                <span class="discount-suffix">% off</span>
+              </div>
+              <p class="field-error" v-if="errors.counter_discount_pct">
+                {{ errors.counter_discount_pct }}
+              </p>
+            </div>
+
+            <!-- New dates -->
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">New start date</label>
+                <div class="date-wrap">
+                  <input type="date" class="form-input" v-model="form.counter_start_date" :min="today" />
+                  <span class="date-icon">🗓️</span>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">New end date</label>
+                <div class="date-wrap">
+                  <input type="date" class="form-input"
+                    v-model="form.counter_end_date"
+                    :min="form.counter_start_date || today"
+                  />
+                  <span class="date-icon">🗓️</span>
+                </div>
+                <p class="field-error" v-if="errors.counter_end_date">{{ errors.counter_end_date }}</p>
+              </div>
+            </div>
+
+            <!-- Counter message -->
+            <div class="form-group">
+              <label class="form-label">Message (optional)</label>
+              <textarea
+                class="form-input form-textarea"
+                v-model="form.counter_message"
+                placeholder="Explain why you'd like different terms…"
+                rows="3"
+              />
+            </div>
+
+            <p class="field-error" v-if="errors.general">{{ errors.general }}</p>
+
           </div>
+
+          <div class="modal__footer">
+            <button type="button" class="btn btn-outline" @click="close">Cancel</button>
+            <button type="button" class="btn btn-amber" @click="submit" :disabled="submitting">
+              <span v-if="submitting" class="btn-spinner"></span>
+              Send Counter-Proposal
+            </button>
+          </div>
+
         </div>
-
-        <div class="field-row">
-          <div class="field">
-            <label class="field__label">Start date</label>
-            <input v-model="form.startDate" type="date" class="field__input" />
-          </div>
-          <div class="field">
-            <label class="field__label">End date</label>
-            <input v-model="form.endDate" type="date" class="field__input" />
-          </div>
-        </div>
-
-        <div class="field">
-          <label class="field__label">Updated proposal message</label>
-          <textarea
-            v-model="form.description"
-            class="field__input field__textarea"
-            :placeholder="original.description"
-            rows="3"
-          />
-          <p v-if="errors.description" class="field__error">{{ errors.description }}</p>
-        </div>
-
       </div>
-
-      <div class="counter-form__actions">
-        <button class="btn-cancel" @click="$emit('cancel')">Cancel</button>
-        <button class="btn-send" @click="submit">Send Counter Proposal →</button>
-      </div>
-
-    </div>
-  </Transition>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { useAuth } from '@/composables/useAuth'
 
 const props = defineProps({
-  open:     { type: Boolean, required: true },
-  original: { type: Object,  required: true },
+  modelValue: Boolean,
+  collab:     { type: Object, default: null },
 })
-const emit = defineEmits(['submit', 'cancel'])
+const emit = defineEmits(['update:modelValue', 'submitted'])
 
-const errors = ref({})
+const { user } = useAuth()
+const BASE = import.meta.env.VITE_API_URL ?? '/arrivo-website/backend/api/v1'
 
-// Pre-fill with original values so the user only edits what they want to change
-const form = ref({
-  title:       '',
-  discount:    '',
-  startDate:   '',
-  endDate:     '',
-  description: '',
+const submitting = ref(false)
+const errors     = ref({})
+
+const blankForm = () => ({
+  counter_discount_pct: null,
+  counter_start_date:   '',
+  counter_end_date:     '',
+  counter_message:      '',
 })
+const form = ref(blankForm())
 
-watch(() => props.open, v => {
-  if (v) {
-    form.value = {
-      title:       props.original.title       || '',
-      discount:    props.original.discount    || '',
-      startDate:   props.original.startDate   || '',
-      endDate:     props.original.endDate     || '',
-      description: props.original.description || '',
-    }
-    errors.value = {}
-  }
+const today = computed(() => new Date().toISOString().split('T')[0])
+
+watch(() => props.modelValue, (open) => {
+  if (open) { form.value = blankForm(); errors.value = {} }
 })
 
-function submit() {
+function fmtDate(d) {
+  if (!d) return ''
+  const [y, m, day] = d.split('-')
+  return `${day}/${m}/${y}`
+}
+
+function validate() {
   const e = {}
-  if (!form.value.description?.trim()) e.description = 'Please include a message explaining your changes.'
-  errors.value = e
-  if (Object.keys(e).length) return
+  if (form.value.counter_discount_pct !== null && form.value.counter_discount_pct !== '') {
+    const v = Number(form.value.counter_discount_pct)
+    if (v < 1 || v > 99) e.counter_discount_pct = 'Must be between 1 and 99.'
+  }
+  if (form.value.counter_start_date && form.value.counter_end_date
+      && form.value.counter_end_date < form.value.counter_start_date) {
+    e.counter_end_date = 'End date must be after start date.'
+  }
 
-  emit('submit', {
-    ...props.original,
-    // Override only what changed, fall back to original if left blank
-    title:       form.value.title       || props.original.title,
-    discount:    form.value.discount    || props.original.discount,
-    startDate:   form.value.startDate   || props.original.startDate,
-    endDate:     form.value.endDate     || props.original.endDate,
-    description: form.value.description,
-    isCounter:   true,
-  })
+  const hasAny = form.value.counter_discount_pct || form.value.counter_start_date
+    || form.value.counter_end_date || form.value.counter_message
+  if (!hasAny) e.general = 'Adjust at least one field to send a counter-proposal.'
+
+  errors.value = e
+  return !Object.keys(e).length
+}
+
+async function submit() {
+  if (!validate()) return
+  submitting.value = true
+
+  const payload = {
+    id:       props.collab.id,
+    action:   'counter',
+    actor_id: user.value?.id,
+  }
+  if (form.value.counter_discount_pct) payload.counter_discount_pct = form.value.counter_discount_pct
+  if (form.value.counter_start_date)   payload.counter_start_date   = form.value.counter_start_date
+  if (form.value.counter_end_date)     payload.counter_end_date     = form.value.counter_end_date
+  if (form.value.counter_message)      payload.counter_message      = form.value.counter_message
+
+  try {
+    const res  = await fetch(`${BASE}/collaborations.php`, {
+      method:  'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    })
+    const data = await res.json()
+
+    if (!res.ok) {
+      errors.value.general = data.error ?? 'Something went wrong.'
+      return
+    }
+
+    emit('submitted', data.collaboration)
+    close()
+  } catch (err) {
+    errors.value.general = 'Network error — please try again.'
+  } finally {
+    submitting.value = false
+  }
+}
+
+function close() {
+  emit('update:modelValue', false)
 }
 </script>
 
 <style scoped>
-.counter-form {
-  border-top: 1.5px dashed var(--gray-200);
-  margin-top: 12px; padding-top: 16px;
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(45,49,66,.48);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 300; padding: 20px;
+}
+.modal {
+  background: #fff; border-radius: 22px; width: 100%; max-width: 460px;
+  box-shadow: 0 20px 72px rgba(45,49,66,.22);
+  max-height: 92vh; display: flex; flex-direction: column;
+}
+.modal__header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 20px 26px 14px; border-bottom: 1px solid var(--gray-100); flex-shrink: 0;
+}
+.step-badge {
+  font-size: .7rem; font-weight: 700; letter-spacing: .07em;
+  color: #c47a00; text-transform: uppercase; margin-bottom: 3px;
+}
+.modal__title {
+  font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 700;
+  color: var(--indigo); margin: 0 0 3px;
+}
+.step-sub { font-size: .8rem; color: var(--gray-600); margin: 0; }
+.modal__close {
+  background: var(--gray-100); border: none; border-radius: 50%;
+  width: 32px; height: 32px; cursor: pointer; font-size: .85rem; color: var(--gray-600);
+  flex-shrink: 0;
+}
+.modal__close:hover { background: var(--gray-200); }
+.modal__body {
+  padding: 18px 26px; overflow-y: auto; flex: 1;
   display: flex; flex-direction: column; gap: 14px;
 }
-
-.counter-form__header { display: flex; flex-direction: column; gap: 4px; }
-.counter-form__title {
-  font-size: .82rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .06em; color: var(--indigo);
+.modal__footer {
+  padding: 14px 26px; border-top: 1px solid var(--gray-100);
+  display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0;
 }
-.counter-form__sub { font-size: .78rem; color: var(--gray-600); margin: 0; line-height: 1.5; }
 
-.counter-form__fields { display: flex; flex-direction: column; gap: 10px; }
-
-.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.field { display: flex; flex-direction: column; gap: 4px; }
-.field--sm { max-width: 120px; }
-
-.field__label {
-  font-size: .76rem; font-weight: 600; color: var(--indigo);
+/* Original terms */
+.original-terms {
+  border-radius: 10px; background: var(--gray-50, #f9f9fc);
+  border: 1px solid var(--gray-200); padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 7px;
 }
-.field__input {
+.original-terms__label {
+  font-size: .7rem; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--gray-500); margin-bottom: 2px;
+}
+.original-terms__row {
+  display: flex; justify-content: space-between;
+  font-size: .84rem; color: var(--gray-700);
+}
+
+/* Form */
+.form-group   { display: flex; flex-direction: column; gap: 5px; }
+.form-label   { font-size: .82rem; font-weight: 600; color: var(--indigo); }
+.form-row     { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-input   {
   border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
-  padding: 8px 11px; font-size: .84rem; font-family: 'DM Sans', sans-serif;
+  padding: 10px 13px; font-size: .9rem; font-family: 'DM Sans', sans-serif;
   color: var(--indigo); outline: none; background: #fff;
   transition: border-color var(--transition);
 }
-.field__input:focus { border-color: var(--coral); }
-.field__textarea    { resize: vertical; min-height: 80px; }
-.field__error       { font-size: .74rem; color: var(--coral); margin: 0; }
+.form-input:focus { border-color: #FFB347; }
+.form-textarea { resize: vertical; min-height: 80px; }
+.field-error   { font-size: .78rem; color: var(--coral); margin: 0; }
 
-.counter-form__actions {
-  display: flex; gap: 8px; justify-content: flex-end;
+.discount-input-wrap { position: relative; display: flex; align-items: center; }
+.discount-input-wrap .form-input { padding-right: 52px; width: 100%; }
+.discount-suffix {
+  position: absolute; right: 13px; font-size: .82rem;
+  font-weight: 700; color: var(--gray-500); pointer-events: none;
 }
-.btn-cancel {
-  background: transparent; border: 1.5px solid var(--gray-200);
-  color: var(--gray-600); padding: 7px 16px; border-radius: 50px;
-  font-size: .8rem; cursor: pointer; font-family: 'DM Sans', sans-serif;
-  transition: all var(--transition);
+.date-wrap { position: relative; }
+.date-wrap .form-input { padding-right: 36px; cursor: pointer; }
+.date-wrap input::-webkit-calendar-picker-indicator {
+  position: absolute; right: 0; top: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 1;
 }
-.btn-cancel:hover { border-color: var(--gray-400); color: var(--indigo); }
-.btn-send {
-  background: var(--indigo); color: #fff; border: none;
-  padding: 7px 18px; border-radius: 50px; font-size: .8rem;
-  font-weight: 700; cursor: pointer; font-family: 'DM Sans', sans-serif;
-  transition: background var(--transition);
+.date-icon {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  pointer-events: none; font-size: 1rem; z-index: 2;
 }
-.btn-send:hover { background: #3d4460; }
 
-/* Expand animation */
-.counter-expand-enter-active, .counter-expand-leave-active {
-  transition: opacity .2s ease, transform .2s ease;
-  overflow: hidden;
+/* Buttons */
+.btn {
+  padding: 10px 22px; border-radius: 50px; font-size: .88rem; font-weight: 700;
+  cursor: pointer; font-family: 'DM Sans', sans-serif; border: none;
+  display: flex; align-items: center; gap: 6px; transition: all var(--transition);
 }
-.counter-expand-enter-from, .counter-expand-leave-to {
-  opacity: 0; transform: translateY(-8px);
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn-amber { background: #FFB347; color: #fff; }
+.btn-amber:hover:not(:disabled) { background: #e09c2e; }
+.btn-outline { background: transparent; border: 1.5px solid var(--gray-200); color: var(--gray-600); }
+.btn-outline:hover { border-color: var(--gray-400); }
+.btn-spinner {
+  width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.4);
+  border-top-color: #fff; border-radius: 50%; animation: spin .6s linear infinite;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.modal-fade-enter-active, .modal-fade-leave-active { transition: all .22s ease; }
+.modal-fade-enter-from,   .modal-fade-leave-to     { opacity: 0; transform: scale(.97); }
 </style>

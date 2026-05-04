@@ -16,6 +16,8 @@ DROP TABLE IF EXISTS users;
 
 
 
+
+
 CREATE TABLE users (
     id            INT           AUTO_INCREMENT PRIMARY KEY,
     first_name    VARCHAR(100)  NOT NULL,
@@ -138,21 +140,62 @@ CREATE TABLE reviews (
 );
 
 
-
 CREATE TABLE special_offers (
-    id           INT           AUTO_INCREMENT PRIMARY KEY,
-    agency_id    INT           NOT NULL,
-    title        VARCHAR(255)  NOT NULL,
-    discount_pct INT           NOT NULL DEFAULT 10,
-    start_date   DATE          NULL,
-    end_date     DATE          NULL,
-    description  TEXT          NULL,
-    type         VARCHAR(100)  NOT NULL DEFAULT 'General',
-    source       VARCHAR(50)   NOT NULL DEFAULT 'manual',
-    is_active    TINYINT(1)    NOT NULL DEFAULT 1,
-    created_at   TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (agency_id) REFERENCES users(id) ON DELETE CASCADE
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    agency_id INT NOT NULL,
+    provider_id INT NULL,
+    collab_id INT NULL,          -- back-filled after collab is accepted
+    title VARCHAR(255) NOT NULL,
+    discount_pct INT DEFAULT 10,
+    start_date DATE,
+    end_date DATE,
+    description TEXT,
+    type VARCHAR(100) DEFAULT 'General',
+    source ENUM('manual','collab') NOT NULL DEFAULT 'manual',
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (agency_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (provider_id) REFERENCES users(id) ON DELETE SET NULL
+    -- collab_id FK added below via ALTER TABLE after collaborations exists
 );
+
+
+CREATE TABLE collaborations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    initiator_id INT NOT NULL,
+    partner_id INT NOT NULL,
+    service_id INT NOT NULL,
+    package_id INT NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    discount_pct TINYINT UNSIGNED NOT NULL,
+    offer_type VARCHAR(100) DEFAULT 'Bundle',
+    start_date DATE,
+    end_date DATE,
+    message TEXT,
+    status ENUM('pending','accepted','declined','countered') DEFAULT 'pending',
+    counter_data JSON,
+    offer_id INT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    -- NO unique key here
+    FOREIGN KEY (initiator_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (partner_id)   REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id)   REFERENCES services(id) ON DELETE CASCADE,
+    FOREIGN KEY (package_id)   REFERENCES packages(id) ON DELETE CASCADE,
+    FOREIGN KEY (offer_id)     REFERENCES special_offers(id) ON DELETE SET NULL
+);
+
+
+CREATE TABLE offer_packages (
+    offer_id    INT  NOT NULL,
+    package_id  INT  NOT NULL,
+    PRIMARY KEY (offer_id, package_id),
+    FOREIGN KEY (offer_id)   REFERENCES special_offers (id) ON DELETE CASCADE,
+    FOREIGN KEY (package_id) REFERENCES packages (id) ON DELETE CASCADE
+);
+
 
 CREATE TABLE messages (
     id          INT          AUTO_INCREMENT PRIMARY KEY,
@@ -299,3 +342,8 @@ INSERT INTO messages (sender_id, receiver_id, subject, content, is_read) VALUES
 -- at the very bottom, after all INSERT INTO packages ... statements
 ALTER TABLE packages AUTO_INCREMENT = 1000;
 ALTER TABLE services AUTO_INCREMENT = 2000;
+
+-- ================= CLOSE THE CIRCULAR FK =================
+ALTER TABLE special_offers
+    ADD CONSTRAINT fk_so_collab
+    FOREIGN KEY (collab_id) REFERENCES collaborations(id) ON DELETE SET NULL;

@@ -92,7 +92,7 @@ const props = defineProps({
   autoOpenConversation: { type: Object, default: null },
 })
 
-const emit = defineEmits(['open', 'compose', 'delete', 'conversation-opened'])
+const emit = defineEmits(['open', 'compose', 'delete', 'conversation-opened', 'navigate'])
 
 const { getConversations, markAsRead } = useMessages()
 

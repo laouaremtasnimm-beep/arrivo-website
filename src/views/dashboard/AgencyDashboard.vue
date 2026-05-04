@@ -39,7 +39,7 @@
             :role="user.role"
             :bookings="bookings"
             :messages="messages"
-            :items="isAgency ? packages : services"
+            :items="packages"
             @navigate="setSection"
             @open-message="handleOpenMessage"
           />
@@ -54,7 +54,6 @@
             @view="handleViewBooking"
           />
 
-          <!-- Agency-specific: packages, not services -->
           <div v-else-if="activeSection === 'packages'" key="packages">
             <PackagesTable
               :packages="packages"
@@ -81,7 +80,6 @@
             :user-id="user.userID"
           />
 
-          <!-- Agency-specific: offers + collaborations -->
           <OffersPanel
             v-else-if="activeSection === 'offers'"
             key="offers"
@@ -106,7 +104,6 @@
       </div>
     </div>
 
-    <!-- Modals — agencies manage packages and offers, not services -->
     <PackageFormModal
       v-model="packageFormOpen"
       :package="editingPackage"
@@ -142,10 +139,10 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
-import { useOffers } from '@/composables/useOffers'
-import { useWishlist } from '@/composables/useWishlist'
+import { useAuth }          from '@/composables/useAuth'
+import { useOffers }        from '@/composables/useOffers'
 import { useNotifications } from '@/composables/useNotifications'
+import { useCollabActions } from '@/composables/useCollabActions'   // ← ADDED
 
 import DashboardSidebar    from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardHeader     from '@/components/dashboard/DashboardHeader.vue'
@@ -165,9 +162,8 @@ import OfferDetailModal    from '@/components/home/OfferDetailModal.vue'
 const API = '/arrivo-website/backend/api/v1'
 
 const router = useRouter()
-const { user, logout } = useAuth()
-const { saveOffer, deleteOffer, addOffer, allOffers, saveOfferToDB, deleteOfferFromDB } = useOffers()
-const { toggle: toggleWishlist } = useWishlist()
+const { user, logout } = useAuth()                                  // ← isAgency removed: agency dashboard is always agency
+const { saveOfferToDB, addOffer, deleteOffer, allOffers } = useOffers()
 const { push: pushNotification } = useNotifications()
 
 // ── Layout ────────────────────────────────────────────────────────────────
@@ -178,12 +174,12 @@ const loadError         = ref(null)
 
 const sectionMap = {
   overview:       { title: 'Overview',        meta: 'Your agency dashboard at a glance'      },
-  bookings:       { title: 'Bookings',         meta: 'Manage and track all reservations'     },
-  packages:       { title: 'Travel Packages',  meta: 'Create and manage your packages'       },
-  messages:       { title: 'Messages',         meta: 'Communicate with your customers'       },
-  reviews:        { title: 'Reviews',          meta: 'See what customers are saying'         },
-  offers:         { title: 'Special Offers',   meta: 'Run promotions and discount campaigns' },
-  collaborations: { title: 'Collaborations',   meta: 'Co-create joint offers with partners'  },
+  bookings:       { title: 'Bookings',         meta: 'Manage and track all reservations'      },
+  packages:       { title: 'Travel Packages',  meta: 'Create and manage your packages'        },
+  messages:       { title: 'Messages',         meta: 'Communicate with your customers'        },
+  reviews:        { title: 'Reviews',          meta: 'See what customers are saying'          },
+  offers:         { title: 'Special Offers',   meta: 'Run promotions and discount campaigns'  },
+  collaborations: { title: 'Collaborations',   meta: 'Co-create joint offers with partners'   },
 }
 const sectionTitle = computed(() => sectionMap[activeSection.value]?.title || '')
 const sectionMeta  = computed(() => sectionMap[activeSection.value]?.meta  || '')
@@ -194,33 +190,15 @@ function setSection(s) {
 }
 
 const unreadMessages = computed(() => messages.value.filter(m => !m.is_read).length)
-
 function handleLogout() { logout(); router.push('/') }
 
 // ── Data refs ─────────────────────────────────────────────────────────────
-const bookings = ref([])
-const packages = ref([])
-const messages = ref([])
+const bookings       = ref([])
+const packages       = ref([])
+const messages       = ref([])
+const collaborations = ref([])
 
-// Collaborations are not yet in the DB — seeded with demo data for now
-const collaborations = ref([
-  {
-    collabID:    9001,
-    direction:   'incoming',
-    status:      'pending',
-    initiator:   { name: 'Wanderlust Travels', role: 'agency' },
-    partner:     { id: 'p1', name: 'Alpine Escapes', role: 'Service Provider', color: '#2EC4B6' },
-    title:       'Alps Fly & Drive Bundle',
-    discount:    20,
-    type:        'Bundle',
-    startDate:   '2025-07-01',
-    endDate:     '2025-07-31',
-    description: 'Joint summer bundle combining Mountain Guide with Swiss Alps Retreat at 20% off.',
-    sentDate:    'Jun 11, 2025',
-  },
-])
-
-// ── Fetches — all use agency_id ───────────────────────────────────────────
+// ── Fetches ───────────────────────────────────────────────────────────────
 async function fetchBookings() {
   try {
     const res  = await fetch(`${API}/bookings.php?agency_id=${user.value.userID}`)
@@ -234,15 +212,11 @@ async function fetchPackages() {
   try {
     const res  = await fetch(`${API}/packages.php?agency_id=${user.value.userID}`)
     const data = await res.json()
-
-    console.log("PACKAGES FROM API:", data.packages) // ✅ AFTER
-
     if (!res.ok) throw new Error(data.error || 'Failed to load packages')
     packages.value = data.packages ?? []
   } catch (e) { loadError.value = e.message }
 }
 
-// Normalize raw DB row → shape expected by MessagesPanel / MessageThread
 function normalizeMessage(m) {
   const isSent = String(m.sender_id) === String(user.value?.userID ?? user.value?.id)
   return {
@@ -251,8 +225,8 @@ function normalizeMessage(m) {
     sender_id: parseInt(m.sender_id) || null,
     from:      isSent ? 'You' : (`${m.sender_first ?? ''} ${m.sender_last ?? ''}`).trim() || 'Unknown',
     to:        isSent ? (`${m.receiver_first ?? ''} ${m.receiver_last ?? ''}`).trim() || 'Recipient' : 'You',
-    title:     m.subject  ?? '(no subject)',
-    content:   m.content  ?? '',
+    title:     m.subject   ?? '(no subject)',
+    content:   m.content   ?? '',
     date:      m.created_at ?? '',
     read:      !!parseInt(m.is_read),
     sent:      isSent,
@@ -264,16 +238,16 @@ async function fetchMessages() {
   try {
     const res  = await fetch(`${API}/messages.php?user_id=${user.value.userID}`)
     const data = await res.json()
-    console.log('raw messages from DB:', JSON.stringify(data.messages))  // ← add this
     if (!res.ok) throw new Error(data.error || 'Failed to load messages')
     messages.value = (data.messages ?? []).map(normalizeMessage)
-    console.log('normalized messages:', JSON.stringify(messages.value))  // ← and this
   } catch (e) { loadError.value = e.message }
 }
+
 onMounted(async () => {
   await fetchBookings()
   await fetchPackages()
   await fetchMessages()
+  await fetchCollaborations()
 })
 
 // ── Booking handlers ──────────────────────────────────────────────────────
@@ -285,17 +259,11 @@ async function handleConfirmBooking(b) {
       body: JSON.stringify({ id: b.id, status: 'confirmed' }),
     })
     if (!res.ok) throw new Error('Update failed')
-    
     const idx = bookings.value.findIndex(x => x.id === b.id)
     if (idx !== -1) {
       bookings.value[idx].status = 'confirmed'
-      
-      // Notify tourist
       pushNotification({
-        roles: ['tourist'],
-        targetUserId: b.user_id,
-        type: 'booking',
-        icon: '✅',
+        roles: ['tourist'], targetUserId: b.user_id, type: 'booking', icon: '✅',
         title: 'Booking Confirmed!',
         body: `Your reservation for "${b.package_title || b.itemName}" has been confirmed.`,
         link: '/bookings'
@@ -312,17 +280,11 @@ async function handleCancelBooking(b) {
       body: JSON.stringify({ id: b.id, status: 'cancelled' }),
     })
     if (!res.ok) throw new Error('Update failed')
-    
     const idx = bookings.value.findIndex(x => x.id === b.id)
     if (idx !== -1) {
       bookings.value[idx].status = 'cancelled'
-      
-      // Notify tourist
       pushNotification({
-        roles: ['tourist'],
-        targetUserId: b.user_id,
-        type: 'booking',
-        icon: '🚫',
+        roles: ['tourist'], targetUserId: b.user_id, type: 'booking', icon: '🚫',
         title: 'Booking Cancelled',
         body: `Your reservation for "${b.package_title || b.itemName}" has been cancelled.`,
         link: '/bookings'
@@ -337,34 +299,20 @@ const offerDetailOpen   = ref(false)
 const selectedOffer     = ref(null)
 
 function handleViewBooking(b) {
-  const paths = { 
-    package:     '/packages', 
-    service:     '/services', 
-    destination: '/destinations', 
-  }
-  const type = b.booking_type
-  const id   = b.package_id ?? b.service_id ?? b.destination_id
-
-  if (id && type && paths[type]) {
-    router.push(`${paths[type]}/${id}`)
-    return
-  }
-
-  // If it's an offer, show the joint offer detail modal
+  const paths = { package: '/packages', service: '/services', destination: '/destinations' }
+  const type  = b.booking_type
+  const id    = b.package_id ?? b.service_id ?? b.destination_id
+  if (id && type && paths[type]) { router.push(`${paths[type]}/${id}`); return }
   if (type === 'offer') {
     selectedOffer.value = {
-      id: b.item_id || b.offer_id,
-      title: b.itemName || b.offer_title,
-      description: b.description || b.notes || '',
-      discount: b.discount || 0,
-      startDate: b.start_date || '',
-      endDate: b.end_date || '',
+      id: b.item_id || b.offer_id, title: b.itemName || b.offer_title,
+      description: b.description || b.notes || '', discount: b.discount || 0,
+      startDate: b.start_date || '', endDate: b.end_date || '',
       owner_id: b.owner_id || b.agency_id || b.provider_id || b.item_owner_id,
     }
     offerDetailOpen.value = true
     return
   }
-
   activeBooking.value = {
     ...b,
     itemName:   b.itemName   ?? b.offer_title ?? b.package_title ?? b.service_title ?? b.item_title ?? '—',
@@ -394,10 +342,8 @@ async function handleSavePackage(payload) {
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Save failed')
-    await fetchPackages()   // ← re-fetch instead of optimistic update
-  } catch (e) {
-    loadError.value = e.message
-  }
+    await fetchPackages()
+  } catch (e) { loadError.value = e.message }
 }
 
 async function handleDeletePackage(pkg) {
@@ -410,32 +356,11 @@ async function handleDeletePackage(pkg) {
     })
     const data = await res.json()
     if (!res.ok) throw new Error('Delete failed')
-
-    // Cascade: remove any linked offers from the in-memory store immediately
     if (data.deleted_offer_ids?.length) {
       data.deleted_offer_ids.forEach(id => deleteOffer(id))
     }
-
-    await fetchPackages()   // ← re-fetch
-  } catch (e) {
-    loadError.value = e.message
-  }
-}
-
-async function handleSaveService(payload) {
-  try {
-    const isNew = !payload.id
-    const res = await fetch(`${API}/services.php`, {
-      method: isNew ? 'POST' : 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(isNew ? { ...payload, provider_id: user.value.userID } : payload),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || 'Save failed')
-    await fetchServices()   // ← re-fetch
-  } catch (e) {
-    loadError.value = e.message
-  }
+    await fetchPackages()
+  } catch (e) { loadError.value = e.message }
 }
 
 // ── Message handlers ──────────────────────────────────────────────────────
@@ -466,22 +391,6 @@ async function handlePermanentDeleteMessage(msg) {
 
 function handleCompose() { console.log('Compose — wire to a compose modal later') }
 
-// ── Review handlers ───────────────────────────────────────────────────────
-function handleReplyReview(r) { console.log('Reply:', r) }
-
-async function handleDeleteReview(r) {
-  if (!confirm('Delete this review?')) return
-  try {
-    const res = await fetch(`${API}/reviews.php`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: r.id }),
-    })
-    if (!res.ok) throw new Error('Delete failed')
-    reviews.value = reviews.value.filter(x => x.id !== r.id)
-  } catch (e) { loadError.value = e.message }
-}
-
 // ── Offer handlers ────────────────────────────────────────────────────────
 const offerFormOpen = ref(false)
 const editingOffer  = ref(null)
@@ -492,7 +401,6 @@ function openOfferForm(offer) {
   offerFormOpen.value = true
 }
 
-// Persist to DB and update the in-memory store
 async function handleSaveOffer(payload) {
   await saveOfferToDB({ ...payload, owner_id: user.value?.userID })
 }
@@ -500,82 +408,39 @@ async function handleSaveOffer(payload) {
 // ── Collab handlers ───────────────────────────────────────────────────────
 const collabFormOpen = ref(false)
 
-function handleCounterCollab({ original, counter }) {
-  const idx = collaborations.value.findIndex(c => c.collabID === original.collabID)
-  if (idx !== -1) collaborations.value[idx].status = 'countered'
-  collaborations.value.unshift({
-    ...counter,
-    collabID:  Date.now(),
-    direction: 'outgoing',
-    status:    'pending',
-    sentDate:  new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-    initiator: { name: user.value?.name || 'You', role: user.value?.role },
-    partner:   original.partner,
-    isCounter: true,
-  })
-  setTimeout(() => {
-    collaborations.value.push({
-      ...counter,
-      collabID:  Date.now() + 0.5,
-      direction: 'incoming',
-      status:    'pending',
-      sentDate:  'Just now',
-      initiator: { name: original.partner?.name, role: original.partner?.role },
-      partner:   { id: 'self', name: user.value?.name || 'You', role: user.value?.role, color: '#FF5A5F' },
-      isCounter: true,
+const {
+  fetchCollaborations,
+  handleAcceptCollab,
+  handleDeclineCollab,
+  handleCounterCollab,
+  handleEndCollab,
+  handleWithdrawCollab,
+} = useCollabActions({ collaborations, user, addOffer, deleteOffer, loadError })
+
+async function handleSendCollab(payload) {
+  try {
+    const res = await fetch(`${API}/collaborations.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        initiator_id: Number(user.value?.userID ?? user.value?.id),
+        partner_id:   Number(payload.partnerId),
+        service_id:   Number(payload.serviceId),
+        package_id:   Number(payload.packageId),
+        title:        payload.title,
+        discount_pct: Number(payload.discount),
+        offer_type:   payload.type      || 'Bundle',
+        start_date:   payload.startDate || null,
+        end_date:     payload.endDate   || null,
+        message:      payload.description,
+      }),
     })
-  }, 1500)
-}
-
-function handleSendCollab(payload) {
-  collaborations.value.unshift({ ...payload, direction: 'outgoing', status: 'pending' })
-  setTimeout(() => {
-    collaborations.value.push({
-      ...payload,
-      collabID:  payload.collabID + 0.5,
-      direction: 'incoming',
-      status:    'pending',
-      initiator: { name: payload.partner.name, role: payload.partner.role },
-      partner:   { id: 'self', name: user.value?.name || 'You', role: user.value?.role, color: '#FF5A5F' },
-    })
-  }, 1500)
-}
-
-async function handleAcceptCollab(collab) {
-  const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
-  if (idx !== -1) collaborations.value[idx].status = 'accepted'
-  const outIdx = collaborations.value.findIndex(
-    c => c.direction === 'outgoing' && c.title === collab.title && c.status === 'pending'
-  )
-  if (outIdx !== -1) collaborations.value[outIdx].status = 'accepted'
-  
-  await saveOfferToDB({
-    owner_id:     user.value?.userID,
-    source:       'collab',
-    title:        collab.title,
-    discount:     collab.discount,
-    type:         collab.type || 'Bundle',
-    startDate:    collab.startDate || '',
-    endDate:      collab.endDate   || '',
-    description:  collab.description,
-    active:       true,
-    // Note: partner Name/Color are not persisted to DB in this schema,
-    // they could be appended to the description if needed, or added to schema later.
-  })
-}
-
-function handleDeclineCollab(collab) {
-  const idx = collaborations.value.findIndex(c => c.collabID === collab.collabID)
-  if (idx !== -1) collaborations.value[idx].status = 'declined'
-}
-
-async function handleEndCollab(collab) {
-  if (!confirm(`End the "${collab.title}" collaboration?`)) return
-  collaborations.value = collaborations.value.map(c =>
-    c.title === collab.title ? { ...c, status: 'ended' } : c
-  )
-  const match = allOffers.value.find(o => o.source === 'collab' && o.title === collab.title)
-  if (match) await deleteOfferFromDB(match.offerID)
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Failed to send collaboration request')
+    await fetchCollaborations()
+  } catch (e) {
+    loadError.value = `Could not send collaboration request: ${e.message}`
+  }
 }
 </script>
 
