@@ -124,7 +124,7 @@
             <button 
               class="btn card-cta" 
               :class="isOwner(offer) ? 'btn-manage' : (isBooked('offer', offer.offerID) ? 'btn-outline-teal' : 'btn-teal')"
-              @click.stop="isOwner(offer) ? router.push('/dashboard') : handleSelect(offer)"
+              @click.stop="isOwner(offer) ? router.push('/dashboard') : (isBooked('offer', offer.offerID) ? handleCancel(offer) : handleSelect(offer))"
             >
               {{ isOwner(offer) ? 'Manage Offer' : (isBooked('offer', offer.offerID) ? 'Cancel offer' : 'Grab deal →') }}
             </button>
@@ -218,6 +218,14 @@ const filteredOffers = computed(() => {
 async function handleSelect(offer) {
   selectedOffer.value = offer
   offerModalOpen.value = true
+}
+
+async function handleCancel(offer) {
+  const id = getBookingId('offer', offer.offerID)
+  if (!id) return
+  const res = await cancelBooking(id)
+  if (res.ok) alert('Offer cancelled successfully.')
+  else alert('Failed to cancel: ' + res.error)
 }
 
 function toggleSave(id) {

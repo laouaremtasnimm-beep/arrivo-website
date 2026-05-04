@@ -201,7 +201,7 @@ watch(() => props.modelValue, async (isOpen) => {
     exactPackages.value = []
     exactServices.value = []
     const id = props.offer.offerID || props.offer.id
-    if (id) {
+    if (id && !String(id).startsWith('demo-')) {
       try {
         const res = await fetch(`/arrivo-website/backend/api/v1/offers.php?id=${id}`)
         const data = await res.json()
@@ -314,6 +314,8 @@ async function handleBookingSubmit(payload) {
     user_id:  user.value?.userID ?? user.value?.id,
     type:     'offer',
     item_id:  props.offer?.offerID || props.offer?.id,
+    package_id: bookingTarget.value?.type === 'package' ? bookingTarget.value?.id : (bookingTarget.value?.agency_id ? bookingTarget.value?.id : null),
+    service_id: bookingTarget.value?.type === 'service' ? bookingTarget.value?.id : (bookingTarget.value?.provider_id ? bookingTarget.value?.id : null),
     title:    props.offer?.title,
     price:    finalPrice,
     check_in: payload.checkin,

@@ -34,18 +34,17 @@ export function useBookings() {
     async function createBooking(payload) {
         // Map frontend payload to backend schema
         const body = {
-            user_id:      payload.user_id,
-            booking_type: payload.type,
-            check_in:     payload.check_in ?? null,
-            guests:       payload.guests ?? 1,
-            total_price:  payload.price ?? 0,
-            notes:        payload.notes ?? '',
-            title:        payload.title ?? '',
-            // Map item_id to specific ID fields expected by bookings.php
-            ...(payload.type === 'package'     && { package_id:     payload.item_id }),
-            ...(payload.type === 'service'     && { service_id:     payload.item_id }),
-            ...(payload.type === 'destination' && { destination_id: payload.item_id }),
-            ...(payload.type === 'offer'       && { offer_id:       payload.item_id }),
+            user_id:        payload.user_id,
+            package_id:     payload.package_id     ?? (payload.type === 'package'     ? payload.item_id : null),
+            service_id:     payload.service_id     ?? (payload.type === 'service'     ? payload.item_id : null),
+            destination_id: payload.destination_id ?? (payload.type === 'destination' ? payload.item_id : null),
+            offer_id:       payload.offer_id       ?? (payload.type === 'offer'       ? payload.item_id : null),
+            title:          payload.title,
+            booking_type:   payload.type,
+            total_price:    payload.price ?? 0,
+            check_in:       payload.check_in ?? null,
+            guests:         payload.guests ?? 1,
+            notes:          payload.notes ?? '',
         }
 
         try {
@@ -65,14 +64,14 @@ export function useBookings() {
                 total_price: payload.price,
                 check_in: payload.check_in,
                 guests: payload.guests,
-                package_title: payload.type === 'package' ? payload.title : undefined,
-                service_title: payload.type === 'service' ? payload.title : undefined,
+                package_title: payload.type === 'package' ? payload.title : (payload.package_id ? payload.title : undefined),
+                service_title: payload.type === 'service' ? payload.title : (payload.service_id ? payload.title : undefined),
                 destination_name: payload.type === 'destination' ? payload.title : undefined,
                 offer_title: payload.type === 'offer' ? payload.title : undefined,
-                package_id: payload.type === 'package' ? payload.item_id : undefined,
-                service_id: payload.type === 'service' ? payload.item_id : undefined,
-                destination_id: payload.type === 'destination' ? payload.item_id : undefined,
-                offer_id: payload.type === 'offer' ? payload.item_id : undefined,
+                package_id: body.package_id,
+                service_id: body.service_id,
+                destination_id: body.destination_id,
+                offer_id: body.offer_id,
             }
 
             _bookings.value.unshift(newBooking)
@@ -158,21 +157,19 @@ export function useBookings() {
             
             // 1. Direct match
             if (b.booking_type === type) {
-                if (type === 'package'     && Number(b.package_id)     === Number(itemId)) return true
-                if (type === 'service'     && Number(b.service_id)     === Number(itemId)) return true
-                if (type === 'destination' && Number(b.destination_id) === Number(itemId)) return true
-                if (type === 'offer'       && Number(b.offer_id)       === Number(itemId)) return true
+                if (type === 'package'     && String(b.package_id)     === String(itemId)) return true
+                if (type === 'service'     && String(b.service_id)     === String(itemId)) return true
+                if (type === 'destination' && String(b.destination_id) === String(itemId)) return true
+                if (type === 'offer'       && String(b.offer_id)       === String(itemId)) return true
             }
             
-            // 2. Cross-match: If we are checking a base item (service/package), see if it was booked via an offer
-            if (linkedId && b.booking_type === 'offer' && Number(b.offer_id) === Number(linkedId)) {
-                return true
-            }
+            // 2. Cross-match: Base item booked via offer
+            if (linkedId && b.booking_type === 'offer' && String(b.offer_id) === String(linkedId)) return true
 
-            // 3. Cross-match: If we are checking an offer, see if its linked base item was booked directly
+            // 3. Cross-match: Offer checked, base item booked
             if (type === 'offer' && linkedId) {
-                if (b.booking_type === 'package' && Number(b.package_id) === Number(linkedId)) return true
-                if (b.booking_type === 'service' && Number(b.service_id) === Number(linkedId)) return true
+                if (b.booking_type === 'package' && String(b.package_id) === String(linkedId)) return true
+                if (b.booking_type === 'service' && String(b.service_id) === String(linkedId)) return true
             }
             
             return false
@@ -183,18 +180,21 @@ export function useBookings() {
         const b = _bookings.value.find(b => {
             if (b.status === 'cancelled') return false
             
+            // Direct match
             if (b.booking_type === type) {
-                if (type === 'package'     && Number(b.package_id)     === Number(itemId)) return true
-                if (type === 'service'     && Number(b.service_id)     === Number(itemId)) return true
-                if (type === 'destination' && Number(b.destination_id) === Number(itemId)) return true
-                if (type === 'offer'       && Number(b.offer_id)       === Number(itemId)) return true
+                if (type === 'package'     && String(b.package_id)     === String(itemId)) return true
+                if (type === 'service'     && String(b.service_id)     === String(itemId)) return true
+                if (type === 'destination' && String(b.destination_id) === String(itemId)) return true
+                if (type === 'offer'       && String(b.offer_id)       === String(itemId)) return true
             }
 
-            if (linkedId && b.booking_type === 'offer' && Number(b.offer_id) === Number(linkedId)) return true
+            // Cross-match: Base item booked via offer
+            if (linkedId && b.booking_type === 'offer' && String(b.offer_id) === String(linkedId)) return true
 
+            // Cross-match: Offer checked, base item booked
             if (type === 'offer' && linkedId) {
-                if (b.booking_type === 'package' && Number(b.package_id) === Number(linkedId)) return true
-                if (b.booking_type === 'service' && Number(b.service_id) === Number(linkedId)) return true
+                if (b.booking_type === 'package' && String(b.package_id) === String(linkedId)) return true
+                if (b.booking_type === 'service' && String(b.service_id) === String(linkedId)) return true
             }
             
             return false

@@ -344,6 +344,7 @@ async function handleBooking(payload) {
     user_id:  user.value?.userID ?? user.value?.id,
     type:     isOffer ? 'offer' : 'package',
     item_id:  isOffer ? item.value.activeOffer.id : item.value.id,
+    package_id: item.value.id,
     title:    isOffer ? item.value.activeOffer.title : item.value.title,
     price:    finalPrice,
     check_in: payload.checkin,

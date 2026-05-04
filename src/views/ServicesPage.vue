@@ -149,6 +149,7 @@ function isItemOwner(item) {
 }
 
 onMounted(async () => {
+  if (isLoggedIn.value && !loaded.value) fetchBookings(user.value)
   try {
     const res  = await fetch('/arrivo-website/backend/api/v1/services.php')
     const data = await res.json()
