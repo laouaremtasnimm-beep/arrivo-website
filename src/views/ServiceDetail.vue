@@ -19,7 +19,10 @@
         <div class="svc-hero__glow"></div>
         <div class="svc-hero__emoji">{{ item.icon || '🛎️' }}</div>
         <div class="svc-hero__meta">
-          <span class="svc-hero__type">{{ item.type }}</span>
+          <div class="svc-hero__tags">
+            <span class="svc-hero__type">{{ item.type }}</span>
+            <span class="svc-hero__offer-tag" v-if="item.activeOffer">Special Offer</span>
+          </div>
           <div class="svc-hero__actions">
             <button
               class="svc-hero__btn"
@@ -97,6 +100,9 @@
           :cta-label="ctaLabel"
           :cta-danger="alreadyBooked && !isOwner"
           :is-owner="isOwner"
+          :active-offer="item.activeOffer"
+          :start-date="item.startDate"
+          :end-date="item.endDate"
           entity-label="Contact Provider"
           note="You won't be charged until confirmed."
           @book="handleCTAClick"
@@ -158,6 +164,40 @@ const bookingOpen = ref(false)
 
 const API = '/arrivo-website/backend/api/v1'
 
+function normalizeService(s) {
+  return {
+    id:           s.id,
+    title:        s.title,
+    provider:     s.provider_name ?? s.provider    ?? 'Provider',
+    icon:         s.icon          ?? '🛎️',
+    iconBg:       s.icon_bg       ?? 'svc-icon-coral',
+    type:         s.type          ?? 'Transport',
+    price:        Number(s.price),
+    unit:         s.price_unit    ?? s.unit         ?? 'day',
+    rating:       Number(s.rating ?? 4.5),
+    reviews:      Number(s.review_count ?? s.reviews ?? 0),
+    availability: s.is_available  == 1,
+    longDesc:     s.long_desc      ?? s.description  ?? '',
+    img:          s.img_url       ?? null,
+    provider_id:  s.provider_id   ?? null,
+    startDate:    s.start_date    ?? s.startDate,
+    endDate:      s.end_date      ?? s.endDate,
+    activeOffer: (s.active_offer_id || s.activeOffer?.id) ? {
+      id:        s.active_offer_id       || s.activeOffer?.id,
+      discount:  s.active_offer_discount || s.activeOffer?.discount,
+      startDate: s.active_offer_start    || s.activeOffer?.startDate,
+      endDate:   s.active_offer_end      || s.activeOffer?.endDate,
+      title:     s.active_offer_title    || s.activeOffer?.title
+    } : null,
+    features:     typeof s.features === 'string'
+                    ? JSON.parse(s.features || '[]')
+                    : (s.features ?? []),
+    faqs:         typeof s.faqs === 'string'
+                    ? JSON.parse(s.faqs || '[]')
+                    : (s.faqs ?? []),
+  }
+}
+
 
 
 async function loadItem(id) {
@@ -173,31 +213,14 @@ async function loadItem(id) {
     if (res.ok) {
       const data = await res.json()
       if (data.service) {
-        console.log('raw service from API:', data.service)
-console.log('provider_id value:', data.service?.provider_id)
-        const s      = data.service
-       const dbItem = {
-  provider_id: s.provider_id,        // ← add this
-  id: s.id, title: s.title, provider: s.provider_name || 'Unknown Provider',
-  img: null, icon: s.icon || '🛎️', type: s.type,
-  price: Number(s.price || 0), unit: s.price_unit || 'trip',
-  rating: Number(s.rating ?? 0), reviews: Number(s.review_count || 0),
-  availability: s.is_available !== undefined ? !!Number(s.is_available) : true,
-  longDesc: s.long_desc || s.description || '',
-  features: s.features && s.features !== 'null' ? JSON.parse(s.features) : [],
-}
-const demo = services.find(x => x.id === id)
-if (demo) {
-  item.value = {
-    ...dbItem,
-    ...demo,
-    rating: dbItem.rating > 0 ? dbItem.rating : demo.rating,
-    reviews: dbItem.review_count > 0 ? dbItem.review_count : demo.reviews,
-    provider_id: dbItem.provider_id
-  }
-} else {
-  item.value = dbItem
-}
+        const s = normalizeService(data.service)
+        const demo = services.find(x => x.id === id)
+        if (demo) {
+          // Merge: demo provides fallback for some UI fields, DB/Offer wins for data
+          item.value = { ...normalizeService(demo), ...s }
+        } else {
+          item.value = s
+        }
       }
     }
   } catch (e) {
@@ -260,7 +283,10 @@ const isOwner = computed(() => {
 
 const ctaLabel = computed(() => {
   if (isOwner.value) return 'Manage Service'
-  return alreadyBooked.value ? 'Cancel Booking' : 'Book this service'
+  if (alreadyBooked.value) {
+    return item.value?.activeOffer ? 'Cancel Offer' : 'Cancel Booking'
+  }
+  return item.value?.activeOffer ? 'Book Offer' : 'Book this service'
 })
 
 function handleCTAClick() {
@@ -289,13 +315,19 @@ function handleOptionSelect()   { bookingOpen.value = true }
 async function handleBooking(payload) {
   if (!isLoggedIn.value) { alert('Please log in to book.'); return }
 
+  const isOffer = !!item.value.activeOffer
+  let finalPrice = item.value.price
+  if (isOffer) {
+    finalPrice = Math.round(finalPrice * (1 - item.value.activeOffer.discount / 100))
+  }
+
   const result = await createBooking({
     user_id:  user.value?.userID ?? user.value?.id,
-    type:     'service',
-    item_id:  item.value.id,
+    type:     isOffer ? 'offer' : 'service',
+    item_id:  isOffer ? item.value.activeOffer.id : item.value.id,
     service_id: item.value.id,
-    title:    item.value.title,
-    price:    item.value.price,
+    title:    isOffer ? item.value.activeOffer.title : item.value.title,
+    price:    finalPrice,
     check_in: payload.checkin,
     guests:   parseInt(payload.guests) || 1,
     notes:    payload.notes,
@@ -388,6 +420,20 @@ function handleShare() {
 }
 .svc-hero__btn:hover { background: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
 .svc-hero__btn.saved { background: rgba(255,90,95,.1); color: var(--coral); }
+
+.svc-hero__tags { display: flex; align-items: center; gap: 10px; }
+.svc-hero__offer-tag {
+  background: var(--coral); color: #fff;
+  padding: 5px 14px; border-radius: 50px;
+  font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em;
+  box-shadow: 0 4px 12px rgba(255, 90, 95, 0.3);
+  animation: pulse-coral 2s infinite;
+}
+@keyframes pulse-coral {
+  0% { box-shadow: 0 0 0 0 rgba(255, 90, 95, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(255, 90, 95, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 90, 95, 0); }
+}
 
 /* ─── Title Row ──────────────────────────────────── */
 .svc-detail__title-row { margin: 28px 0 36px; }

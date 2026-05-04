@@ -107,10 +107,7 @@ const bookingOpen  = ref(false)
 const selectedItem = ref(null)
 
 const { user, isLoggedIn } = useAuth()
-const { createBooking, isBooked, getBookingId, cancelBooking } = useBookings()
-
-const DEMO_IDS = new Set(packages.map(p => p.id))
-const allItems = ref([...packages])
+const { createBooking, isBooked, getBookingId, cancelBooking, fetchBookings, loaded } = useBookings()
 
 function normalizePackage(p) {
   const startDate = p.start_date || p.startDate
@@ -158,12 +155,15 @@ function isItemOwner(item) {
   return oid !== '' && oid === uid
 }
 
+const DEMO_IDS = new Set(packages.map(p => p.id))
+const allItems = ref(packages.map(normalizePackage))
+
 onMounted(async () => {
   if (isLoggedIn.value && !loaded.value) fetchBookings(user.value)
   try {
     const res  = await fetch('/arrivo-website/backend/api/v1/packages.php')
-    const data = await res.json()
-    const dbRows = (data.packages ?? []).map(normalizePackage)
+    const pkgData = await res.json()
+    const dbRows = (pkgData.packages ?? []).map(normalizePackage)
 
     const final = packages.map(normalizePackage)
     dbRows.forEach(dbItem => {
@@ -171,20 +171,12 @@ onMounted(async () => {
       if (!exists) {
         final.push(dbItem)
       } else {
-        // Merge: demo wins for display fields, but DB always wins for ownership fields
         const idx = final.findIndex(p => p.id === dbItem.id || p.title === dbItem.title)
-        final[idx] = {
-          ...dbItem,
-          ...final[idx],
-          // Prioritize DB for offers and ownership
-          activeOffer: dbItem.activeOffer || final[idx].activeOffer || null,
-          agency_id:   dbItem.agency_id   ?? final[idx].agency_id   ?? null,
-          // Keep the demo's recalculated duration if it's longer (usually more accurate for demo)
-          duration:    Math.max(dbItem.duration || 0, final[idx].duration || 0)
-        }
+        final[idx] = { ...final[idx], ...dbItem }
       }
     })
     allItems.value = final
+    runSearch()
   } catch (e) {
     console.error('Failed to load packages from API:', e)
   }

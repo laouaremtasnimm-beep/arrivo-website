@@ -60,7 +60,10 @@
         <div class="svc-card__pricing">
           <div class="svc-card__price-label">{{ item.priceLabel || ' ' }}</div>
           <div class="svc-card__price-wrap" v-if="item.activeOffer">
-            <span class="svc-card__price-old">${{ item.price }}</span>
+            <div class="svc-card__price-old-row">
+              <span class="svc-card__price-old">${{ item.price }}</span>
+              <span class="svc-card__discount-pill">-{{ item.activeOffer.discount }}%</span>
+            </div>
             <div class="svc-card__price svc-card__price--sale">
               ${{ (item.price * (1 - item.activeOffer.discount / 100)).toLocaleString(undefined, {maximumFractionDigits: 0}) }}
               <span class="svc-card__unit">/{{ item.unit || 'day' }}</span>
@@ -105,16 +108,19 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist', 'manage'])
   transition: transform var(--transition), box-shadow var(--transition), border-bottom-color var(--transition);
   cursor: pointer;
   border-bottom: 3px solid transparent;
-
   display: flex;          /* ✅ ADD THIS */
   flex-direction: column; /* ✅ ADD THIS */
   height: 420px;           /* ✅ ADD THIS */
 }
 
+.svc-card--offer { /* No special border, matches PackageCard style */ }
+
 .svc-card:hover {
   transform: translateY(-5px); box-shadow: var(--shadow-md);
   border-bottom-color: var(--teal);
 }
+.svc-card--offer:hover { border-bottom-color: var(--coral); }
+
 .svc-card__body {
   padding: 16px 20px 20px;
 
@@ -223,6 +229,11 @@ defineEmits(['select', 'book', 'cancel', 'toggle-wishlist', 'manage'])
 .svc-card__price-label{ font-size: .72rem; color: var(--gray-400); }
 .svc-card__price-wrap { display: flex; flex-direction: column; align-items: flex-end; }
 .svc-card__price-old  { font-size: .8rem; color: var(--gray-400); text-decoration: line-through; }
+.svc-card__price-old-row { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.svc-card__discount-pill {
+  font-size: .62rem; font-weight: 800; background: var(--coral-lt); color: var(--coral);
+  padding: 1px 6px; border-radius: 4px;
+}
 .svc-card__price      { font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700; color: var(--coral); }
 .svc-card__price--sale { color: var(--coral); }
 .svc-card__unit       { font-size: .75rem; color: var(--gray-400); font-family: 'DM Sans', sans-serif; font-weight: 400; }

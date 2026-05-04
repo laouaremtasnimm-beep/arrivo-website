@@ -491,9 +491,7 @@ async function runSearch() {
 
     // 3. Merge Services (Deduplicate by ID or Title)
     // Filter out old services that use images (user request)
-    const dbSvcs = (svcData.services || [])
-      .filter(s => !s.img_url) // ✅ EXCLUDE services with images
-      .map(normalizeService)
+    const dbSvcs = (svcData.services || []).map(normalizeService)
     
     const demoSvcs = (demoServices || []).map(s => normalizeService({ ...s, category: 'service' }))
 

@@ -58,7 +58,7 @@
             :key="item.id"
             :item="item"
             :saved="isItemSaved(item)"
-            :booked="isBooked('service', item.id)"
+            :booked="isBooked('service', item.id, item.activeOffer?.id)"
             :is-owner="isItemOwner(item)"
             @select="goToDetail"
             @book="openBooking"
@@ -105,10 +105,7 @@ const bookingOpen  = ref(false)
 const selectedItem = ref(null)
 
 const { user, isLoggedIn } = useAuth()
-const { createBooking, isBooked, getBookingId, cancelBooking } = useBookings()
-
-const DEMO_IDS = new Set(services.map(s => s.id))
-const allItems = ref([...services])
+const { createBooking, isBooked, getBookingId, cancelBooking, fetchBookings, loaded } = useBookings()
 
 function normalizeService(s) {
   return {
@@ -148,34 +145,33 @@ function isItemOwner(item) {
   return oid !== '' && oid === uid
 }
 
+const DEMO_IDS = new Set(services.map(s => s.id))
+const allItems = ref(services.map(normalizeService))
+
 onMounted(async () => {
   if (isLoggedIn.value && !loaded.value) fetchBookings(user.value)
   try {
     const res  = await fetch('/arrivo-website/backend/api/v1/services.php')
-    const data = await res.json()
-    
-    // Filter out old services with images
-    const dbRows = (data.services ?? [])
-      .filter(s => !s.img_url)
-      .map(normalizeService)
+    const svcData = await res.json()
+    const dbRows = (svcData.services ?? []).map(normalizeService)
 
-    const final = [...services]
+    // 1. Start with normalized demo services
+    const final = services.map(normalizeService)
+
+    // 2. Merge DB services
     dbRows.forEach(dbItem => {
       const exists = final.find(s => s.id === dbItem.id || s.title === dbItem.title)
       if (!exists) {
         final.push(dbItem)
       } else {
-        // Merge: demo wins for display fields, but DB always wins for ownership fields
         const idx = final.findIndex(s => s.id === dbItem.id || s.title === dbItem.title)
-        final[idx] = {
-          ...dbItem,
-          ...final[idx],
-          // Always keep the real DB ownership ID so isItemOwner() works correctly
-          provider_id: dbItem.provider_id ?? final[idx].provider_id ?? null,
-        }
+        // DB wins for data, demo wins for fallback fields
+        final[idx] = { ...final[idx], ...dbItem }
       }
     })
+
     allItems.value = final
+    runSearch()
   } catch (e) {
     console.error('Failed to load services from API:', e)
   }
@@ -186,12 +182,19 @@ function openBooking(item) { selectedItem.value = item; bookingOpen.value = true
 async function handleBooking(payload) {
   if (!isLoggedIn.value) { alert('Please log in to book.'); return }
 
+  let finalPrice = selectedItem.value.price;
+  const isOffer = !!selectedItem.value.activeOffer;
+  
+  if (isOffer) {
+    finalPrice = Math.round(finalPrice * (1 - selectedItem.value.activeOffer.discount / 100));
+  }
+
   const result = await createBooking({
     user_id:  user.value?.userID ?? user.value?.id,
-    type:     'service',
-    item_id:  selectedItem.value.id,
-    title:    selectedItem.value.title,
-    price:    selectedItem.value.price,
+    type:     isOffer ? 'offer' : 'service',
+    item_id:  isOffer ? selectedItem.value.activeOffer.id : selectedItem.value.id,
+    title:    isOffer ? selectedItem.value.activeOffer.title : selectedItem.value.title,
+    price:    finalPrice,
     check_in: payload.checkin,
     guests:   parseInt(payload.guests) || 1,
     notes:    payload.notes,
@@ -199,15 +202,16 @@ async function handleBooking(payload) {
 
   if (result.ok) {
     bookingOpen.value = false
-    alert('Service booked successfully!')
+    alert(isOffer ? 'Offer booked successfully!' : 'Service booked successfully!')
   } else {
     alert('Failed to book: ' + result.error)
   }
 }
 
 async function handleCancel(item) {
-  const id = getBookingId('service', item.id)
+  const id = getBookingId('service', item.id, item.activeOffer?.id)
   if (!id) return
+  if (!confirm('Are you sure you want to cancel this booking?')) return
   const res = await cancelBooking(id)
   if (res.ok) alert('Booking cancelled successfully.')
   else alert('Failed to cancel: ' + res.error)

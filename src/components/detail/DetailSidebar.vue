@@ -57,8 +57,8 @@
             </div>
           </div>
         </div>
-        <!-- Standard Dates (for non-offer items) -->
-        <div class="detail-sidebar__fact" v-else-if="startDate">
+        <!-- Standard Dates / Travel Window -->
+        <div class="detail-sidebar__fact" v-if="startDate">
           <span class="detail-sidebar__fact-icon">📅</span>
           <div>
             <div class="detail-sidebar__fact-label">Travel Window</div>
