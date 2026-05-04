@@ -39,7 +39,8 @@ try {
             }
             echo json_encode(["service" => $service]);
 
-        } elseif (isset($_GET['user_id'])) {
+        } elseif (isset($_GET['provider_id']) || isset($_GET['user_id'])) {
+            $ownerId = $_GET['provider_id'] ?? $_GET['user_id'];
             $stmt = $pdo->prepare('
                 SELECT s.*, u.company_name AS provider_name,
                        COUNT(DISTINCT b.id) AS booking_count,
@@ -52,7 +53,7 @@ try {
                 GROUP  BY s.id
                 ORDER  BY s.created_at DESC
             ');
-            $stmt->execute([$_GET['user_id']]);
+            $stmt->execute([$ownerId]);
             $services = $stmt->fetchAll();
             echo json_encode(["services" => $services]);
 

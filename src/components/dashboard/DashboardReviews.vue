@@ -111,7 +111,11 @@ const props = defineProps({
 })
 const emit = defineEmits(['reply'])
 
-const { reviews: localReviews, loading, fetchAllForOwner, saveReply: apiSaveReply } = useReviews()
+const { reviews: allReviews, loading, fetchAllForOwner, saveReply: apiSaveReply } = useReviews()
+
+const localReviews = computed(() => {
+  return allReviews.value.filter(r => r.itemName)
+})
 
 const openReplyId  = ref(null)
 const activeTab    = ref('all')
@@ -123,13 +127,14 @@ function getUser() {
   } catch { return null }
 }
 
-async function fetchAllReviews() {
+onMounted(async () => {
   const fallback = getUser()
   const role   = props.role   || fallback?.role
   const userId = props.userId || fallback?.userID
-  if (!role || !userId) return
-  await fetchAllForOwner(role, userId)
-}
+  if (role && userId) {
+    await fetchAllForOwner(role, userId)
+  }
+})
 
 const avgRating = computed(() => {
   if (!localReviews.value.length) return '–'
@@ -183,7 +188,6 @@ async function deleteReply(rev) {
   }
 }
 
-onMounted(fetchAllReviews)
 </script>
 
 <style scoped>
