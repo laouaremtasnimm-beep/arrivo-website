@@ -19,80 +19,80 @@ export const destinations = [
     id: 3, name: 'Marrakech, Morocco', img: 'https://i.pinimg.com/1200x/5a/9b/cd/5a9bcdfaa42bfc716a2aed9a45863d0e.jpg', badge: '✨ New', country: 'Morocco', type: 'Cultural', rating: 4.7, reviews: 950, from: 640, desc: 'A sensory feast of souks, spices, stunning riads and the vibrant Djemaa el-Fna.', highlights: ['Souks', 'Riads', 'Desert day trips'], thingsToDo: [
       { title: 'Jemaa el-Fnaa', icon: '🎪', desc: 'Experience the bustling heart of the Medina with performers and stalls.', img: 'https://travelshus.com/wp-content/uploads/2014/02/date-dried-fruit-stall-djemaa-el-fna-marrakech-morocco.jpg' },
       { title: 'Majorelle Garden', icon: '🌵', desc: 'Wander through the botanical oasis designed by Jacques Majorelle.', img: 'https://images.unsplash.com/photo-1747601387763-3abf57ee79c8?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8TWFqb3JlbGxlJTIwR2FyZGVufGVufDB8fDB8fHwy' },
-      { title: 'Bahia Palace', icon: '🏰', desc: 'Admire the intricate Moroccan architecture and lush courtyards.' },
-      { title: 'Medina Souks', icon: '👜', desc: 'Get lost in the maze of shops selling spices, leather, and crafts.' }
+      { title: 'Bahia Palace', icon: '🏰', desc: 'Admire the intricate Moroccan architecture and lush courtyards.', img: 'https://images.unsplash.com/photo-1599859725763-4a16c9468890?q=80&w=2000' },
+      { title: 'Medina Souks', icon: '👜', desc: 'Get lost in the maze of shops selling spices, leather, and crafts.', img: "https://i.pinimg.com/1200x/4c/18/72/4c18722338d3b1689f830076f320898c.jpg" }
     ], bestTime: 'March to May & Sep to Nov'
   },
   {
-    id: 4, name: 'Bali, Indonesia', img: 'https://plus.unsplash.com/premium_photo-1752596351361-220c13a6fed9?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D', badge: '🏝️ Popular', country: 'Indonesia', type: 'Beach', rating: 4.8, reviews: 3200, from: 780, desc: 'Tropical paradise with terraced rice paddies, sacred temples and vibrant nightlife.', highlights: ['Rice terraces', 'Surfing', 'Spiritual healing'], thingsToDo: [
-      { title: 'Uluwatu Temple', icon: '🛕', desc: 'Visit the cliffside temple and watch a traditional Kecak dance.' },
-      { title: 'Rice Terraces', icon: '🌾', desc: 'Explore the stunning Tegalalang Rice Terraces in Ubud.' },
-      { title: 'Monkey Forest', icon: '🐒', desc: 'Walk through the sanctuary and meet the long-tailed macaques.' },
-      { title: 'Mount Batur', icon: '🌋', desc: 'Hike to the summit for a spectacular sunrise view over the island.' }
+    id: 4, name: 'Bali, Indonesia', img: 'https://plus.unsplash.com/premium_photo-1752596351361-220c13a6fed9?q=80&w=2000', badge: '🏝️ Popular', country: 'Indonesia', type: 'Beach', rating: 4.8, reviews: 3200, from: 780, desc: 'Tropical paradise with terraced rice paddies, sacred temples and vibrant nightlife.', highlights: ['Rice terraces', 'Surfing', 'Spiritual healing'], thingsToDo: [
+      { title: 'Uluwatu Temple', icon: '🛕', desc: 'Visit the cliffside temple and watch a traditional Kecak dance.', img: "https://i.pinimg.com/736x/99/7f/99/997f999c3c458f25ee3c5173ddc1b2cc.jpg" },
+      { title: 'Rice Terraces', icon: '🌾', desc: 'Explore the stunning Tegalalang Rice Terraces in Ubud.', img: "https://i.pinimg.com/736x/9c/7c/69/9c7c69f45f60fe8de4a3f08af999607c.jpg" },
+      { title: 'Monkey Forest', icon: '🐒', desc: 'Walk through the sanctuary and meet the long-tailed macaques.', img: "https://i.pinimg.com/1200x/f2/5b/fd/f25bfdf10ed6e4c3275b4bf6a36984df.jpg", },
+      { title: 'Mount Batur', icon: '🌋', desc: 'Hike to the summit for a spectacular sunrise view over the island.', img: "https://i.pinimg.com/1200x/d5/1f/12/d51f12aec9142885653f8528f8a19c10.jpg", }
     ], bestTime: 'April to October'
   },
   {
     id: 5, name: 'Patagonia, Argentina', img: 'https://i.pinimg.com/1200x/a0/50/b0/a050b07c06a453ccea4abecc222c6b47.jpg', badge: null, country: 'Argentina', type: 'Adventure', rating: 4.9, reviews: 620, from: 1800, desc: 'Jaw-dropping glaciers, wild pampas and the dramatic peaks of Torres del Paine.', highlights: ['Trekking', 'Glaciers', 'Wildlife'], thingsToDo: [
-      { title: 'Perito Moreno', icon: '❄️', desc: 'Witness the majestic glacier and take a boat tour to see ice calving.' },
-      { title: 'Fitz Roy Trek', icon: '🏔️', desc: 'Embark on a world-class hike with views of the iconic granite peaks.' },
-      { title: 'Torres del Paine', icon: '⛰️', desc: 'Explore the national park with its towers, lakes, and glaciers.' },
-      { title: 'Beagle Channel', icon: '🚢', desc: 'Sail the historic channel and spot seals, penguins, and birdlife.' }
+      { title: 'Perito Moreno', icon: '❄️', desc: 'Witness the majestic glacier and take a boat tour to see ice calving.', img: "https://images.unsplash.com/photo-1719566240595-7a5bae43b72e?q=80&w=600" },
+      { title: 'Fitz Roy Trek', icon: '🏔️', desc: 'Embark on a world-class hike with views of the iconic granite peaks.', img: "https://i.pinimg.com/1200x/16/43/fc/1643fcca0e42e03f589f695c30cf68e1.jpg" },
+      { title: 'Torres del Paine', icon: '⛰️', desc: 'Explore the national park with its towers, lakes, and glaciers.', img: "https://i.pinimg.com/1200x/d4/0a/47/d40a47e466ade2b73a26a6ac05c45329.jpg" },
+      { title: 'Beagle Channel', icon: '🚢', desc: 'Sail the historic channel and spot seals, penguins, and birdlife.', img: "https://i.pinimg.com/1200x/e9/b2/78/e9b2787508c5e2f7828d668c13c672bc.jpg" }
     ], bestTime: 'November to March'
   },
   {
     id: 6, name: 'Amalfi Coast, Italy', img: 'https://i.pinimg.com/1200x/de/ab/a7/deaba788c126ab8b25c3a175ab665273.jpg', badge: '🏅 Top rated', country: 'Italy', type: 'Beach', rating: 4.9, reviews: 1420, from: 950, desc: 'Cliffside villages, turquoise water and fresh limoncello along Italy\'s most scenic coast.', highlights: ['Boat trips', 'Hiking trails', 'Coastal villages'], thingsToDo: [
-      { title: 'Positano Beach', icon: '🏖️', desc: 'Relax on the iconic pebble beach surrounded by colorful houses.' },
-      { title: 'Path of the Gods', icon: '⛅', desc: 'Hike the legendary trail for the best coastal panoramas in Italy.' },
-      { title: 'Boat to Capri', icon: '🛥️', desc: 'Take a day trip to the glamorous island and visit the Blue Grotto.' },
-      { title: 'Ravello Gardens', icon: '🌺', desc: 'Visit Villa Cimbrone for its famous Terrace of Infinity.' }
+      { title: 'Positano Beach', icon: '🏖️', desc: 'Relax on the iconic pebble beach surrounded by colorful houses.', img: "https://i.pinimg.com/1200x/21/33/c9/2133c9d8a573c537b144c380d6bd2ab1.jpg" },
+      { title: 'Path of the Gods', icon: '⛅', desc: 'Hike the legendary trail for the best coastal panoramas in Italy.', img: "https://i.pinimg.com/1200x/37/ae/60/37ae6033935b48d71027c7422cd2ec17.jpg" },
+      { title: 'Boat to Capri', icon: '🛥️', desc: 'Take a day trip to the glamorous island and visit the Blue Grotto.', img: "https://i.pinimg.com/736x/19/aa/0b/19aa0be16a3a108b9521c45332d904c8.jpg" },
+      { title: 'Ravello Gardens', icon: '🌺', desc: 'Visit Villa Cimbrone for its famous Terrace of Infinity.', img: "https://i.pinimg.com/736x/8a/00/5a/8a005a08dc92900f70b775b9922cabaa.jpg" }
     ], bestTime: 'May to September'
   },
   {
-    id: 7, name: 'New York City, USA', img: 'https://i.pinimg.com/736x/a3/79/23/a37923a2da559e808d7e7e58ec689129.jpg', badge: null, country: 'USA', type: 'City', rating: 4.7, reviews: 4100, from: 700, desc: 'The city that never sleeps — world-class museums, iconic skylines and every cuisine imaginable.', highlights: ['Central Park', 'Broadway', 'Food scene'], thingsToDo: [
-      { title: 'Central Park', icon: '🌳', desc: 'Stroll through the massive green oasis in the heart of Manhattan.' },
-      { title: 'Top of the Rock', icon: '🏙️', desc: 'Get the best views of the Empire State Building and the city.' },
-      { title: 'Broadway Show', icon: '🎭', desc: 'Experience a world-class theater performance in the theater district.' },
-      { title: 'High Line', icon: '🛤️', desc: 'Walk along the elevated park built on a historic rail line.' }
+    id: 7, name: 'New York City, USA', img: 'https://images.unsplash.com/photo-1485871981521-5b1fd3805eee?q=80&w=2000', badge: null, country: 'USA', type: 'City', rating: 4.7, reviews: 4100, from: 700, desc: 'The city that never sleeps — world-class museums, iconic skylines and every cuisine imaginable.', highlights: ['Central Park', 'Broadway', 'Food scene'], thingsToDo: [
+      { title: 'Central Park', icon: '🌳', desc: 'Stroll through the massive green oasis in the heart of Manhattan.', img: "https://images.unsplash.com/photo-1664851431859-07c420366f32?q=80&w=2000" },
+      { title: 'Top of the Rock', icon: '🏙️', desc: 'Get the best views of the Empire State Building and the city.', img: "https://i.pinimg.com/1200x/f2/e1/cd/f2e1cd841b9630c45b30f220889b6809.jpg" },
+      { title: 'Broadway Show', icon: '🎭', desc: 'Experience a world-class theater performance in the theater district.', img: "https://i.pinimg.com/1200x/a1/75/96/a17596fb3f34357ea9b2731b5878160d.jpg" },
+      { title: 'High Line', icon: '🛤️', desc: 'Walk along the elevated park built on a historic rail line.', img: "https://i.pinimg.com/1200x/cc/1f/c0/cc1fc08ae20018d728f7c9e0c6993586.jpg" }
     ], bestTime: 'April to June & Sep to Nov'
   },
   {
-    id: 8, name: 'Serengeti, Tanzania', img: 'https://images.unsplash.com/photo-1709402606682-400133d92ab2?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OHx8c2FmYXJpfGVufDB8fDB8fHww', badge: '🦁 Wildlife', country: 'Tanzania', type: 'Nature', rating: 5.0, reviews: 480, from: 2200, desc: 'The greatest wildlife spectacle on Earth — witness the Great Migration up close.', highlights: ['Safari', 'Big Five', 'Hot air balloon'], thingsToDo: [
-      { title: 'Game Drives', icon: '🚙', desc: 'Spot the "Big Five" and thousands of other animals in the wild.' },
-      { title: 'Balloon Safari', icon: '🎈', desc: 'Float over the savannah at sunrise for a unique perspective.' },
-      { title: 'Maasai Village', icon: '🏠', desc: 'Learn about the traditions and culture of the Maasai people.' },
-      { title: 'Migration Watch', icon: '🦓', desc: 'Witness the epic annual journey of wildebeest and zebras.' }
+    id: 8, name: 'Serengeti, Tanzania', img: 'https://images.unsplash.com/photo-1709402606682-400133d92ab2?q=80&w=2000', badge: '🦁 Wildlife', country: 'Tanzania', type: 'Nature', rating: 5.0, reviews: 480, from: 2200, desc: 'The greatest wildlife spectacle on Earth — witness the Great Migration up close.', highlights: ['Safari', 'Big Five', 'Hot air balloon'], thingsToDo: [
+      { title: 'Game Drives', icon: '🚙', desc: 'Spot the "Big Five" and thousands of other animals in the wild.', img: "https://i.pinimg.com/webp70/1200x/76/ec/9e/76ec9e4a96b1d6663dd8cced809113ee.webp" },
+      { title: 'Balloon Safari', icon: '🎈', desc: 'Float over the savannah at sunrise for a unique perspective.', img: "https://i.pinimg.com/736x/8f/e6/4d/8fe64d96e9e1d805aa80b6015a023d28.jpg" },
+      { title: 'Maasai Village', icon: '🏠', desc: 'Learn about the traditions and culture of the Maasai people.', img: "https://i.pinimg.com/1200x/0a/0a/8e/0a0a8e24243ea0d9e8ec726931a08d76.jpg" },
+      { title: 'Migration Watch', icon: '🦓', desc: 'Witness the epic annual journey of wildebeest and zebras.', img: "https://i.pinimg.com/1200x/2d/9a/d1/2d9ad16dd40c623c2fa544c878c28de4.jpg" }
     ], bestTime: 'June to October'
   },
   {
     id: 9, name: 'Swiss Alps, Switzerland', img: 'https://i.pinimg.com/736x/36/dc/3e/36dc3eb4132f928aceaf5e180e79c83c.jpg', badge: '❄️ Winter', country: 'Switzerland', type: 'Adventure', rating: 4.9, reviews: 870, from: 1400, desc: 'World-class skiing, charming chalets and some of the most dramatic mountain scenery anywhere.', highlights: ['Skiing', 'Hiking', 'Scenic trains'], thingsToDo: [
-      { title: 'Jungfraujoch', icon: '🚉', desc: 'Visit the "Top of Europe" via a spectacular mountain railway.' },
-      { title: 'Skiing Zermatt', icon: '⛷️', desc: 'Enjoy world-class slopes with views of the iconic Matterhorn.' },
-      { title: 'Lake Brienz', icon: '🚢', desc: 'Take a boat trip on the stunning turquoise waters of the lake.' },
-      { title: 'Glacier Express', icon: '🚄', desc: 'Ride one of the world\'s most beautiful scenic train journeys.' }
+      { title: 'Jungfraujoch', icon: '🚉', desc: 'Visit the "Top of Europe" via a spectacular mountain railway.', img: "https://i.pinimg.com/1200x/38/c4/9e/38c49e65896619357050e78f926f5489.jpg" },
+      { title: 'Skiing Zermatt', icon: '⛷️', desc: 'Enjoy world-class slopes with views of the iconic Matterhorn.', img: "https://i.pinimg.com/1200x/c7/6b/07/c76b07063fdf06ae58cf98d6b249bceb.jpg" },
+      { title: 'Lake Brienz', icon: '🚢', desc: 'Take a boat trip on the stunning turquoise waters of the lake.', img: "https://i.pinimg.com/736x/29/87/6f/29876fef97ee92520761792ce0bbb508.jpg" },
+      { title: 'Glacier Express', icon: '🚄', desc: 'Ride one of the world\'s most beautiful scenic train journeys.', img: "https://i.pinimg.com/736x/40/44/52/40445245add02c0f024bb95deeaa6c73.jpg" }
     ], bestTime: 'Dec to Mar & June to Aug'
   },
   {
     id: 10, name: 'Maldives', img: 'https://i.pinimg.com/1200x/a5/b9/e4/a5b9e469ed6ee19ec5a79eeb442dac13.jpg', badge: '💎 Luxury', country: 'Maldives', type: 'Beach', rating: 5.0, reviews: 910, from: 3200, desc: 'Overwater bungalows, house reefs teeming with marine life and absolute serenity.', highlights: ['Overwater villas', 'Snorkelling', 'Diving'], thingsToDo: [
-      { title: 'Snorkeling', icon: '🤿', desc: 'Discover vibrant coral reefs and tropical fish right off your villa.' },
-      { title: 'Island Hopping', icon: '🏝️', desc: 'Visit local inhabited islands and experience Maldivian culture.' },
-      { title: 'Sandbank Picnic', icon: '🧺', desc: 'Enjoy a private, romantic lunch on a secluded patch of white sand.' },
-      { title: 'Sunset Cruise', icon: '🛥️', desc: 'Watch dolphins play in the wake as the sun sets over the ocean.' }
+      { title: 'Snorkeling', icon: '🤿', desc: 'Discover vibrant coral reefs and tropical fish right off your villa.', img: "https://i.pinimg.com/736x/0d/5e/ca/0d5eca756f8a173eacd07622660adfaf.jpg" },
+      { title: 'Island Hopping', icon: '🏝️', desc: 'Visit local inhabited islands and experience Maldivian culture.', img: "https://i.pinimg.com/webp70/736x/0f/0c/4b/0f0c4b47cac22f43efd922eebc158e9d.webp" },
+      { title: 'Sandbank Picnic', icon: '🧺', desc: 'Enjoy a private, romantic lunch on a secluded patch of white sand.', img: "https://i.pinimg.com/1200x/01/87/a7/0187a7889743c153e5383b8a86566148.jpg" },
+      { title: 'Sunset Cruise', icon: '🛥️', desc: 'Watch dolphins play in the wake as the sun sets over the ocean.', img: "https://i.pinimg.com/736x/89/19/63/8919633f779c828526124edd50fe7d03.jpg" }
     ], bestTime: 'November to April'
   },
   {
     id: 11, name: 'Prague, Czech Republic', img: 'https://i.pinimg.com/1200x/90/9e/da/909eda8b6792a76749cdee3d198ceec9.jpg', badge: null, country: 'Czech Rep.', type: 'City', rating: 4.7, reviews: 1100, from: 490, desc: 'Fairy-tale architecture, cobblestone alleys, medieval castles and vibrant café culture.', highlights: ['Old Town Square', 'Castle district', 'River cruises'], thingsToDo: [
-      { title: 'Charles Bridge', icon: '🌉', desc: 'Walk across the historic bridge at sunrise for a magical atmosphere.' },
-      { title: 'Prague Castle', icon: '🏰', desc: 'Explore the largest ancient castle complex in the world.' },
-      { title: 'Old Town Square', icon: '🏘️', desc: 'Watch the Astronomical Clock chime and enjoy the lively square.' },
-      { title: 'Vltava Cruise', icon: '⛴️', desc: 'See the city\'s stunning architecture from a different perspective.' }
+      { title: 'Charles Bridge', icon: '🌉', desc: 'Walk across the historic bridge at sunrise for a magical atmosphere.', img: "https://i.pinimg.com/1200x/92/12/e3/9212e35609b1b80724d1d672375fb21b.jpg" },
+      { title: 'Prague Castle', icon: '🏰', desc: 'Explore the largest ancient castle complex in the world.', img: "https://i.pinimg.com/1200x/7a/2e/92/7a2e92447dc1351d139898e366e01011.jpg" },
+      { title: 'Old Town Square', icon: '🏘️', desc: 'Watch the Astronomical Clock chime and enjoy the lively square.', img: "https://i.pinimg.com/1200x/97/0a/6c/970a6c9d596079dd2891bd9104b904ed.jpg" },
+      { title: 'Vltava Cruise', icon: '⛴️', desc: 'See the city\'s stunning architecture from a different perspective.', img: "https://i.pinimg.com/1200x/ea/e6/dd/eae6dd181197c3aabe060527cdbaf942.jpg" }
     ], bestTime: 'May to September'
   },
   {
     id: 12, name: 'Amazon, Brazil', img: 'https://i.pinimg.com/736x/a5/58/20/a55820860b80f587a7cedffab2013f00.jpg', badge: '🌿 Eco', country: 'Brazil', type: 'Nature', rating: 4.8, reviews: 350, from: 1600, desc: 'Immerse yourself in the world\'s largest rainforest — wildlife, rivers and indigenous culture.', highlights: ['Jungle treks', 'River boats', 'Wildlife spotting'], thingsToDo: [
-      { title: 'Canopy Walk', icon: '🧗', desc: 'Walk among the treetops and observe rainforest life from above.' },
-      { title: 'Piranha Fishing', icon: '🎣', desc: 'Try your luck at fishing for the famous Amazonian piranha.' },
-      { title: 'Jungle Trek', icon: '👣', desc: 'Learn about medicinal plants and survival skills from local guides.' },
-      { title: 'Meeting of Waters', icon: '🌊', desc: 'Witness the dark Negro and sandy Solimões rivers flow side-by-side.' }
+      { title: 'Canopy Walk', icon: '🧗', desc: 'Walk among the treetops and observe rainforest life from above.', img: "https://i.pinimg.com/736x/a0/a1/ec/a0a1ecfdd20005ee631b2dddaf6232d8.jpg" },
+      { title: 'Piranha Fishing', icon: '🎣', desc: 'Try your luck at fishing for the famous Amazonian piranha.', img: "https://i.pinimg.com/736x/d6/fc/d2/d6fcd2fc20742e4627cad9e9dc7b0c05.jpg" },
+      { title: 'Jungle Trek', icon: '👣', desc: 'Learn about medicinal plants and survival skills from local guides.', img: "https://i.pinimg.com/1200x/7c/37/9c/7c379cf495c8a3482365289e0d0602c1.jpg" },
+      { title: 'Meeting of Waters', icon: '🌊', desc: 'Witness the dark Negro and sandy Solimões rivers flow side-by-side.', img: "https://i.pinimg.com/1200x/6b/2b/58/6b2b58e5a925cbbe308a5a4d4a7f77df.jpg" }
     ], bestTime: 'July to December'
   },
 ]
