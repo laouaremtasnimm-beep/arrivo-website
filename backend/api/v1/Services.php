@@ -190,10 +190,75 @@ try {
             exit();
         }
 
-        $stmt = $pdo->prepare('DELETE FROM services WHERE id = ?');
-        $stmt->execute([$data['id']]);
+        $svcId = (int) $data['id'];
 
-        echo json_encode(["message" => "Service deleted"]);
+        $pdo->beginTransaction();
+        try {
+            /* ── Cascade: handle linked offers ──────────────────────────────
+               Find offers that point to this service (either directly via service_id
+               or via the offer_packages join table).
+            ─────────────────────────────────────────────────────────────── */
+            
+            // 1. Direct links
+            $offersStmt = $pdo->prepare('SELECT id FROM special_offers WHERE service_id = ?');
+            $offersStmt->execute([$svcId]);
+            $directOfferIds = $offersStmt->fetchAll(PDO::FETCH_COLUMN);
+
+            // 2. Joined links (if any)
+            $joinedStmt = $pdo->prepare('SELECT offer_id FROM offer_packages WHERE package_id = ?');
+            $joinedStmt->execute([$svcId]);
+            $joinedOfferIds = $joinedStmt->fetchAll(PDO::FETCH_COLUMN);
+
+            $allLinkedOffers = array_unique(array_merge($directOfferIds, $joinedOfferIds));
+            $deletedOfferIds = [];
+
+            foreach ($allLinkedOffers as $offerId) {
+                /* For each offer, check if removing this service makes it "empty" */
+                
+                // If it was a joined link, remove it first so counts are accurate
+                if (in_array($offerId, $joinedOfferIds)) {
+                    $pdo->prepare('DELETE FROM offer_packages WHERE offer_id = ? AND package_id = ?')
+                        ->execute([$offerId, $svcId]);
+                }
+
+                /* Count remaining packages/items in join table */
+                $countStmt = $pdo->prepare('SELECT COUNT(*) FROM offer_packages WHERE offer_id = ?');
+                $countStmt->execute([$offerId]);
+                $remainingItems = (int) $countStmt->fetchColumn();
+
+                /* Check if it still has a (different) service_id */
+                $svcCheck = $pdo->prepare('SELECT service_id FROM special_offers WHERE id = ?');
+                $svcCheck->execute([$offerId]);
+                $currentSvcId = $svcCheck->fetchColumn();
+
+                // If the current service_id is the one we are deleting, it's effectively gone
+                $hasOtherService = (!empty($currentSvcId) && (int)$currentSvcId !== $svcId);
+
+                if ($remainingItems === 0 && !$hasOtherService) {
+                    /* Offer is now empty → delete it */
+                    $pdo->prepare('DELETE FROM special_offers WHERE id = ?')->execute([$offerId]);
+                    $deletedOfferIds[] = $offerId;
+                } elseif ((int)$currentSvcId === $svcId) {
+                    /* Just remove the direct service link */
+                    $pdo->prepare('UPDATE special_offers SET service_id = NULL WHERE id = ?')
+                        ->execute([$offerId]);
+                }
+            }
+
+            /* ── Delete the service itself ─────────────────────────────── */
+            $pdo->prepare('DELETE FROM services WHERE id = ?')->execute([$svcId]);
+
+            $pdo->commit();
+            echo json_encode([
+                "message"           => "Service deleted",
+                "deleted_offer_ids" => $deletedOfferIds
+            ]);
+
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            http_response_code(500);
+            echo json_encode(["error" => $e->getMessage()]);
+        }
 
     } else {
         http_response_code(405);

@@ -210,10 +210,21 @@ try {
                 $packageCount = (int) $countStmt->fetchColumn();
 
                 if ($packageCount <= 1) {
-                    /* This was the only package → delete the whole offer */
-                    $pdo->prepare('DELETE FROM offer_packages WHERE offer_id = ?')->execute([$offerId]);
-                    $pdo->prepare('DELETE FROM special_offers WHERE id = ?')->execute([$offerId]);
-                    $deletedOfferIds[] = $offerId;
+                    /* Check if it also has a service */
+                    $svcStmt = $pdo->prepare('SELECT service_id FROM special_offers WHERE id = ?');
+                    $svcStmt->execute([$offerId]);
+                    $svcId = $svcStmt->fetchColumn();
+
+                    if (empty($svcId)) {
+                        /* Truly empty → delete the whole offer */
+                        $pdo->prepare('DELETE FROM offer_packages WHERE offer_id = ?')->execute([$offerId]);
+                        $pdo->prepare('DELETE FROM special_offers WHERE id = ?')->execute([$offerId]);
+                        $deletedOfferIds[] = $offerId;
+                    } else {
+                        /* Still has a service → just unlink this package */
+                        $pdo->prepare('DELETE FROM offer_packages WHERE offer_id = ? AND package_id = ?')
+                            ->execute([$offerId, $pkgId]);
+                    }
                 } else {
                     /* Offer still has other packages → just unlink this one */
                     $pdo->prepare('DELETE FROM offer_packages WHERE offer_id = ? AND package_id = ?')
