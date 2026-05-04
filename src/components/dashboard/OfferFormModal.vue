@@ -29,7 +29,7 @@
               <div class="new-pkg-card__icon">＋</div>
               <div class="new-pkg-card__text">
                 <div class="new-pkg-card__title">Create a new package</div>
-                <div class="new-pkg-card__sub">It will be exclusive to this offer</div>
+                <div class="new-pkg-card__sub">exclusive to this offer</div>
               </div>
               <span class="new-pkg-card__arrow">→</span>
             </button>
@@ -637,12 +637,12 @@ const progressWidth = computed(() => `${(step.value / 2) * 100}%`)
 
 const stepTitle = computed(() =>
   step.value === 1
-    ? (isEdit.value ? 'Edit Offer — Packages' : 'Choose Packages')
+    ? (isEdit.value ? 'Edit Offer — Packages' : 'Choose a Package')
     : (isEdit.value ? 'Edit Offer Details'    : 'Offer Details')
 )
 const stepSub = computed(() =>
   step.value === 1
-    ? 'Pick one or more packages to bundle into this offer.'
+    ? 'Pick a package to create this offer'
     : 'Set the discount, dates and description for your offer.'
 )
 

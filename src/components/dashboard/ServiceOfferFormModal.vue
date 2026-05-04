@@ -18,7 +18,7 @@
               <div class="new-svc-card__icon">+</div>
               <div class="new-svc-card__text">
                 <div class="new-svc-card__title">Create a new service</div>
-                <div class="new-svc-card__sub">It will be exclusive to this offer</div>
+                <div class="new-svc-card__sub">exclusive to this offer</div>
               </div>
               <span class="new-svc-card__arrow">→</span>
             </button>
@@ -762,7 +762,7 @@ function close() {
   width: 100%; display: flex; align-items: center; gap: 14px;
   padding: 14px 18px; background: var(--teal-lt, #f0fafa); border: 2px dashed var(--teal);
   border-radius: 14px; cursor: pointer; text-align: left;
-  transition: all .25s ease; margin-bottom: 20px;
+  transition: all .25s ease;
 }
 .new-svc-card:hover { background: #e2f8f6; transform: translateY(-2px); }
 .new-svc-card__icon {
