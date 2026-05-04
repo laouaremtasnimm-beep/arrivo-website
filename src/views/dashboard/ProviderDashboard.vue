@@ -469,8 +469,6 @@ async function handleDeleteReview(r) {
 const offerFormOpen = ref(false)
 const editingOffer  = ref(null)
 
-function openOfferForm(offer) {
-  if (offer?.source === 'collab') return
   editingOffer.value  = offer ?? null
   offerFormOpen.value = true
 }
@@ -480,18 +478,19 @@ async function handleSaveOffer(payload) {
   // If there's a new service to create from scratch
   if (payload.newService) {
     try {
+      const isNewSvc = !payload.newService.id
       const svcRes = await fetch(`${API}/services.php`, {
-        method: 'POST',
+        method: isNewSvc ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...payload.newService, provider_id: user.value.userID })
       })
       const svcData = await svcRes.json()
-      if (svcRes.ok) {
+      if (svcRes.ok && isNewSvc) {
         payload.serviceId = svcData.service_id
-        await fetchServices() // Refresh the main services list
       }
+      await fetchServices() // Refresh the main services list
     } catch (e) {
-      console.error('Failed to create service for offer:', e)
+      console.error('Failed to save service for offer:', e)
     }
   }
 

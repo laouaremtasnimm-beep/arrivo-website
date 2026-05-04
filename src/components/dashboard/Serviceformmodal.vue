@@ -7,18 +7,33 @@
           <button class="modal__close" @click="close">✕</button>
 
           <h2 class="modal__title">{{ isEdit ? 'Edit Service' : 'Add New Service' }}</h2>
-          <p class="modal__sub">{{ isEdit ? 'Update your service details below.' : 'Fill in the details to list a new service.' }}</p>
+          <p class="modal__sub">
+            {{ isEdit
+              ? 'Category, icon, description and features can be updated.'
+              : 'Fill in the details to list a new service.' }}
+          </p>
 
           <div class="modal__body">
 
-            <!-- Title -->
+            <!-- Title — locked when editing -->
             <div class="form-group">
               <label class="form-label">Service title *</label>
-              <input class="form-input" v-model="form.title" placeholder="e.g. Private Airport Transfer" />
+              <div class="input-wrap">
+                <input
+                  class="form-input"
+                  v-model="form.title"
+                  placeholder="e.g. Private Airport Transfer"
+                  :disabled="isEdit"
+                  :class="{ 'input--locked': isEdit }"
+                />
+                <svg v-if="isEdit" class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </div>
               <p class="field-error" v-if="errors.title">{{ errors.title }}</p>
             </div>
 
-            <!-- Category + Icon -->
+            <!-- Category + Icon — both editable -->
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Category *</label>
@@ -34,45 +49,86 @@
               </div>
             </div>
 
-            <!-- Price + Unit -->
+            <!-- Price + Unit — locked when editing -->
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Price ($) *</label>
-                <input class="form-input" v-model.number="form.price" type="number" min="0" placeholder="e.g. 45" />
+                <div class="input-wrap">
+                  <input
+                    class="form-input"
+                    v-model.number="form.price"
+                    type="number" min="0"
+                    placeholder="e.g. 45"
+                    :disabled="isEdit"
+                    :class="{ 'input--locked': isEdit }"
+                  />
+                  <svg v-if="isEdit" class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                </div>
                 <p class="field-error" v-if="errors.price">{{ errors.price }}</p>
               </div>
               <div class="form-group">
                 <label class="form-label">Price unit</label>
-                <select class="form-input form-select" v-model="form.unit">
-                  <option value="day">Per day</option>
-                  <option value="trip">Per trip</option>
-                  <option value="person">Per person</option>
-                  <option value="hour">Per hour</option>
-                </select>
+                <div class="input-wrap">
+                  <select
+                    class="form-input form-select"
+                    v-model="form.unit"
+                    :disabled="isEdit"
+                    :class="{ 'input--locked': isEdit }"
+                  >
+                    <option value="day">Per day</option>
+                    <option value="trip">Per trip</option>
+                    <option value="person">Per person</option>
+                    <option value="hour">Per hour</option>
+                  </select>
+                  <svg v-if="isEdit" class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                </div>
               </div>
             </div>
 
-            <!-- Start & End Dates (Obligatory) -->
+            <!-- Dates — locked when editing -->
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label">Available from *</label>
                 <div class="date-input-wrap">
-                  <input class="form-input" v-model="form.start_date" type="date" />
-                  <span class="date-icon">🗓️</span>
+                  <input
+                    class="form-input"
+                    v-model="form.start_date"
+                    type="date"
+                    :disabled="isEdit"
+                    :class="{ 'input--locked': isEdit }"
+                  />
+                  <svg v-if="isEdit" class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  <span v-else class="date-icon">🗓️</span>
                 </div>
                 <p class="field-error" v-if="errors.start_date">{{ errors.start_date }}</p>
               </div>
               <div class="form-group">
                 <label class="form-label">Available until *</label>
                 <div class="date-input-wrap">
-                  <input class="form-input" v-model="form.end_date" type="date" :min="form.start_date" />
-                  <span class="date-icon">🗓️</span>
+                  <input
+                    class="form-input"
+                    v-model="form.end_date"
+                    type="date"
+                    :min="form.start_date"
+                    :disabled="isEdit"
+                    :class="{ 'input--locked': isEdit }"
+                  />
+                  <svg v-if="isEdit" class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  <span v-else class="date-icon">🗓️</span>
                 </div>
                 <p class="field-error" v-if="errors.end_date">{{ errors.end_date }}</p>
               </div>
             </div>
 
-            <!-- Description -->
+            <!-- Description — editable -->
             <div class="form-group">
               <label class="form-label">Short description *</label>
               <textarea
@@ -84,7 +140,7 @@
               <p class="field-error" v-if="errors.desc">{{ errors.desc }}</p>
             </div>
 
-            <!-- Features -->
+            <!-- Features — editable -->
             <div class="form-group">
               <label class="form-label">Features / Inclusions <span class="form-hint">(one per line)</span></label>
               <textarea
@@ -122,13 +178,11 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'save'])
 
 const isEdit  = computed(() => !!props.service)
-const today = computed(() => new Date().toISOString().split('T')[0])
 const loading = ref(false)
 const errors  = ref({})
 
 const categories = ['Transport', 'Accommodation', 'Activity', 'Tour', 'Restaurant', 'Wellness', 'Other']
 
-// ── Form state ─────────────────────────────────────────────────────────────
 const defaultForm = () => ({
   title: '', type: '', icon: '🛎️',
   price: null, unit: 'day', start_date: '', end_date: '', desc: '',
@@ -136,56 +190,59 @@ const defaultForm = () => ({
 const form        = ref(defaultForm())
 const featuresRaw = ref('')
 
-// Populate form when editing
-watch(() => props.service, (svc) => {
-  if (svc) {
-    form.value = {
-      id:          svc.id,
-      title:       svc.title       || '',
-      type:        svc.type        || '',
-      icon:        svc.icon        || '🛎️',
-      price:       svc.price       || null,
-      unit:        svc.price_unit  || svc.unit || 'day',
-      start_date:  svc.start_date  || '',
-      end_date:    svc.end_date    || '',
-      desc:        svc.description || svc.desc || '',
+// Watch both modelValue and service so the form re-populates
+// every time the modal opens, even if the service reference didn't change
+watch(
+  () => [props.modelValue, props.service],
+  ([open, svc]) => {
+    if (!open) return
+    if (svc) {
+      form.value = {
+        id:         svc.id,
+        title:      svc.title       || '',
+        type:       svc.type        || '',
+        icon:       svc.icon        || '🛎️',
+        price:      svc.price       || null,
+        unit:       svc.price_unit  || svc.unit || 'day',
+        start_date: svc.start_date  || '',
+        end_date:   svc.end_date    || '',
+        desc:       svc.description || svc.desc || '',
+      }
+      let feat = []
+      try { feat = typeof svc.features === 'string' ? JSON.parse(svc.features) : (svc.features || []) }
+      catch { feat = [] }
+      featuresRaw.value = feat.join('\n')
+    } else {
+      form.value = defaultForm()
+      featuresRaw.value = ''
     }
-    
-    let feat = []
-    try {
-      feat = typeof svc.features === 'string' ? JSON.parse(svc.features) : (svc.features || [])
-    } catch { feat = [] }
-    featuresRaw.value = feat.join('\n')
-  } else {
-    form.value    = defaultForm()
-    featuresRaw.value = ''
+    errors.value = {}
   }
-  errors.value = {}
-}, { immediate: true })
+)
 
-// ── Validation ─────────────────────────────────────────────────────────────
 function validate() {
   const e = {}
-  if (!form.value.title?.trim())      e.title      = 'Title is required.'
-  if (!form.value.type)               e.type       = 'Please select a category.'
-  if (!form.value.price || form.value.price < 0) e.price = 'Enter a valid price.'
-  if (!form.value.start_date)         e.start_date = 'Start date is required.'
-  if (!form.value.end_date)           e.end_date   = 'End date is required.'
-  if (form.value.start_date && form.value.end_date && form.value.end_date < form.value.start_date)
-    e.end_date = 'End date must be after start date.'
-  if (!form.value.desc?.trim())       e.desc       = 'Description is required.'
+  if (!form.value.type)         e.type = 'Please select a category.'
+  if (!form.value.desc?.trim()) e.desc = 'Description is required.'
+  if (!isEdit.value) {
+    if (!form.value.title?.trim())                    e.title      = 'Title is required.'
+    if (!form.value.price || form.value.price < 0)    e.price      = 'Enter a valid price.'
+    if (!form.value.start_date)                       e.start_date = 'Start date is required.'
+    if (!form.value.end_date)                         e.end_date   = 'End date is required.'
+    if (form.value.start_date && form.value.end_date && form.value.end_date < form.value.start_date)
+      e.end_date = 'End date must be after start date.'
+  }
   errors.value = e
   return Object.keys(e).length === 0
 }
 
-// ── Submit ─────────────────────────────────────────────────────────────────
 async function submit() {
   if (!validate()) return
   loading.value = true
   await new Promise(r => setTimeout(r, 400))
   loading.value = false
 
-  const payload = {
+  emit('save', {
     id:           form.value.id,
     title:        form.value.title,
     type:         form.value.type,
@@ -197,9 +254,7 @@ async function submit() {
     description:  form.value.desc,
     features:     featuresRaw.value.split('\n').map(s => s.trim()).filter(Boolean),
     is_available: 1,
-  }
-
-  emit('save', payload)
+  })
   close()
 }
 
@@ -230,10 +285,8 @@ function close() { emit('update:modelValue', false) }
 
 .modal__title { font-family: 'Fraunces', serif; font-size: 1.6rem; font-weight: 700; padding: 32px 32px 4px; color: var(--indigo); }
 .modal__sub   { font-size: .88rem; color: var(--gray-400); padding: 0 32px 20px; }
-
 .modal__body  { padding: 0 32px; overflow-y: auto; flex: 1; }
 
-/* Form */
 .form-row    { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .form-group  { margin-bottom: 18px; }
 .form-label  { font-size: .84rem; font-weight: 600; color: var(--indigo); margin-bottom: 7px; display: block; }
@@ -243,6 +296,7 @@ function close() { emit('update:modelValue', false) }
   border: 1.5px solid var(--gray-200); border-radius: 11px;
   font-family: 'DM Sans', sans-serif; font-size: .92rem; color: var(--indigo);
   outline: none; transition: border-color var(--transition); background: var(--white);
+  box-sizing: border-box;
 }
 .form-input:focus { border-color: var(--coral); }
 .form-select {
@@ -252,7 +306,6 @@ function close() { emit('update:modelValue', false) }
 }
 .form-textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
 .field-error { font-size: .76rem; color: #e74c3c; margin-top: 4px; }
-
 .text-center { text-align: center; }
 
 /* Date inputs */
@@ -263,6 +316,31 @@ function close() { emit('update:modelValue', false) }
 }
 .date-icon { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); pointer-events: none; font-size: 1rem; }
 
+/* Locked field pattern */
+.input-wrap { position: relative; }
+
+.input--locked {
+  background-color: var(--gray-50, #f9f9fc);
+  color: var(--gray-400, #a0aec0);
+  border-color: var(--gray-100, #edf2f7);
+  cursor: not-allowed;
+  opacity: 0.8;
+  padding-right: 36px;
+  background-image: none; /* override select arrow when locked */
+}
+
+.lock-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 13px;
+  height: 13px;
+  pointer-events: none;
+  color: var(--gray-400, #a0aec0);
+  opacity: 0.6;
+}
+
 /* Footer */
 .modal__footer {
   display: flex; justify-content: flex-end; gap: 12px;
@@ -270,6 +348,17 @@ function close() { emit('update:modelValue', false) }
 }
 .modal__submit { padding: 11px 28px; }
 .modal__submit:disabled { opacity: .7; cursor: not-allowed; transform: none !important; }
+
+.btn {
+  padding: 10px 22px; border-radius: 50px; font-size: .88rem; font-weight: 700;
+  cursor: pointer; font-family: 'DM Sans', sans-serif; border: none;
+  transition: all var(--transition); display: flex; align-items: center; gap: 6px;
+}
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn-coral { background: var(--coral); color: #fff; }
+.btn-coral:hover:not(:disabled) { background: var(--coral-dk); }
+.btn-outline { background: transparent; border: 1.5px solid var(--gray-200); color: var(--gray-600); }
+.btn-outline:hover { border-color: var(--gray-400); color: var(--indigo); }
 
 .spinner {
   display: inline-block; width: 16px; height: 16px; border-radius: 50%;

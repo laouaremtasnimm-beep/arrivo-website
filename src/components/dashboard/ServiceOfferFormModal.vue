@@ -6,7 +6,8 @@
           <div class="wizard-progress"><div class="wizard-progress__fill" :style="{ width: progressWidth }"></div></div>
           <div class="modal__header">
             <div class="header-left">
-              <div class="step-badge">Step {{ step }} of 2</div>
+              <div class="step-badge" v-if="!isEdit">Step {{ step }} of 2</div>
+              <div class="step-badge" v-else>Edit Offer</div>
               <h2 class="modal__title">{{ stepTitle }}</h2>
               <p class="step-sub">{{ stepSub }}</p>
             </div>
@@ -55,49 +56,141 @@
             <p class="field-error" v-if="errors.service">{{ errors.service }}</p>
           </div>
           <div class="modal__body" v-else-if="step === 2">
-            <div class="selected-summary" v-if="selectedService">
-              <span class="summary-pill">&#x1F6CE;&#xFE0F; {{ selectedService.title }}</span>
-              <span class="summary-pill summary-pill--meta" v-if="selectedService.price">${{ Number(selectedService.price).toLocaleString() }}/{{ selectedService.price_unit || 'day' }}</span>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Discount (%) *</label>
-              <div class="discount-input-wrap">
-                <input type="number" min="1" max="99" class="form-input" v-model.number="form.discount" placeholder="e.g. 20" :disabled="isEdit && hasBookings" />
-                <span class="discount-suffix">% off</span>
-              </div>
-              <p class="lock-notice" v-if="isEdit && hasBookings">Locked - this offer has active bookings.</p>
-              <p class="field-error" v-if="errors.discount">{{ errors.discount }}</p>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Start Date *</label>
-                <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="form.startDate" :min="today" :disabled="isEdit && offerIsLive" />
-                  <span class="date-icon">&#x1F5D3;&#xFE0F;</span>
-                </div>
-                <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
+            <!-- Normal Offer Creation Step 2 -->
+            <template v-if="!isEdit">
+              <div class="selected-summary" v-if="selectedService">
+                <span class="summary-pill">&#x1F6CE;&#xFE0F; {{ selectedService.title }}</span>
+                <span class="summary-pill summary-pill--meta" v-if="selectedService.price">${{ Number(selectedService.price).toLocaleString() }}/{{ selectedService.price_unit || 'day' }}</span>
               </div>
               <div class="form-group">
-                <label class="form-label">End Date *</label>
-                <div class="date-wrap">
-                  <input type="date" class="form-input" v-model="form.endDate" :min="minEndDate" :max="maxOfferEndDate" />
-                  <span class="date-icon">&#x1F5D3;&#xFE0F;</span>
+                <label class="form-label">Discount (%) *</label>
+                <div class="discount-input-wrap">
+                  <input type="number" min="1" max="99" class="form-input" v-model.number="form.discount" placeholder="e.g. 20" />
+                  <span class="discount-suffix">% off</span>
                 </div>
-                <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
+                <p class="field-error" v-if="errors.discount">{{ errors.discount }}</p>
               </div>
-            </div>
-            <div class="discount-preview" v-if="form.discount && selectedService">
-              <div class="discount-preview__label">Price preview with discount</div>
-              <div class="discount-preview__items">
-                <div class="discount-preview__row">
-                  <span class="dp-name">{{ selectedService.title }}</span>
-                  <span class="dp-prices">
-                    <s class="dp-old">${{ Number(selectedService.price).toLocaleString() }}</s>
-                    <strong class="dp-new">${{ discountedPrice(selectedService.price) }}</strong>
-                  </span>
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Start Date *</label>
+                  <div class="date-wrap">
+                    <input type="date" class="form-input" v-model="form.startDate" :min="today" />
+                    <span class="date-icon">&#x1F5D3;&#xFE0F;</span>
+                  </div>
+                  <p class="field-error" v-if="errors.startDate">{{ errors.startDate }}</p>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">End Date *</label>
+                  <div class="date-wrap">
+                    <input type="date" class="form-input" v-model="form.endDate" :min="minEndDate" :max="maxOfferEndDate" />
+                    <span class="date-icon">&#x1F5D3;&#xFE0F;</span>
+                  </div>
+                  <p class="field-error" v-if="errors.endDate">{{ errors.endDate }}</p>
                 </div>
               </div>
-            </div>
+              <div class="discount-preview" v-if="form.discount && selectedService">
+                <div class="discount-preview__label">Price preview with discount</div>
+                <div class="discount-preview__items">
+                  <div class="discount-preview__row">
+                    <span class="dp-name">{{ selectedService.title }}</span>
+                    <span class="dp-prices">
+                      <s class="dp-old">${{ Number(selectedService.price).toLocaleString() }}</s>
+                      <strong class="dp-new">${{ discountedPrice(selectedService.price) }}</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- 1x1 Service-style Edit UI -->
+            <template v-else>
+              <!-- Title — locked -->
+              <div class="form-group">
+                <label class="form-label">Service title *</label>
+                <div class="input-wrap">
+                  <input class="form-input input--locked" v-model="form.title" disabled />
+                  <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                </div>
+              </div>
+
+              <!-- Category + Icon — editable -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Category *</label>
+                  <select class="form-input form-select" v-model="form.type">
+                    <option value="">Select type...</option>
+                    <option v-for="t in serviceTypes" :key="t" :value="t">{{ t }}</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Icon (Emoji)</label>
+                  <input class="form-input text-center" v-model="form.icon" maxlength="4" placeholder="🛎️" />
+                </div>
+              </div>
+
+              <!-- Price + Unit — locked -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Price ($) *</label>
+                  <div class="input-wrap">
+                    <input class="form-input input--locked" v-model.number="form.price" type="number" disabled />
+                    <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Price unit</label>
+                  <div class="input-wrap">
+                    <select class="form-input form-select input--locked" v-model="form.unit" disabled>
+                      <option value="day">Per day</option>
+                      <option value="trip">Per trip</option>
+                      <option value="person">Per person</option>
+                      <option value="hour">Per hour</option>
+                    </select>
+                    <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Dates — locked -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Available from *</label>
+                  <div class="input-wrap">
+                    <input class="form-input input--locked" v-model="form.startDate" type="date" disabled />
+                    <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Available until *</label>
+                  <div class="input-wrap">
+                    <input class="form-input input--locked" v-model="form.endDate" type="date" disabled />
+                    <svg class="lock-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Description — editable -->
+              <div class="form-group">
+                <label class="form-label">Short description *</label>
+                <textarea class="form-input form-textarea" v-model="form.description" placeholder="A brief summary..." rows="3" />
+              </div>
+
+              <!-- Features — editable -->
+              <div class="form-group">
+                <label class="form-label">Features / Inclusions <span class="form-hint">(one per line)</span></label>
+                <textarea class="form-input form-textarea" v-model="form.featuresRaw" placeholder="One feature per line..." rows="4" />
+              </div>
+            </template>
           </div>
           <div class="modal__footer">
             <button class="btn btn-outline" @click="back">{{ (step === 1 || (isEdit && step === 2)) ? 'Cancel' : '← Back' }}</button>
@@ -267,6 +360,11 @@ const blankForm = () => ({
   selectedServiceId: null,
   isFromScratch:     false,
   newServiceData:    null,
+  // New fields for 1x1 parity with service edit
+  icon:              '🛎️',
+  price:             null,
+  unit:              'day',
+  featuresRaw:       '',
 })
 const form = ref(blankForm())
 
@@ -364,9 +462,12 @@ const stepTitle = computed(() =>
     ? (isEdit.value ? 'Edit Offer — Service' : 'Choose a Service')
     : (isEdit.value ? 'Edit Offer Details' : 'Offer Details')
 )
-const stepSub = computed(() =>
-  step.value === 1 ? 'Pick a service to create this offer.' : 'Set the discount and dates for your offer.'
-)
+const stepSub = computed(() => {
+  if (isEdit.value) {
+    return 'Category, icon, description and features can be updated.'
+  }
+  return step.value === 1 ? 'Pick a service to create this offer.' : 'Set the discount and dates for your offer.'
+})
 const subStepTitle = computed(() => subStep.value === 1 ? 'Create a service for this offer' : 'Apply a discount')
 const subStepSub   = computed(() => subStep.value === 1 ? 'Exclusive to this offer' : 'Set a discount to turn this service into a deal')
 
@@ -412,21 +513,58 @@ watch(
       step.value    = offer ? 2 : 1
       errors.value  = {}
       dropdownOpen.value = false
-      form.value    = offer
-        ? {
-            title:             offer.title        ?? '',
-            discount:          offer.discount_pct ?? offer.discount ?? null,
-            startDate:         offer.start_date   ?? offer.startDate ?? '',
-            endDate:           offer.end_date      ?? offer.endDate   ?? '',
-            description:       offer.description  ?? '',
-            type:              offer.type         ?? 'General',
-            selectedServiceId: offer.serviceId    ?? offer.service_id ?? null,
+      
+      if (offer) {
+        const sId = offer.serviceId ?? offer.service_id
+        const svc = providerServices.value.find(s => String(s.id) === String(sId))
+        
+        form.value = {
+          title:             offer.title        ?? '',
+          discount:          offer.discount_pct ?? offer.discount ?? null,
+          startDate:         offer.start_date   ?? offer.startDate ?? '',
+          endDate:           offer.end_date      ?? offer.endDate   ?? '',
+          description:       offer.description  ?? '',
+          type:              offer.type         ?? 'General',
+          selectedServiceId: sId                ?? null,
+          icon:              svc?.icon || '🛎️',
+          price:             svc?.price || null,
+          unit:              svc?.price_unit || svc?.unit || 'day',
+          featuresRaw:       '',
+        }
+
+        if (svc?.features) {
+          try {
+            const feat = typeof svc.features === 'string' ? JSON.parse(svc.features) : svc.features
+            form.value.featuresRaw = Array.isArray(feat) ? feat.join('\n') : ''
+          } catch {
+            form.value.featuresRaw = ''
           }
-        : blankForm()
+        }
+      } else {
+        form.value = blankForm()
+      }
       fetchServices()
     }
   }
 )
+
+// Also watch providerServices so we can populate fields if they load after the offer is set
+watch(() => providerServices.value, (svcs) => {
+  if (isEdit.value && form.value.selectedServiceId && svcs.length) {
+    const svc = svcs.find(s => String(s.id) === String(form.value.selectedServiceId))
+    if (svc) {
+      form.value.icon  = svc.icon || form.value.icon
+      form.value.price = svc.price || form.value.price
+      form.value.unit  = svc.price_unit || svc.unit || form.value.unit
+      if (svc.features && !form.value.featuresRaw) {
+        try {
+          const feat = typeof svc.features === 'string' ? JSON.parse(svc.features) : svc.features
+          form.value.featuresRaw = Array.isArray(feat) ? feat.join('\n') : ''
+        } catch { /* ignore */ }
+      }
+    }
+  }
+}, { deep: true })
 
 watch(() => props.providerId, (id) => {
   if (id && props.modelValue) fetchServices()
@@ -504,7 +642,18 @@ async function submit() {
       newService:  form.value.isFromScratch ? {
         ...form.value.newServiceData,
         features: form.value.newServiceData.featuresRaw.split('\n').map(s => s.trim()).filter(Boolean)
-      } : null,
+      } : (isEdit.value ? {
+        // If editing, also pass the service updates
+        id:         form.value.selectedServiceId,
+        title:      form.value.title,
+        type:       form.value.type,
+        icon:       form.value.icon,
+        price:      form.value.price,
+        price_unit: form.value.unit,
+        description: form.value.description,
+        features:   form.value.featuresRaw.split('\n').map(s => s.trim()).filter(Boolean),
+        is_available: 1
+      } : null),
       packageIds:  [],
       agency_id:   props.providerId,
       source:      'manual',
@@ -713,6 +862,25 @@ function close() {
   position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
   pointer-events: none; font-size: 1rem; z-index: 2;
 }
+
+/* ── Locked Field Styles (1x1 with Serviceformmodal) ── */
+.input-wrap { position: relative; }
+.input--locked {
+  background-color: var(--gray-50, #f9f9fc) !important;
+  color: var(--gray-400, #a0aec0) !important;
+  border-color: var(--gray-100, #edf2f7) !important;
+  cursor: not-allowed !important;
+  opacity: 0.8;
+  padding-right: 36px !important;
+  background-image: none !important;
+}
+.lock-icon {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  width: 13px; height: 13px; pointer-events: none;
+  color: var(--gray-400, #a0aec0); opacity: 0.6;
+}
+.form-hint { font-weight: 400; color: var(--gray-400); font-size: .78rem; }
+.text-center { text-align: center; }
 
 .discount-preview {
   border-radius: 12px; border: 1.5px solid var(--gray-200); overflow: hidden;
