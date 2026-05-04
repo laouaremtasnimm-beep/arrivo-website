@@ -202,6 +202,7 @@ const bookingOpen     = ref(false)
 const isAboutModalOpen = ref(false)
 const collabModalOpen = ref(false)
 
+// ServiceDetail.vue — Book Now button handle
 // isProvider — true when the logged-in user is a service provider
 const isProvider = computed(() => user.value?.role === 'provider')
 
@@ -244,13 +245,15 @@ async function loadItem(id) {
       const data = await res.json()
       if (data.package) {
         const p = data.package
-        const offer = p.active_offer_id ? {
-          id: p.active_offer_id,
-          discount: p.active_offer_discount,
-          startDate: p.active_offer_start,
-          endDate: p.active_offer_end,
-          title: p.active_offer_title
-        } : null
+       // Collab offers only apply when booking the full bundle — never shown on individual detail pages
+const offerIsCollab = p.active_offer_source === 'collab'
+const offer = (p.active_offer_id && !offerIsCollab) ? {
+  id: p.active_offer_id,
+  discount: p.active_offer_discount,
+  startDate: p.active_offer_start,
+  endDate: p.active_offer_end,
+  title: p.active_offer_title
+} : null
         const startDate = p.start_date
         const endDate   = p.end_date
         const calcDur   = offer
@@ -361,24 +364,26 @@ function handleContact() { if (entityCardRef.value) entityCardRef.value.modalOpe
 
 async function handleBooking(payload) {
   if (!isLoggedIn.value) { alert('Please log in to book.'); return }
-  let finalPrice = item.value.price
+
+  // activeOffer here is already collab-stripped (see loadItem).
+  // This path ONLY handles standalone (non-collab) offers.
   const isOffer  = !!item.value.activeOffer
+  let finalPrice = item.value.price
   if (isOffer) finalPrice = Math.round(finalPrice * (1 - item.value.activeOffer.discount / 100))
 
   const result = await createBooking({
-    user_id:        user.value?.userID ?? user.value?.id,
-    type:           isOffer ? 'offer' : 'package',
-    item_id:        isOffer ? item.value.activeOffer.id : item.value.id,
-    package_id:     item.value.id,
-    title:          isOffer ? item.value.activeOffer.title : item.value.title,
-    price:          finalPrice,
-    check_in:       payload.checkin,
-    guests:         parseInt(payload.guests) || 1,
-    notes:          payload.notes,
-    target_user_id: item.value.agency_id,
+    user_id:    user.value?.userID ?? user.value?.id,
+    type:       isOffer ? 'offer' : 'package',
+    offer_id:   isOffer ? item.value.activeOffer.id : null,
+    package_id: item.value.id,
+    title:      isOffer ? item.value.activeOffer.title : item.value.title,
+    price:      finalPrice,
+    check_in:   payload.checkin,
+    guests:     parseInt(payload.guests) || 1,
+    notes:      payload.notes,
   })
 
-  if (result.ok) { bookingOpen.value = false; alert(isOffer ? 'Offer booked successfully!' : 'Package booked successfully!') }
+  if (result.ok) { bookingOpen.value = false; alert(isOffer ? 'Offer booked!' : 'Package booked!') }
   else alert('Failed to book: ' + result.error)
 }
 

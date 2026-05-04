@@ -189,8 +189,11 @@ const moreLike      = ref([])
 const bookingOpen   = ref(false)
 const collabModalOpen = ref(false)
 
+
 // isAgency — true when the logged-in user is an agency
 const isAgency = computed(() => user.value?.role === 'agency')
+
+// ServiceDetail.vue — Book Now button handler
 
 /**
  * Normalised service object passed to CollabFormModal as `lockedService`.
@@ -235,13 +238,15 @@ function normalizeService(s) {
     provider_id:  s.provider_id   ?? null,
     startDate:    s.start_date    ?? s.startDate,
     endDate:      s.end_date      ?? s.endDate,
-    activeOffer: (s.active_offer_id || s.activeOffer?.id) ? {
-      id:        s.active_offer_id       || s.activeOffer?.id,
-      discount:  s.active_offer_discount || s.activeOffer?.discount,
-      startDate: s.active_offer_start    || s.activeOffer?.startDate,
-      endDate:   s.active_offer_end      || s.activeOffer?.endDate,
-      title:     s.active_offer_title    || s.activeOffer?.title
-    } : null,
+   // Collab offers must not show on individual service pages — bundle discount only applies
+// when the full collab offer is booked from the Deals/SpecialOffers page.
+activeOffer: (s.active_offer_id || s.activeOffer?.id) && s.active_offer_source !== 'collab' ? {
+  id:        s.active_offer_id       || s.activeOffer?.id,
+  discount:  s.active_offer_discount || s.activeOffer?.discount,
+  startDate: s.active_offer_start    || s.activeOffer?.startDate,
+  endDate:   s.active_offer_end      || s.activeOffer?.endDate,
+  title:     s.active_offer_title    || s.activeOffer?.title
+} : null,
     features: typeof s.features === 'string' ? JSON.parse(s.features || '[]') : (s.features ?? []),
     faqs:     typeof s.faqs     === 'string' ? JSON.parse(s.faqs     || '[]') : (s.faqs     ?? []),
   }
@@ -339,24 +344,25 @@ function handleOptionSelect() { bookingOpen.value = true }
 
 async function handleBooking(payload) {
   if (!isLoggedIn.value) { alert('Please log in to book.'); return }
+
+  // activeOffer here is already collab-stripped (see normalizeService).
   const isOffer  = !!item.value.activeOffer
   let finalPrice = item.value.price
   if (isOffer) finalPrice = Math.round(finalPrice * (1 - item.value.activeOffer.discount / 100))
 
   const result = await createBooking({
-    user_id:        user.value?.userID ?? user.value?.id,
-    type:           isOffer ? 'offer' : 'service',
-    item_id:        isOffer ? item.value.activeOffer.id : item.value.id,
-    service_id:     item.value.id,
-    title:          isOffer ? item.value.activeOffer.title : item.value.title,
-    price:          finalPrice,
-    check_in:       payload.checkin,
-    guests:         parseInt(payload.guests) || 1,
-    notes:          payload.notes,
-    target_user_id: item.value.provider_id,
+    user_id:    user.value?.userID ?? user.value?.id,
+    type:       isOffer ? 'offer' : 'service',
+    offer_id:   isOffer ? item.value.activeOffer.id : null,
+    service_id: item.value.id,
+    title:      isOffer ? item.value.activeOffer.title : item.value.title,
+    price:      finalPrice,
+    check_in:   payload.checkin,
+    guests:     parseInt(payload.guests) || 1,
+    notes:      payload.notes,
   })
 
-  if (result.ok) { bookingOpen.value = false; alert('Service booked successfully!') }
+  if (result.ok) { bookingOpen.value = false; alert('Service booked!') }
   else alert('Failed to book service: ' + result.error)
 }
 

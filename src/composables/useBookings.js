@@ -34,17 +34,17 @@ export function useBookings() {
     async function createBooking(payload) {
         // Map frontend payload to backend schema
         const body = {
-            user_id:        payload.user_id,
-            package_id:     payload.package_id     ?? (payload.type === 'package'     ? payload.item_id : null),
-            service_id:     payload.service_id     ?? (payload.type === 'service'     ? payload.item_id : null),
+            user_id: payload.user_id,
+            package_id: payload.package_id ?? (payload.type === 'package' ? payload.item_id : null),
+            service_id: payload.service_id ?? (payload.type === 'service' ? payload.item_id : null),
             destination_id: payload.destination_id ?? (payload.type === 'destination' ? payload.item_id : null),
-            offer_id:       payload.offer_id       ?? (payload.type === 'offer'       ? payload.item_id : null),
-            title:          payload.title,
-            booking_type:   payload.type,
-            total_price:    payload.price ?? 0,
-            check_in:       payload.check_in ?? null,
-            guests:         payload.guests ?? 1,
-            notes:          payload.notes ?? '',
+            offer_id: payload.offer_id ?? (payload.type === 'offer' ? payload.item_id : null),
+            title: payload.title,
+            booking_type: payload.type,
+            total_price: payload.price ?? 0,
+            check_in: payload.check_in ?? null,
+            guests: payload.guests ?? 1,
+            notes: payload.notes ?? '',
         }
 
         try {
@@ -151,18 +151,33 @@ export function useBookings() {
         }
     }
 
+    /**
+ * Returns the discounted total ONLY for collab bundle offers.
+ * Individual service/package bookings always receive null (no discount).
+ *
+ * @param {number} basePrice  - sum of raw item prices
+ * @param {object|null} offer - offer object from useOffers, or null
+ * @returns {number}
+ */
+    function collabBundlePrice(basePrice, offer) {
+        if (!offer || offer.source !== 'collab') return basePrice
+        const discount = Number(offer.discount_pct ?? offer.discount ?? 0)
+        if (!discount) return basePrice
+        return +(basePrice * (1 - discount / 100)).toFixed(2)
+    }
+
     function isBooked(type, itemId, linkedId = null) {
         return _bookings.value.some(b => {
             if (b.status === 'cancelled') return false
-            
+
             // 1. Direct match
             if (b.booking_type === type) {
-                if (type === 'package'     && String(b.package_id)     === String(itemId)) return true
-                if (type === 'service'     && String(b.service_id)     === String(itemId)) return true
+                if (type === 'package' && String(b.package_id) === String(itemId)) return true
+                if (type === 'service' && String(b.service_id) === String(itemId)) return true
                 if (type === 'destination' && String(b.destination_id) === String(itemId)) return true
-                if (type === 'offer'       && String(b.offer_id)       === String(itemId)) return true
+                if (type === 'offer' && String(b.offer_id) === String(itemId)) return true
             }
-            
+
             // 2. Cross-match: Base item booked via offer
             if (linkedId && b.booking_type === 'offer' && String(b.offer_id) === String(linkedId)) return true
 
@@ -171,7 +186,7 @@ export function useBookings() {
                 if (b.booking_type === 'package' && String(b.package_id) === String(linkedId)) return true
                 if (b.booking_type === 'service' && String(b.service_id) === String(linkedId)) return true
             }
-            
+
             return false
         })
     }
@@ -179,13 +194,13 @@ export function useBookings() {
     function getBookingId(type, itemId, linkedId = null) {
         const b = _bookings.value.find(b => {
             if (b.status === 'cancelled') return false
-            
+
             // Direct match
             if (b.booking_type === type) {
-                if (type === 'package'     && String(b.package_id)     === String(itemId)) return true
-                if (type === 'service'     && String(b.service_id)     === String(itemId)) return true
+                if (type === 'package' && String(b.package_id) === String(itemId)) return true
+                if (type === 'service' && String(b.service_id) === String(itemId)) return true
                 if (type === 'destination' && String(b.destination_id) === String(itemId)) return true
-                if (type === 'offer'       && String(b.offer_id)       === String(itemId)) return true
+                if (type === 'offer' && String(b.offer_id) === String(itemId)) return true
             }
 
             // Cross-match: Base item booked via offer
@@ -196,10 +211,22 @@ export function useBookings() {
                 if (b.booking_type === 'package' && String(b.package_id) === String(linkedId)) return true
                 if (b.booking_type === 'service' && String(b.service_id) === String(linkedId)) return true
             }
-            
+
             return false
         })
         return b?.id
+    }
+
+    /**
+ * Returns the discounted price ONLY if the offer is a collab bundle
+ * AND the caller is booking the full bundle (offer-type booking).
+ * For individual item pages, pass no offer → gets original price.
+ */
+    function collabBundlePrice(basePrice, offer) {
+        if (!offer || offer.source !== 'collab') return basePrice
+        const discount = Number(offer.discount_pct ?? offer.discount ?? 0)
+        if (!discount) return basePrice
+        return +(basePrice * (1 - discount / 100)).toFixed(2)
     }
 
     return {

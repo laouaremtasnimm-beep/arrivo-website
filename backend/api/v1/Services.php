@@ -17,11 +17,12 @@ try {
                 SELECT s.*, u.company_name AS provider_name,
                        IFNULL(AVG(r.rating), 0) AS rating,
                        COUNT(r.id) AS review_count,
-                       o.id AS active_offer_id,
+                       o.id           AS active_offer_id,
                        o.discount_pct AS active_offer_discount,
-                       o.start_date AS active_offer_start,
-                       o.end_date AS active_offer_end,
-                       o.title AS active_offer_title
+                       o.start_date   AS active_offer_start,
+                       o.end_date     AS active_offer_end,
+                       o.title        AS active_offer_title,
+                       o.source       AS active_offer_source
                 FROM services s
                 LEFT JOIN users u ON u.id = s.provider_id
                 LEFT JOIN reviews r ON r.service_id = s.id
@@ -58,9 +59,8 @@ try {
             echo json_encode(["services" => $services]);
 
         } else {
-            // Public listing
             $status = $_GET['status'] ?? 'active';
-            $where = ($status === 'active') ? 'WHERE s.is_available = 1' : '';
+            $where  = ($status === 'active') ? 'WHERE s.is_available = 1' : '';
 
             $stmt = $pdo->query("
                 SELECT s.*, u.company_name AS provider_name,
@@ -101,16 +101,16 @@ try {
             $data['provider_id'],
             $data['title'],
             $data['description'] ?? '',
-            $data['type'] ?? 'Other',
+            $data['type']        ?? 'Other',
             $data['price'],
-            $data['price_unit'] ?? 'trip',
-            $data['icon'] ?? '🛎️',
-            $data['img_url'] ?? null
+            $data['price_unit']  ?? 'trip',
+            $data['icon']        ?? '🛎️',
+            $data['img_url']     ?? null,
         ]);
 
         echo json_encode([
             "message"    => "Service created",
-            "service_id" => $pdo->lastInsertId()
+            "service_id" => $pdo->lastInsertId(),
         ]);
 
     /* ══════════════════════════════════════════════════════════
@@ -139,7 +139,7 @@ try {
             $data['price_unit'],
             $data['icon'],
             $data['img_url'],
-            $data['id']
+            $data['id'],
         ]);
 
         echo json_encode(["message" => "Service updated"]);
@@ -163,7 +163,7 @@ try {
        DELETE — delete service with cascading offer cleanup
     ══════════════════════════════════════════════════════════ */
     } elseif ($method === 'DELETE') {
-        $data = json_decode(file_get_contents('php://input'), true);
+        $data  = json_decode(file_get_contents('php://input'), true);
         $svcId = $data['id'] ?? null;
 
         if (!$svcId) {
@@ -175,32 +175,23 @@ try {
         try {
             $pdo->beginTransaction();
 
-            /* ── Cascading Cleanup ───────────────────────────────────────
-               Find all offers that use this service.
-               Since an offer usually has 1 service (bundle), deleting the 
-               service makes the offer invalid.
-            ─────────────────────────────────────────────────────────────── */
             $linkedOffersStmt = $pdo->prepare('SELECT id FROM special_offers WHERE service_id = ?');
             $linkedOffersStmt->execute([$svcId]);
-            $linkedOfferIds = $linkedOffersStmt->fetchAll(PDO::FETCH_COLUMN);
-            
+            $linkedOfferIds  = $linkedOffersStmt->fetchAll(PDO::FETCH_COLUMN);
             $deletedOfferIds = [];
 
             foreach ($linkedOfferIds as $offerId) {
-                // Delete linked packages entries first
                 $pdo->prepare('DELETE FROM offer_packages WHERE offer_id = ?')->execute([$offerId]);
-                // Delete the offer itself
                 $pdo->prepare('DELETE FROM special_offers WHERE id = ?')->execute([$offerId]);
                 $deletedOfferIds[] = $offerId;
             }
 
-            /* ── Delete the service itself ─────────────────────────────── */
             $pdo->prepare('DELETE FROM services WHERE id = ?')->execute([$svcId]);
 
             $pdo->commit();
             echo json_encode([
                 "message"           => "Service deleted",
-                "deleted_offer_ids" => $deletedOfferIds
+                "deleted_offer_ids" => $deletedOfferIds,
             ]);
 
         } catch (Exception $e) {

@@ -61,7 +61,7 @@
 <script setup>
 import { ref } from 'vue'
 
-defineProps({
+const props = defineProps({
   modelValue: { type: Boolean, default: false },
   pkg:        { type: Object,  default: null },
 })

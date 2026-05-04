@@ -22,9 +22,9 @@ try {
                        o.start_date AS offer_start,
                        o.end_date AS offer_end
                 FROM   bookings b
-                LEFT   JOIN packages     p ON b.package_id     = p.id
-                LEFT   JOIN services     s ON b.service_id     = s.id
-                LEFT   JOIN special_offers o ON b.offer_id     = o.id
+                LEFT   JOIN packages       p ON b.package_id = p.id
+                LEFT   JOIN services       s ON b.service_id = s.id
+                LEFT   JOIN special_offers o ON b.offer_id   = o.id
                 WHERE  b.user_id = ?
                 ORDER  BY b.created_at DESC
             ');
@@ -89,32 +89,71 @@ try {
             exit();
         }
 
-        // Prevent duplicate active bookings for the same item
+        $booking_type = $data['booking_type'];
+        $offer_id     = !empty($data['offer_id'])     ? (int)$data['offer_id']     : null;
+        $package_id   = !empty($data['package_id'])   ? (int)$data['package_id']   : null;
+        $service_id   = !empty($data['service_id'])   ? (int)$data['service_id']   : null;
+        $total_price  = $data['total_price'] ?? 0.00;
+
+        // ── Bundle-discount guard ─────────────────────────────────────────
+        // For collab offer bookings, always recompute price server-side.
+        // The frontend price is ignored — the DB is the source of truth.
+        if ($booking_type === 'offer' && $offer_id) {
+            $offerStmt = $pdo->prepare('
+                SELECT o.discount_pct,
+                       o.source,
+                       COALESCE(p.price, 0) AS package_price,
+                       COALESCE(s.price, 0) AS service_price
+                FROM   special_offers o
+                LEFT   JOIN offer_packages op ON op.offer_id = o.id
+                LEFT   JOIN packages       p  ON p.id = op.package_id
+                LEFT   JOIN services       s  ON s.id = o.service_id
+                WHERE  o.id = ?
+                AND    o.is_active = 1
+                LIMIT  1
+            ');
+            $offerStmt->execute([$offer_id]);
+            $offerRow = $offerStmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$offerRow) {
+                http_response_code(404);
+                echo json_encode(["error" => "Offer not found or inactive."]);
+                exit();
+            }
+
+            if ($offerRow['source'] === 'collab') {
+                $base        = ($offerRow['package_price'] + $offerRow['service_price']) ?: $total_price;
+                $total_price = round($base * (1 - $offerRow['discount_pct'] / 100), 2);
+            }
+        }
+
+        // ── Duplicate booking guard ───────────────────────────────────────
         $checkStmt = $pdo->prepare('
-            SELECT id FROM bookings 
-            WHERE user_id = ? 
-            AND booking_type = ? 
-            AND status != "cancelled"
+            SELECT id FROM bookings
+            WHERE  user_id      = ?
+            AND    booking_type = ?
+            AND    status      != "cancelled"
             AND (
                 (package_id IS NOT NULL AND package_id = ?) OR
                 (service_id IS NOT NULL AND service_id = ?) OR
-                (offer_id IS NOT NULL AND offer_id = ?)
+                (offer_id   IS NOT NULL AND offer_id   = ?)
             )
             LIMIT 1
         ');
         $checkStmt->execute([
             $data['user_id'],
-            $data['booking_type'],
-            $data['package_id'] ?? -1,
-            $data['service_id'] ?? -1,
-            $data['offer_id']   ?? -1
+            $booking_type,
+            $package_id ?? -1,
+            $service_id ?? -1,
+            $offer_id   ?? -1,
         ]);
         if ($checkStmt->fetch()) {
-            http_response_code(409); // Conflict
+            http_response_code(409);
             echo json_encode(["error" => "You have already booked this item."]);
             exit();
         }
 
+        // ── Insert ────────────────────────────────────────────────────────
         $stmt = $pdo->prepare('
             INSERT INTO bookings
                 (user_id, package_id, service_id, destination_id, offer_id, item_title,
@@ -123,45 +162,45 @@ try {
         ');
         $stmt->execute([
             $data['user_id'],
-            $data['package_id']     ?? null,
-            $data['service_id']     ?? null,
+            $package_id,
+            $service_id,
             $data['destination_id'] ?? null,
-            $data['offer_id']       ?? null,
+            $offer_id,
             $data['title']          ?? null,
-            $data['booking_type'],
+            $booking_type,
             $data['check_in'],
             $data['check_out']      ?? null,
             $data['guests']         ?? 1,
-            $data['total_price']    ?? 0.00,
+            $total_price,
             $data['notes']          ?? null,
             'pending',
         ]);
 
         $bookingId = $pdo->lastInsertId();
 
-        // Resolve the owner of the booked item
+        // ── Resolve owner for notification ────────────────────────────────
         $ownerId   = null;
         $ownerRole = null;
 
-        if (!empty($data['package_id'])) {
+        if (!empty($package_id)) {
             $s = $pdo->prepare('SELECT agency_id FROM packages WHERE id = ?');
-            $s->execute([$data['package_id']]);
+            $s->execute([$package_id]);
             $ownerId   = $s->fetchColumn();
             $ownerRole = 'agency';
-        } elseif (!empty($data['offer_id'])) {
+        } elseif (!empty($offer_id)) {
             $s = $pdo->prepare('
-                SELECT o.agency_id, u.role 
-                FROM special_offers o
-                JOIN users u ON o.agency_id = u.id
-                WHERE o.id = ?
+                SELECT o.agency_id, u.role
+                FROM   special_offers o
+                JOIN   users u ON o.agency_id = u.id
+                WHERE  o.id = ?
             ');
-            $s->execute([$data['offer_id']]);
-            $row = $s->fetch();
+            $s->execute([$offer_id]);
+            $row       = $s->fetch();
             $ownerId   = $row['agency_id'] ?? null;
             $ownerRole = $row['role']      ?? null;
-        } elseif (!empty($data['service_id'])) {
+        } elseif (!empty($service_id)) {
             $s = $pdo->prepare('SELECT provider_id FROM services WHERE id = ?');
-            $s->execute([$data['service_id']]);
+            $s->execute([$service_id]);
             $ownerId   = $s->fetchColumn();
             $ownerRole = 'provider';
         }
@@ -212,22 +251,22 @@ try {
             if ($b['package_id']) {
                 $s2 = $pdo->prepare('SELECT agency_id FROM packages WHERE id = ?');
                 $s2->execute([$b['package_id']]);
-                $ownerId = $s2->fetchColumn();
+                $ownerId   = $s2->fetchColumn();
                 $ownerRole = 'agency';
             } elseif ($b['service_id']) {
                 $s2 = $pdo->prepare('SELECT provider_id FROM services WHERE id = ?');
                 $s2->execute([$b['service_id']]);
-                $ownerId = $s2->fetchColumn();
+                $ownerId   = $s2->fetchColumn();
                 $ownerRole = 'provider';
             } elseif ($b['offer_id']) {
                 $s2 = $pdo->prepare('
-                    SELECT o.agency_id, u.role 
-                    FROM special_offers o
-                    JOIN users u ON o.agency_id = u.id
-                    WHERE o.id = ?
+                    SELECT o.agency_id, u.role
+                    FROM   special_offers o
+                    JOIN   users u ON o.agency_id = u.id
+                    WHERE  o.id = ?
                 ');
                 $s2->execute([$b['offer_id']]);
-                $row = $s2->fetch();
+                $row       = $s2->fetch();
                 $ownerId   = $row['agency_id'] ?? null;
                 $ownerRole = $row['role']      ?? null;
             }
@@ -239,7 +278,7 @@ try {
         echo json_encode([
             "message"    => "Booking marked as cancelled",
             "owner_id"   => $ownerId ? (int)$ownerId : null,
-            "owner_role" => $ownerRole
+            "owner_role" => $ownerRole,
         ]);
 
     } else {

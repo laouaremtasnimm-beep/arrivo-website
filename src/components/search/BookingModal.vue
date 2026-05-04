@@ -55,7 +55,36 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { useOffers } from '@/composables/useOffers'
+import { useBookings } from '@/composables/useBookings'
+
+const { activeOffers } = useOffers()
+const { collabBundlePrice } = useBookings()
+
+// When opening a booking for a standalone item:
+const applicableOffer = computed(() => {
+  if (!props.item) return null
+  // Only apply a collab offer if explicitly passed — NEVER auto-apply
+  // to individual service/package pages
+  return props.offer?.source === 'collab' ? props.offer : null
+})
+
+const finalPrice = computed(() => {
+  if (!applicableOffer.value) return props.item.price   // raw price, no discount
+  return collabBundlePrice(props.item.price, applicableOffer.value)
+})
+
+const bookingPayload = computed(() => ({
+  user_id: user.value.userID ?? user.value.id,
+  title: applicableOffer.value?.title ?? props.item.title,
+  // If collab bundle → book as 'offer', linked to offer_id
+  type: applicableOffer.value ? 'offer' : props.itemType,
+  offer_id: applicableOffer.value?.offerID ?? null,
+  // Still store the underlying items for dashboard display
+  package_id: applicableOffer.value?.package_id ?? (props.itemType === 'package' ? props.item.id : null),
+  service_id: applicableOffer.value?.service_id ?? (props.itemType === 'service' ? props.item.id : null),
+  price: finalPrice.value,
+}))
 
 defineProps({
   modelValue: { type: Boolean, default: false },

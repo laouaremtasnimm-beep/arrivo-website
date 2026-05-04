@@ -13,11 +13,12 @@ try {
                 SELECT p.*, u.company_name AS agency_name,
                        IFNULL(AVG(r.rating), 0) AS rating,
                        COUNT(r.id) AS review_count,
-                       MAX(o.id) AS active_offer_id,
+                       MAX(o.id)           AS active_offer_id,
                        MAX(o.discount_pct) AS active_offer_discount,
-                       MAX(o.start_date) AS active_offer_start,
-                       MAX(o.end_date) AS active_offer_end,
-                       MAX(o.title) AS active_offer_title
+                       MAX(o.start_date)   AS active_offer_start,
+                       MAX(o.end_date)     AS active_offer_end,
+                       MAX(o.title)        AS active_offer_title,
+                       MAX(o.source)       AS active_offer_source
                 FROM packages p
                 LEFT JOIN users u ON u.id = p.agency_id
                 LEFT JOIN reviews r ON r.package_id = p.id
@@ -41,11 +42,12 @@ try {
                 SELECT p.*, u.company_name AS agency_name,
                        COUNT(DISTINCT b.id) AS booking_count,
                        IFNULL(AVG(r.rating), 0) AS rating,
-                       MAX(o.id) AS active_offer_id,
+                       MAX(o.id)           AS active_offer_id,
                        MAX(o.discount_pct) AS active_offer_discount,
-                       MAX(o.start_date) AS active_offer_start,
-                       MAX(o.end_date) AS active_offer_end,
-                       MAX(o.title) AS active_offer_title
+                       MAX(o.start_date)   AS active_offer_start,
+                       MAX(o.end_date)     AS active_offer_end,
+                       MAX(o.title)        AS active_offer_title,
+                       MAX(o.source)       AS active_offer_source
                 FROM   packages p
                 LEFT   JOIN users u ON u.id = p.agency_id
                 LEFT   JOIN bookings b ON b.package_id = p.id
@@ -65,11 +67,12 @@ try {
                 SELECT p.*, u.company_name AS agency_name,
                        IFNULL(AVG(r.rating), 0) AS rating,
                        COUNT(DISTINCT r.id) AS review_count,
-                       MAX(o.id) AS active_offer_id,
+                       MAX(o.id)           AS active_offer_id,
                        MAX(o.discount_pct) AS active_offer_discount,
-                       MAX(o.start_date) AS active_offer_start,
-                       MAX(o.end_date) AS active_offer_end,
-                       MAX(o.title) AS active_offer_title
+                       MAX(o.start_date)   AS active_offer_start,
+                       MAX(o.end_date)     AS active_offer_end,
+                       MAX(o.title)        AS active_offer_title,
+                       MAX(o.source)       AS active_offer_source
                 FROM packages p
                 LEFT JOIN users u ON u.id = p.agency_id
                 LEFT JOIN reviews r ON r.package_id = p.id
@@ -193,51 +196,40 @@ try {
 
         $pdo->beginTransaction();
         try {
-            /* ── Cascade: handle linked offers ──────────────────────────────
-               For each offer that includes this package:
-               - If this package is the ONLY one in the offer → delete the offer entirely
-               - If the offer has multiple packages → just unlink this one
-            ─────────────────────────────────────────────────────────────── */
             $linkedOffersStmt = $pdo->prepare('SELECT offer_id FROM offer_packages WHERE package_id = ?');
             $linkedOffersStmt->execute([$pkgId]);
-            $linkedOfferIds = $linkedOffersStmt->fetchAll(PDO::FETCH_COLUMN);
+            $linkedOfferIds  = $linkedOffersStmt->fetchAll(PDO::FETCH_COLUMN);
             $deletedOfferIds = [];
 
             foreach ($linkedOfferIds as $offerId) {
-                /* Count how many packages this offer has in total */
                 $countStmt = $pdo->prepare('SELECT COUNT(*) FROM offer_packages WHERE offer_id = ?');
                 $countStmt->execute([$offerId]);
                 $packageCount = (int) $countStmt->fetchColumn();
 
                 if ($packageCount <= 1) {
-                    /* Check if it also has a service */
                     $svcStmt = $pdo->prepare('SELECT service_id FROM special_offers WHERE id = ?');
                     $svcStmt->execute([$offerId]);
                     $svcId = $svcStmt->fetchColumn();
 
                     if (empty($svcId)) {
-                        /* Truly empty → delete the whole offer */
                         $pdo->prepare('DELETE FROM offer_packages WHERE offer_id = ?')->execute([$offerId]);
                         $pdo->prepare('DELETE FROM special_offers WHERE id = ?')->execute([$offerId]);
                         $deletedOfferIds[] = $offerId;
                     } else {
-                        /* Still has a service → just unlink this package */
                         $pdo->prepare('DELETE FROM offer_packages WHERE offer_id = ? AND package_id = ?')
                             ->execute([$offerId, $pkgId]);
                     }
                 } else {
-                    /* Offer still has other packages → just unlink this one */
                     $pdo->prepare('DELETE FROM offer_packages WHERE offer_id = ? AND package_id = ?')
                         ->execute([$offerId, $pkgId]);
                 }
             }
 
-            /* ── Delete the package itself ─────────────────────────────── */
             $pdo->prepare('DELETE FROM packages WHERE id = ?')->execute([$pkgId]);
 
             $pdo->commit();
             echo json_encode([
-                "message"          => "Package deleted",
+                "message"           => "Package deleted",
                 "deleted_offer_ids" => $deletedOfferIds,
             ]);
 
