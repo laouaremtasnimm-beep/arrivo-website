@@ -19,6 +19,96 @@ function setPackagesOfferOnly(PDO $pdo, array $packageIds, int $flag): void {
     $stmt->execute(array_merge([$flag], $packageIds));
 }
 
+function offerServiceIds(PDO $pdo, array $offer): array {
+    $ids = [];
+
+    if (!empty($offer['collab_id'])) {
+        $collabStmt = $pdo->prepare('SELECT service_id, service_ids FROM collaborations WHERE id = ?');
+        $collabStmt->execute([(int)$offer['collab_id']]);
+        $collab = $collabStmt->fetch(PDO::FETCH_ASSOC);
+        if ($collab) {
+            if (!empty($collab['service_ids'])) {
+                $decoded = json_decode($collab['service_ids'], true);
+                if (is_array($decoded)) $ids = array_merge($ids, $decoded);
+            }
+            if (!empty($collab['service_id'])) $ids[] = (int)$collab['service_id'];
+        }
+    }
+
+    if (!empty($offer['service_id'])) $ids[] = (int)$offer['service_id'];
+
+    return array_values(array_unique(array_filter(array_map('intval', $ids))));
+}
+
+function attachOfferContent(PDO $pdo, array &$offer): void {
+    $pkgStmt = $pdo->prepare('
+        SELECT p.*, u.company_name AS agency_name,
+               IFNULL(AVG(r.rating), 0) AS rating,
+               COUNT(r.id)              AS review_count
+        FROM   offer_packages op
+        JOIN   packages p ON p.id = op.package_id
+        LEFT JOIN users u ON u.id = p.agency_id
+        LEFT JOIN reviews r ON r.package_id = p.id
+        WHERE  op.offer_id = ?
+        GROUP  BY p.id
+    ');
+    $pkgStmt->execute([(int)$offer['id']]);
+    $packages = $pkgStmt->fetchAll(PDO::FETCH_ASSOC);
+    $offer['packages'] = $packages;
+    $offer['packageIds'] = array_map('intval', array_column($packages, 'id'));
+
+    if (!empty($packages)) {
+        $pkg = $packages[0];
+        $offer['package_id'] = $offer['package_id'] ?? (int)$pkg['id'];
+        $offer['package_title'] = $pkg['title'] ?? null;
+        $offer['package_type'] = $pkg['type'] ?? null;
+        $offer['package_destination'] = $pkg['destination'] ?? null;
+        $offer['package_img_url'] = $pkg['img_url'] ?? null;
+        $offer['package_price'] = $pkg['price'] ?? null;
+        $offer['price'] = $offer['price'] ?? $pkg['price'] ?? 0;
+    }
+
+    $offer['services'] = [];
+    $serviceIds = offerServiceIds($pdo, $offer);
+    if (!empty($serviceIds)) {
+        $placeholders = implode(',', array_fill(0, count($serviceIds), '?'));
+        $order = implode(',', $serviceIds);
+        $svcStmt = $pdo->prepare("
+            SELECT s.*, u.company_name AS provider_name
+            FROM   services s
+            LEFT JOIN users u ON u.id = s.provider_id
+            WHERE  s.id IN ($placeholders)
+            ORDER BY FIELD(s.id, $order)
+        ");
+        $svcStmt->execute($serviceIds);
+        $services = $svcStmt->fetchAll(PDO::FETCH_ASSOC);
+        $offer['services'] = $services;
+        $offer['service_ids'] = array_map('intval', array_column($services, 'id'));
+
+        if (!empty($services)) {
+            $svc = $services[0];
+            $offer['service_id'] = $offer['service_id'] ?? (int)$svc['id'];
+            $offer['service_title'] = $svc['title'] ?? null;
+            $offer['service_type'] = $svc['type'] ?? null;
+            $offer['service_img_url'] = $svc['img_url'] ?? null;
+            $offer['provider_id'] = !empty($offer['provider_id']) ? (int)$offer['provider_id'] : (int)$svc['provider_id'];
+            $offer['provider_name'] = $svc['provider_name'] ?? null;
+            $offer['partnerName'] = $svc['provider_name'] ?? null;
+        }
+    }
+
+    $image = $offer['img_url'] ?? $offer['package_img_url'] ?? $offer['service_img_url'] ?? null;
+    $offer['img_url'] = $image;
+    $offer['img'] = $image;
+}
+
+function attachOffersContent(PDO $pdo, array &$offers): void {
+    foreach ($offers as &$offer) {
+        attachOfferContent($pdo, $offer);
+    }
+    unset($offer);
+}
+
 try {
     /* ══════════════════════════════════════════════════════════
        GET  — list or single fetch
@@ -37,46 +127,23 @@ try {
                 exit();
             }
 
-            /* Fetch linked packages (offer_only ones) */
-            $pkgStmt = $pdo->prepare('
-                SELECT p.*, u.company_name AS agency_name,
-                       IFNULL(AVG(r.rating), 0) AS rating,
-                       COUNT(r.id)              AS review_count
-                FROM   offer_packages op
-                JOIN   packages p ON p.id = op.package_id
-                LEFT JOIN users u ON u.id = p.agency_id
-                LEFT JOIN reviews r ON r.package_id = p.id
-                WHERE  op.offer_id = ?
-                GROUP  BY p.id
-            ');
-            $pkgStmt->execute([$_GET['id']]);
-            $offer['packages'] = $pkgStmt->fetchAll();
-
-            /* Fetch linked service if any */
-            $offer['services'] = [];
-            if (!empty($offer['service_id'])) {
-                $svcStmt = $pdo->prepare('
-                    SELECT s.*, u.company_name AS provider_name
-                    FROM   services s
-                    LEFT JOIN users u ON u.id = s.provider_id
-                    WHERE  s.id = ?
-                ');
-                $svcStmt->execute([$offer['service_id']]);
-                $svc = $svcStmt->fetch();
-                if ($svc) $offer['services'] = [$svc];
-            }
+            attachOfferContent($pdo, $offer);
 
             echo json_encode(['offer' => $offer]);
 
         } elseif (isset($_GET['agency_id'])) {
             $stmt = $pdo->prepare('SELECT * FROM special_offers WHERE agency_id = ? ORDER BY created_at DESC');
             $stmt->execute([$_GET['agency_id']]);
-            echo json_encode(['offers' => $stmt->fetchAll()]);
+            $offers = $stmt->fetchAll();
+            attachOffersContent($pdo, $offers);
+            echo json_encode(['offers' => $offers]);
 
         } else {
             /* Public listing — all active offers */
             $stmt = $pdo->query('SELECT * FROM special_offers WHERE is_active = 1 ORDER BY created_at DESC');
-            echo json_encode(['offers' => $stmt->fetchAll()]);
+            $offers = $stmt->fetchAll();
+            attachOffersContent($pdo, $offers);
+            echo json_encode(['offers' => $offers]);
         }
 
     /* ══════════════════════════════════════════════════════════

@@ -52,6 +52,19 @@ export function useCollabActions({ collaborations, user, addOffer, deleteOffer, 
   function normalizeCollab(c) {
     const myId = uid()
     const isInitiator = Number(c.initiator_id) === myId
+    const services = Array.isArray(c.services) && c.services.length
+      ? c.services
+      : [{
+          id: c.service_id,
+          title: c.service_title,
+          type: c.service_type,
+          icon: c.service_icon,
+          img_url: c.service_img_url,
+          service_icon: c.service_icon,
+          service_img_url: c.service_img_url,
+          price: c.service_price,
+          price_unit: c.service_price_unit,
+        }].filter(s => s.id || s.title)
 
     return {
       // Identity
@@ -62,6 +75,7 @@ export function useCollabActions({ collaborations, user, addOffer, deleteOffer, 
       offer_id: c.offer_id ?? null,
       package_id: c.package_id ?? null,
       service_id: c.service_id ?? null,
+      service_ids: c.service_ids ?? services.map(s => s.id).filter(Boolean),
 
       // Offer terms
       title: c.title,
@@ -83,14 +97,14 @@ export function useCollabActions({ collaborations, user, addOffer, deleteOffer, 
       initiator: {
         id: c.initiator_id,
         name: c.initiator_company || `${c.initiator_first_name} ${c.initiator_last_name}`.trim(),
-        role: 'agency',
+        role: c.initiator_role ?? 'agency',
       },
 
       // Partner display info
       partner: {
         id: c.partner_id,
         name: c.partner_company || `${c.partner_first_name} ${c.partner_last_name}`.trim(),
-        role: 'provider',
+        role: c.partner_role ?? 'provider',
         color: '#2EC4B6', // default teal; can be made dynamic later
       },
 
@@ -98,10 +112,14 @@ export function useCollabActions({ collaborations, user, addOffer, deleteOffer, 
       packageTitle: c.package_title ?? null,
       packageImg: c.package_img_url ?? null,
       packagePrice: c.package_price ?? null,
+      packageDestination: c.package_destination ?? null,
+      packageDurationDays: c.package_duration_days ?? null,
       serviceTitle: c.service_title ?? null,
       serviceIcon: c.service_icon ?? null,
       servicePrice: c.service_price ?? null,
       serviceUnit: c.service_price_unit ?? null,
+      services,
+      serviceTitles: services.map(s => s.title).filter(Boolean),
     }
   }
 
@@ -157,6 +175,8 @@ export function useCollabActions({ collaborations, user, addOffer, deleteOffer, 
       // Push the new offer into the global useOffers store.
       // Shape mirrors what useOffers._bootstrap() produces from the DB.
       const c = data.collaboration
+      const providerDisplay = confirmed.partner?.role === 'provider' ? confirmed.partner : confirmed.initiator
+      const packageIds = c.package_id ? [Number(c.package_id)] : []
       addOffer({
         offerID: c.offer_id,
         title: c.title,
@@ -170,15 +190,28 @@ export function useCollabActions({ collaborations, user, addOffer, deleteOffer, 
         active: true,
         is_active: 1,
         // Both owner references so either dashboard can recognise the offer
-        owner_id: c.initiator_id,
-        agency_id: c.initiator_id,
-        provider_id: c.partner_id,
+        owner_id: c.package_agency_id ?? c.initiator_id,
+        agency_id: c.package_agency_id ?? c.initiator_id,
+        provider_id: c.service_provider_id ?? c.partner_id,
         // Content attached to this collab offer
         package_id: c.package_id ?? null,
+        packageIds,
+        package_title: c.package_title ?? confirmed.packageTitle ?? null,
+        package_img_url: c.package_img_url ?? confirmed.packageImg ?? null,
+        package_price: c.package_price ?? confirmed.packagePrice ?? null,
         service_id: c.service_id ?? null,
+        service_ids: c.service_ids ?? confirmed.service_ids ?? null,
+        services: c.services ?? confirmed.services ?? [],
+        service_title: c.service_title ?? confirmed.serviceTitle ?? null,
+        service_img_url: c.service_img_url ?? confirmed.services?.[0]?.img_url ?? null,
+        img: c.package_img_url ?? c.service_img_url ?? confirmed.packageImg ?? confirmed.services?.[0]?.img_url ?? null,
+        img_url: c.package_img_url ?? c.service_img_url ?? confirmed.packageImg ?? confirmed.services?.[0]?.img_url ?? null,
+        price: c.package_price ?? c.service_price ?? 0,
         // Display metadata
         partner: confirmed.partner,
         initiator: confirmed.initiator,
+        partnerName: providerDisplay?.name ?? null,
+        partnerColor: providerDisplay?.color ?? '#2EC4B6',
       })
 
     } catch (e) {

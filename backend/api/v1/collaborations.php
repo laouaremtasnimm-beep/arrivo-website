@@ -6,20 +6,92 @@ header('Content-Type: application/json');
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+function ensureCollabServiceIdsColumn(PDO $pdo): void {
+    $stmt = $pdo->query("SHOW COLUMNS FROM collaborations LIKE 'service_ids'");
+    if (!$stmt->fetch()) {
+        $pdo->exec('ALTER TABLE collaborations ADD COLUMN service_ids JSON NULL AFTER service_id');
+    }
+}
+
+/* ── FIX: MariaDB does not allow ? placeholders in SHOW statements.
+         Use a safe string-interpolated query instead (table/column names
+         are never user-supplied here, so this is safe). ── */
+function tableHasColumn(PDO $pdo, string $table, string $column): bool {
+    // Sanitise: strip anything that isn't a letter, digit, or underscore
+    $table  = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
+    $column = preg_replace('/[^a-zA-Z0-9_]/', '', $column);
+    $stmt   = $pdo->query("SHOW COLUMNS FROM `{$table}` LIKE '{$column}'");
+    return (bool) $stmt->fetch();
+}
+
+function collabServiceIds(array $collab): array {
+    $ids = [];
+    if (!empty($collab['service_ids'])) {
+        $decoded = is_string($collab['service_ids'])
+            ? json_decode($collab['service_ids'], true)
+            : $collab['service_ids'];
+        if (is_array($decoded)) {
+            $ids = array_map('intval', $decoded);
+        }
+    }
+    if (empty($ids) && !empty($collab['service_id'])) {
+        $ids = [(int)$collab['service_id']];
+    }
+    return array_values(array_unique(array_filter($ids)));
+}
+
+function attachCollabServices(PDO $pdo, array &$collab): void {
+    $ids = collabServiceIds($collab);
+    $collab['service_ids'] = $ids;
+    $collab['services'] = [];
+    if (empty($ids)) return;
+
+    $placeholders = implode(',', array_fill(0, count($ids), '?'));
+    $order = implode(',', $ids);
+    $stmt = $pdo->prepare("
+        SELECT id, provider_id, title, type, icon, img_url, price, price_unit
+        FROM services
+        WHERE id IN ($placeholders)
+        ORDER BY FIELD(id, $order)
+    ");
+    $stmt->execute($ids);
+    $collab['services'] = array_map(function ($svc) {
+        $svc['id'] = (int)$svc['id'];
+        $svc['provider_id'] = (int)$svc['provider_id'];
+        return $svc;
+    }, $stmt->fetchAll());
+}
+
 /* ─────────────────────────────────────────────────────────────────────────────
    Helper: create a special_offer row from an accepted collaboration.
    Returns the new offer's ID.
 ───────────────────────────────────────────────────────────────────────────── */
 function createOfferFromCollab(PDO $pdo, array $collab): int {
-    $stmt = $pdo->prepare('
-        INSERT INTO special_offers
-            (agency_id, service_id, collab_id, title, discount_pct,
-             start_date, end_date, type, offer_type, source, description, is_active)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, "collab", ?, 1)
-    ');
-    $stmt->execute([
-        $collab['initiator_id'],   // agency always initiates
-        $collab['service_id'],     // Correct column: service_id, not provider_id
+    $agencyStmt = $pdo->prepare('SELECT agency_id FROM packages WHERE id = ?');
+    $agencyStmt->execute([(int)$collab['package_id']]);
+    $agencyId = (int)$agencyStmt->fetchColumn();
+
+    $providerStmt = $pdo->prepare('SELECT provider_id FROM services WHERE id = ?');
+    $providerStmt->execute([(int)$collab['service_id']]);
+    $providerId = (int)$providerStmt->fetchColumn();
+
+    $columns = [
+        'agency_id',
+        'service_id',
+        'collab_id',
+        'title',
+        'discount_pct',
+        'start_date',
+        'end_date',
+        'type',
+        'offer_type',
+        'source',
+        'description',
+        'is_active',
+    ];
+    $values = [
+        $agencyId,
+        $collab['service_id'],
         $collab['id'],
         $collab['title'],
         $collab['discount_pct'],
@@ -27,8 +99,22 @@ function createOfferFromCollab(PDO $pdo, array $collab): int {
         $collab['end_date'],
         $collab['offer_type'] ?? 'Bundle',
         $collab['offer_type'] ?? 'Bundle',
+        'collab',
         $collab['message'] ?? null,
-    ]);
+        1,
+    ];
+
+    if ($providerId && tableHasColumn($pdo, 'special_offers', 'provider_id')) {
+        $columns[] = 'provider_id';
+        $values[]  = $providerId;
+    }
+
+    $placeholders = implode(',', array_fill(0, count($columns), '?'));
+    $stmt = $pdo->prepare('
+        INSERT INTO special_offers (' . implode(',', $columns) . ')
+        VALUES (' . $placeholders . ')
+    ');
+    $stmt->execute($values);
     $offerId = (int) $pdo->lastInsertId();
 
     /* Link the package chosen at request-time */
@@ -44,48 +130,46 @@ function createOfferFromCollab(PDO $pdo, array $collab): int {
 
 /* ─────────────────────────────────────────────────────────────────────────────
    Helper: full collab row with all joined data (service, package, users).
-   Returned after every mutating operation so the client can update state.
 ───────────────────────────────────────────────────────────────────────────── */
 function fetchCollabById(PDO $pdo, int $id): ?array {
     $stmt = $pdo->prepare('
         SELECT
             c.*,
-            -- initiator (agency)
-            ui.first_name  AS initiator_first_name,
-            ui.last_name   AS initiator_last_name,
+            ui.first_name   AS initiator_first_name,
+            ui.last_name    AS initiator_last_name,
             ui.company_name AS initiator_company,
-            ui.avatar_url  AS initiator_avatar,
-            -- partner (provider)
-            up.first_name  AS partner_first_name,
-            up.last_name   AS partner_last_name,
+            ui.avatar_url   AS initiator_avatar,
+            ui.role         AS initiator_role,
+            up.first_name   AS partner_first_name,
+            up.last_name    AS partner_last_name,
             up.company_name AS partner_company,
-            up.avatar_url  AS partner_avatar,
-            -- service
-            s.title        AS service_title,
-            s.type         AS service_type,
-            s.icon         AS service_icon,
-            s.img_url      AS service_img_url,
-            s.price        AS service_price,
-            s.price_unit   AS service_price_unit,
-            -- package
-            p.title        AS package_title,
-            p.destination  AS package_destination,
-            p.type         AS package_type,
-            p.img_url      AS package_img_url,
-            p.price        AS package_price,
+            up.avatar_url   AS partner_avatar,
+            up.role         AS partner_role,
+            s.title         AS service_title,
+            s.type          AS service_type,
+            s.icon          AS service_icon,
+            s.img_url       AS service_img_url,
+            s.price         AS service_price,
+            s.price_unit    AS service_price_unit,
+            s.provider_id   AS service_provider_id,
+            p.title         AS package_title,
+            p.destination   AS package_destination,
+            p.type          AS package_type,
+            p.img_url       AS package_img_url,
+            p.price         AS package_price,
+            p.agency_id     AS package_agency_id,
             p.duration_days AS package_duration_days
         FROM   collaborations c
-        JOIN   users  ui ON ui.id = c.initiator_id
-        JOIN   users  up ON up.id = c.partner_id
-        JOIN   services s ON s.id = c.service_id
-        JOIN   packages p ON p.id = c.package_id
+        JOIN   users    ui ON ui.id = c.initiator_id
+        JOIN   users    up ON up.id = c.partner_id
+        JOIN   services s  ON s.id  = c.service_id
+        JOIN   packages p  ON p.id  = c.package_id
         WHERE  c.id = ?
     ');
     $stmt->execute([$id]);
     $row = $stmt->fetch();
     if (!$row) return null;
 
-    /* Cast numeric fields */
     $row['id']           = (int) $row['id'];
     $row['initiator_id'] = (int) $row['initiator_id'];
     $row['partner_id']   = (int) $row['partner_id'];
@@ -94,10 +178,12 @@ function fetchCollabById(PDO $pdo, int $id): ?array {
     $row['discount_pct'] = (int) $row['discount_pct'];
     $row['offer_id']     = $row['offer_id'] ? (int) $row['offer_id'] : null;
 
-    /* Decode counter_data JSON if present */
     if (!empty($row['counter_data'])) {
         $row['counter_data'] = json_decode($row['counter_data'], true);
     }
+    $row['service_provider_id'] = (int) $row['service_provider_id'];
+    $row['package_agency_id']   = (int) $row['package_agency_id'];
+    attachCollabServices($pdo, $row);
     return $row;
 }
 
@@ -105,11 +191,10 @@ function fetchCollabById(PDO $pdo, int $id): ?array {
    ROUTING
 ═════════════════════════════════════════════════════════════════════════════ */
 try {
+    ensureCollabServiceIdsColumn($pdo);
 
     /* ────────────────────────────────────────────────────────────────────────
        GET
-       ?user_id=X          → all collabs where user is initiator OR partner
-       ?id=X               → single collab (full detail)
     ──────────────────────────────────────────────────────────────────────── */
     if ($method === 'GET') {
 
@@ -132,21 +217,25 @@ try {
                     ui.last_name    AS initiator_last_name,
                     ui.company_name AS initiator_company,
                     ui.avatar_url   AS initiator_avatar,
+                    ui.role         AS initiator_role,
                     up.first_name   AS partner_first_name,
                     up.last_name    AS partner_last_name,
                     up.company_name AS partner_company,
                     up.avatar_url   AS partner_avatar,
+                    up.role         AS partner_role,
                     s.title         AS service_title,
                     s.type          AS service_type,
                     s.icon          AS service_icon,
                     s.img_url       AS service_img_url,
                     s.price         AS service_price,
                     s.price_unit    AS service_price_unit,
+                    s.provider_id   AS service_provider_id,
                     p.title         AS package_title,
                     p.destination   AS package_destination,
                     p.type          AS package_type,
                     p.img_url       AS package_img_url,
                     p.price         AS package_price,
+                    p.agency_id     AS package_agency_id,
                     p.duration_days AS package_duration_days
                 FROM   collaborations c
                 JOIN   users    ui ON ui.id = c.initiator_id
@@ -170,6 +259,9 @@ try {
                 if (!empty($row['counter_data'])) {
                     $row['counter_data'] = json_decode($row['counter_data'], true);
                 }
+                $row['service_provider_id'] = (int) $row['service_provider_id'];
+                $row['package_agency_id']   = (int) $row['package_agency_id'];
+                attachCollabServices($pdo, $row);
             }
             unset($row);
 
@@ -181,12 +273,12 @@ try {
         }
 
     /* ────────────────────────────────────────────────────────────────────────
-       POST — agency sends a new collab request
+       POST — send new collab request
     ──────────────────────────────────────────────────────────────────────── */
     } elseif ($method === 'POST') {
         $data = json_decode(file_get_contents('php://input'), true);
 
-        $required = ['initiator_id', 'partner_id', 'service_id', 'package_id', 'title', 'discount_pct'];
+        $required = ['initiator_id', 'partner_id', 'package_id', 'title', 'discount_pct'];
         foreach ($required as $field) {
             if (!isset($data[$field]) || $data[$field] === '') {
                 http_response_code(400);
@@ -195,44 +287,61 @@ try {
             }
         }
 
-        /* Verify roles */
+        $serviceIds = [];
+        if (isset($data['service_ids']) && is_array($data['service_ids'])) {
+            $serviceIds = array_map('intval', $data['service_ids']);
+        } elseif (isset($data['service_id']) && $data['service_id'] !== '') {
+            $serviceIds = [(int)$data['service_id']];
+        }
+        $serviceIds = array_values(array_unique(array_filter($serviceIds)));
+        if (empty($serviceIds)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Select at least one service']);
+            exit();
+        }
+
         $roleStmt = $pdo->prepare('SELECT id, role FROM users WHERE id IN (?, ?)');
         $roleStmt->execute([(int)$data['initiator_id'], (int)$data['partner_id']]);
         $roleMap = [];
         foreach ($roleStmt->fetchAll() as $u) $roleMap[$u['id']] = $u['role'];
 
-        if (($roleMap[$data['initiator_id']] ?? '') !== 'agency') {
+        $initiatorRole = $roleMap[$data['initiator_id']] ?? '';
+        $partnerRole   = $roleMap[$data['partner_id']]   ?? '';
+
+        if (!in_array($initiatorRole, ['agency', 'provider'], true)) {
             http_response_code(403);
-            echo json_encode(['error' => 'Only agencies can initiate collaborations']);
+            echo json_encode(['error' => 'Collaboration initiator must be an agency or provider']);
             exit();
         }
-        if (($roleMap[$data['partner_id']] ?? '') !== 'provider') {
+        if (!in_array($partnerRole, ['agency', 'provider'], true) || $partnerRole === $initiatorRole) {
             http_response_code(403);
-            echo json_encode(['error' => 'Collaboration partner must be a provider']);
+            echo json_encode(['error' => 'Collaboration must be between an agency and a provider']);
             exit();
         }
 
-        /* Verify service → partner */
-        $svcCheck = $pdo->prepare('SELECT provider_id FROM services WHERE id = ?');
-        $svcCheck->execute([(int)$data['service_id']]);
-        $svc = $svcCheck->fetch();
-        if (!$svc || (int)$svc['provider_id'] !== (int)$data['partner_id']) {
+        $providerId      = $initiatorRole === 'provider' ? (int)$data['initiator_id'] : (int)$data['partner_id'];
+        $svcPlaceholders = implode(',', array_fill(0, count($serviceIds), '?'));
+        $svcCheck        = $pdo->prepare("
+            SELECT COUNT(*) FROM services
+            WHERE provider_id = ? AND id IN ($svcPlaceholders)
+        ");
+        $svcCheck->execute(array_merge([$providerId], $serviceIds));
+        if ((int)$svcCheck->fetchColumn() !== count($serviceIds)) {
             http_response_code(400);
-            echo json_encode(['error' => 'Service does not belong to the specified provider']);
+            echo json_encode(['error' => 'One or more services do not belong to the specified provider']);
             exit();
         }
 
-        /* Verify package → initiator */
         $pkgCheck = $pdo->prepare('SELECT agency_id FROM packages WHERE id = ?');
         $pkgCheck->execute([(int)$data['package_id']]);
-        $pkg = $pkgCheck->fetch();
-        if (!$pkg || (int)$pkg['agency_id'] !== (int)$data['initiator_id']) {
+        $pkg      = $pkgCheck->fetch();
+        $agencyId = $initiatorRole === 'agency' ? (int)$data['initiator_id'] : (int)$data['partner_id'];
+        if (!$pkg || (int)$pkg['agency_id'] !== $agencyId) {
             http_response_code(400);
-            echo json_encode(['error' => 'Package does not belong to the initiating agency']);
+            echo json_encode(['error' => 'Package does not belong to the specified agency']);
             exit();
         }
 
-        /* Discount range */
         $disc = (int)$data['discount_pct'];
         if ($disc < 1 || $disc > 99) {
             http_response_code(400);
@@ -242,14 +351,15 @@ try {
 
         $stmt = $pdo->prepare('
             INSERT INTO collaborations
-                (initiator_id, partner_id, service_id, package_id,
+                (initiator_id, partner_id, service_id, service_ids, package_id,
                  title, discount_pct, offer_type, start_date, end_date, message, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "pending")
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, "pending")
         ');
         $stmt->execute([
             (int)   $data['initiator_id'],
             (int)   $data['partner_id'],
-            (int)   $data['service_id'],
+                    $serviceIds[0],
+                    json_encode($serviceIds),
             (int)   $data['package_id'],
                     $data['title'],
             $disc,

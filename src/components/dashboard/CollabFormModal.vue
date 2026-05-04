@@ -152,7 +152,7 @@
                   <div class="dropdown-trigger__content">
                     <span class="trigger-icon">{{ isAgency ? '🧳' : '🔧' }}</span>
                     <div class="trigger-text">
-                      <div class="trigger-title"       v-if="selectedAsset">{{ selectedAsset.title }}</div>
+                      <div class="trigger-title"       v-if="selectedAssetLabel">{{ selectedAssetLabel }}</div>
                       <div class="trigger-placeholder" v-else>{{ pickerPlaceholder }}</div>
                     </div>
                   </div>
@@ -178,7 +178,7 @@
                         v-for="asset in myAssets"
                         :key="asset.id"
                         class="dropdown-item"
-                        :class="{ selected: form.asset_id === asset.id }"
+                        :class="{ selected: isAssetSelected(asset) }"
                         @click="selectAsset(asset)"
                       >
                         <div class="item-img">
@@ -197,7 +197,7 @@
                             {{ asset.type }} · {{ asset.location || asset.city || '—' }}
                           </div>
                         </div>
-                        <div class="item-check" v-if="form.asset_id === asset.id">✓</div>
+                        <div class="item-check" v-if="isAssetSelected(asset)">✓</div>
                       </div>
                     </div>
                   </div>
@@ -231,9 +231,9 @@
                 <span class="ps-label">{{ isAgency ? 'Service' : 'Package' }}</span>
                 <span class="ps-value">{{ lockedAsset.title }}</span>
               </div>
-              <div class="proposal-summary__row" v-if="selectedAsset">
+              <div class="proposal-summary__row" v-if="selectedAssetLabel">
                 <span class="ps-label">{{ isAgency ? 'Package' : 'Service' }}</span>
-                <span class="ps-value">{{ selectedAsset.title }}</span>
+                <span class="ps-value">{{ selectedAssetLabel }}</span>
               </div>
               <div class="proposal-summary__row">
                 <span class="ps-label">Discount</span>
@@ -259,7 +259,7 @@
               </span>
               <button type="button" class="btn btn-coral" @click="next" :disabled="submitting">
                 <span v-if="submitting" class="btn-spinner"></span>
-                {{ step === 1 ? 'Next →' : 'Send Request' }}
+                {{ step === 1 ? 'Next →' : submitButtonLabel }}
               </button>
             </div>
           </div>
@@ -350,6 +350,7 @@ const blankForm = () => ({
   end_date:     '',
   message:      '',
   asset_id:     null, // resolved to package_id or service_id on submit
+  asset_ids:    [],   // provider flow: service IDs selected for this request
 })
 const form = ref(blankForm())
 
@@ -366,6 +367,19 @@ const pickerPlaceholder = computed(() =>
 const selectedAsset = computed(() =>
   myAssets.value.find(a => a.id === form.value.asset_id) ?? null
 )
+const submitButtonLabel = computed(() =>
+  'Send Request'
+)
+const selectedAssets = computed(() =>
+  myAssets.value.filter(a => form.value.asset_ids.includes(a.id))
+)
+const selectedAssetLabel = computed(() => {
+  if (isAgency.value) return selectedAsset.value?.title ?? ''
+  const count = selectedAssets.value.length
+  if (count === 0) return ''
+  if (count === 1) return selectedAssets.value[0].title
+  return `${count} services selected`
+})
 
 /**
  * The package used for the discount preview widget.
@@ -384,12 +398,26 @@ const discountedPrice = computed(() => {
 })
 
 function selectAsset (asset) {
-  form.value.asset_id = asset.id
-  pickerOpen.value    = false
+  if (isAgency.value) {
+    form.value.asset_id = asset.id
+    pickerOpen.value    = false
+    return
+  }
+
+  const ids = form.value.asset_ids
+  form.value.asset_ids = ids.includes(asset.id)
+    ? ids.filter(id => id !== asset.id)
+    : [...ids, asset.id]
+}
+
+function isAssetSelected (asset) {
+  return isAgency.value
+    ? form.value.asset_id === asset.id
+    : form.value.asset_ids.includes(asset.id)
 }
 
 async function fetchMyAssets () {
-  const id = props.ownId ?? user.value?.id
+  const id = props.ownId ?? user.value?.userID ?? user.value?.id
   if (!id) return
   loadingAssets.value = true
   try {
@@ -398,9 +426,9 @@ async function fetchMyAssets () {
       const data = await res.json()
       myAssets.value = (data.packages ?? []).filter(p => p.is_active)
     } else {
-      const res  = await fetch(`${BASE}/services.php?provider_id=${id}`)
+      const res  = await fetch(`${BASE}/Services.php?provider_id=${id}`)
       const data = await res.json()
-      myAssets.value = (data.services ?? []).filter(s => s.is_active)
+      myAssets.value = (data.services ?? []).filter(s => s.is_available != 0)
     }
   } catch (err) {
     console.error('CollabFormModal: failed to load assets', err)
@@ -434,8 +462,10 @@ function validateStep () {
       e.end_date = 'End date must be after start date.'
   }
   if (step.value === 2) {
-    if (!form.value.asset_id)
+    if (isAgency.value && !form.value.asset_id)
       e.asset_id = `Please select one of your ${isAgency.value ? 'packages' : 'services'}.`
+    if (!isAgency.value && form.value.asset_ids.length === 0)
+      e.asset_id = 'Please select at least one of your services.'
   }
   errors.value = e
   return !Object.keys(e).length
@@ -463,42 +493,34 @@ async function submit () {
     return
   }
 
-  const myId = props.ownId ?? user.value?.id
+  const myId = props.ownId ?? user.value?.userID ?? user.value?.id
 
-  /**
-   * collaborations.php always expects:
-   *   initiator_id, initiator_type, partner_id, partner_type,
-   *   service_id, package_id
-   *
-   * Agency initiates  → service is locked, package is chosen in step 2.
-   * Provider initiates → package is locked, service is chosen in step 2.
-   */
-  const payload = isAgency.value
-    ? {
-        initiator_id:   myId,
-        initiator_type: 'agency',
-        partner_id:     props.lockedAsset.provider_id,
-        partner_type:   'provider',
-        service_id:     props.lockedAsset.id,
-        package_id:     form.value.asset_id,
-      }
-    : {
-        initiator_id:   myId,
-        initiator_type: 'provider',
-        partner_id:     props.lockedAsset.agency_id,
-        partner_type:   'agency',
-        package_id:     props.lockedAsset.id,
-        service_id:     form.value.asset_id,
-      }
-
-  Object.assign(payload, {
+  const basePayload = {
+    initiator_id:   myId,
+    initiator_type: isAgency.value ? 'agency' : 'provider',
+    partner_id:     isAgency.value ? props.lockedAsset.provider_id : props.lockedAsset.agency_id,
+    partner_type:   isAgency.value ? 'provider' : 'agency',
     title:        form.value.title,
     discount_pct: form.value.discount_pct,
     offer_type:   form.value.offer_type || 'Bundle',
     start_date:   form.value.start_date || null,
     end_date:     form.value.end_date   || null,
     message:      form.value.message,
-  })
+  }
+
+  const payload = isAgency.value
+    ? {
+        ...basePayload,
+        service_id:  props.lockedAsset.id,
+        service_ids: [props.lockedAsset.id],
+        package_id:  form.value.asset_id,
+      }
+    : {
+        ...basePayload,
+        package_id:  props.lockedAsset.id,
+        service_id:  form.value.asset_ids[0],
+        service_ids: form.value.asset_ids,
+      }
 
   try {
     const res  = await fetch(`${BASE}/collaborations.php`, {
@@ -522,11 +544,13 @@ async function submit () {
 
     pushNotif({
       roles:        [isAgency.value ? 'provider' : 'agency'],
-      targetUserId: payload.partner_id,
+      targetUserId: basePayload.partner_id,
       type:         'collab',
       icon:         '🤝',
       title:        'New collaboration request',
-      body:         `${senderLabel} wants to collaborate: "${form.value.title}".`,
+      body:         isAgency.value || form.value.asset_ids.length === 1
+        ? `${senderLabel} wants to collaborate: "${form.value.title}".`
+        : `${senderLabel} wants to collaborate on ${form.value.asset_ids.length} services: "${form.value.title}".`,
       link:         '/dashboard',
       section:      'collaborations',
     })

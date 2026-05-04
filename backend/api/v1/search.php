@@ -94,25 +94,46 @@ try {
 
     // ── 4. OFFERS ──────────────────────────────────────────────────────
     if ($category === 'all' || $category === 'offer') {
+        $providerColumnStmt = $pdo->query("SHOW COLUMNS FROM special_offers LIKE 'provider_id'");
+        $providerExpr = $providerColumnStmt->fetch() ? 'COALESCE(o.provider_id, s.provider_id)' : 's.provider_id';
+        $offerSelect = "
+            SELECT o.id, o.title, o.description, o.discount_pct, o.start_date, o.end_date,
+                   o.type, o.offer_type, o.source, o.agency_id, o.service_id,
+                   $providerExpr AS provider_id,
+                   COALESCE(p.price, s.price, 0) AS price,
+                   COALESCE(p.img_url, s.img_url) AS img,
+                   u.company_name AS provider_name
+            FROM special_offers o
+            LEFT JOIN offer_packages op ON op.offer_id = o.id
+            LEFT JOIN packages p ON p.id = op.package_id
+            LEFT JOIN services s ON s.id = o.service_id
+            LEFT JOIN users u ON u.id = $providerExpr
+            WHERE o.is_active = 1
+        ";
         if ($q !== null) {
-            // FIX: Changed 'discount' to 'discount_pct' to match your SQL schema
-            $sql  = "SELECT id, title, description, discount_pct 
-                     FROM special_offers
-                     WHERE title LIKE ? OR description LIKE ?";
+            $sql  = $offerSelect . " AND (o.title LIKE ? OR o.description LIKE ? OR p.title LIKE ? OR s.title LIKE ?)
+                     GROUP BY o.id";
             $stmt = $pdo->prepare($sql);
-            $stmt->execute(["%$q%", "%$q%"]);
+            $stmt->execute(["%$q%", "%$q%", "%$q%", "%$q%"]);
         } else {
-            $stmt = $pdo->query("SELECT id, title, description, discount_pct FROM special_offers");
+            $stmt = $pdo->query($offerSelect . " GROUP BY o.id");
         }
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
             $results[] = [
-                'id'       => $row['id'],
-                'category' => 'offer',
-                'title'    => $row['title'],
-                'desc'     => $row['description'],
-                'price'    => 0,
-                'discount' => $row['discount_pct'], // Mapped to the frontend 'discount' key
-                'img'      => null,
+                'id'          => $row['id'],
+                'category'    => 'offer',
+                'title'       => $row['title'],
+                'desc'        => $row['description'],
+                'price'       => $row['price'],
+                'discount'    => $row['discount_pct'],
+                'img'         => $row['img'],
+                'type'        => $row['type'] ?: $row['offer_type'],
+                'source'      => $row['source'],
+                'startDate'   => $row['start_date'],
+                'endDate'     => $row['end_date'],
+                'agency_id'   => $row['agency_id'],
+                'provider_id' => $row['provider_id'],
+                'partnerName' => $row['provider_name'],
             ];
         }
     }

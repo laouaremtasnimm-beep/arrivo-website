@@ -16,6 +16,57 @@ const _offers = ref([...demoOffers])
 const _loading = ref(false)
 const _loaded = ref(false)
 
+function toArray(value) {
+  if (Array.isArray(value)) return value
+  if (typeof value === 'string' && value.trim()) {
+    try {
+      const parsed = JSON.parse(value)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+function normalizeOffer(dbOff) {
+  const packageIds = toArray(dbOff.packageIds ?? dbOff.package_ids)
+    .map(Number)
+    .filter(Boolean)
+  const services = toArray(dbOff.services)
+  const serviceIds = toArray(dbOff.service_ids)
+    .map(Number)
+    .filter(Boolean)
+  const image = dbOff.img || dbOff.img_url || dbOff.package_img_url || dbOff.service_img_url || null
+
+  return {
+    ...dbOff,
+    offerID: dbOff.offerID ?? dbOff.id,
+    discount: dbOff.discount ?? dbOff.discount_pct,
+    discount_pct: dbOff.discount_pct ?? dbOff.discount,
+    startDate: dbOff.startDate ?? dbOff.start_date,
+    endDate: dbOff.endDate ?? dbOff.end_date,
+    description: dbOff.description ?? dbOff.desc ?? '',
+    source: dbOff.source ?? 'manual',
+    type: dbOff.type ?? dbOff.offer_type ?? dbOff.offerType,
+    offerType: dbOff.offerType ?? dbOff.offer_type ?? dbOff.type,
+    owner_id: Number(dbOff.owner_id ?? dbOff.agency_id ?? dbOff.userId ?? 0) || null,
+    agency_id: dbOff.agency_id != null ? Number(dbOff.agency_id) : null,
+    provider_id: dbOff.provider_id != null ? Number(dbOff.provider_id) : null,
+    package_id: dbOff.package_id != null ? Number(dbOff.package_id) : (packageIds[0] ?? null),
+    packageIds,
+    service_id: dbOff.service_id != null ? Number(dbOff.service_id) : (serviceIds[0] ?? null),
+    service_ids: serviceIds,
+    services,
+    img: image,
+    img_url: image,
+    price: Number(dbOff.price ?? dbOff.package_price ?? services[0]?.price ?? 0) || 0,
+    partnerName: dbOff.partnerName ?? dbOff.provider_name ?? dbOff.partner_company ?? null,
+    partnerColor: dbOff.partnerColor ?? '#2EC4B6',
+    active: dbOff.active ?? (dbOff.is_active === 1 || dbOff.is_active === '1'),
+  }
+}
+
 // Auto-fetch all active public offers the moment the module is first imported.
 async function _bootstrap() {
   if (_loaded.value || _loading.value) return
@@ -26,15 +77,7 @@ async function _bootstrap() {
     if (data.offers) {
       // Merge: avoid duplicates if demo offers were somehow in the DB
       data.offers.forEach(dbOff => {
-        const mapped = {
-          ...dbOff,
-          offerID:   dbOff.id,
-          discount:  dbOff.discount_pct,
-          startDate: dbOff.start_date,
-          endDate:   dbOff.end_date,
-          owner_id:  dbOff.agency_id,
-          active:    dbOff.is_active === 1
-        }
+        const mapped = normalizeOffer(dbOff)
         if (!_offers.value.some(o => o.offerID === mapped.offerID)) {
           _offers.value.push(mapped)
         }
@@ -65,12 +108,12 @@ export function useOffers() {
   }
   // ── Writes — in-memory state mutations ────────────────────────────────────
   function addOffer(offer) {
-    _offers.value.unshift({
+    _offers.value.unshift(normalizeOffer({
       ...offer,
       offerID: offer.offerID ?? Date.now(),
-      active:  offer.active  ?? true,
-      source:  offer.source  ?? 'manual',
-    })
+      active: offer.active ?? true,
+      source: offer.source ?? 'manual',
+    }))
   }
 
   function updateOffer(updated) {

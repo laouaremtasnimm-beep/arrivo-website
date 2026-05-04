@@ -1,9 +1,10 @@
 <template>
-  <div class="collabs-panel">
+  <div class="collabs-panel dash-card">
 
     <!-- ── Header ── -->
     <div class="panel-header">
       <div class="panel-header__left">
+        <div class="dash-card__overline">Partners</div>
         <h2 class="panel-title">Collaborations</h2>
         <p class="panel-sub">Proposals you've sent and received</p>
       </div>
@@ -94,23 +95,32 @@ function hasActionable(key) {
 </script>
 
 <style scoped>
-.collabs-panel { display: flex; flex-direction: column; gap: 20px; }
+.collabs-panel {
+  background: var(--white); border-radius: var(--radius);
+  box-shadow: var(--shadow); overflow: hidden;
+  display: flex; flex-direction: column; gap: 20px;
+}
 
 /* ── Header ─────────────────────────────────────────────────────────────────── */
 .panel-header {
   display: flex; align-items: flex-start; justify-content: space-between;
-  flex-wrap: wrap; gap: 12px;
+  flex-wrap: wrap; gap: 14px;
+  padding: 24px 24px 0;
+}
+.dash-card__overline {
+  font-size: .72rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--teal); margin-bottom: 4px;
 }
 .panel-title {
-  font-family: 'Fraunces', serif; font-size: 1.3rem; font-weight: 700;
+  font-family: 'Fraunces', serif; font-size: 1.2rem; font-weight: 700;
   color: var(--indigo); margin: 0;
 }
-.panel-sub { font-size: .82rem; color: var(--gray-600); margin: 2px 0 0; }
+.panel-sub { font-size: .78rem; color: var(--gray-400); margin: 0; }
 
 .panel-header__tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 .tab-btn {
   display: flex; align-items: center; gap: 6px;
-  padding: 7px 16px; border-radius: 50px; font-size: .82rem; font-weight: 600;
+  padding: 7px 14px; border-radius: 50px; font-size: .8rem; font-weight: 700;
   cursor: pointer; border: 1.5px solid var(--gray-200);
   color: var(--gray-600); background: #fff;
   transition: all .18s ease;
@@ -137,7 +147,10 @@ function hasActionable(key) {
 /* ── States ─────────────────────────────────────────────────────────────────── */
 .state-box {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 10px; padding: 60px 20px; color: var(--gray-500); text-align: center;
+  gap: 10px; margin: 0 24px 24px; padding: 46px 20px;
+  color: var(--gray-500); text-align: center;
+  background: var(--gray-50); border: 1.5px dashed var(--gray-200);
+  border-radius: var(--radius-sm);
 }
 .big-spinner {
   width: 32px; height: 32px; border: 3px solid var(--gray-200);
@@ -145,12 +158,12 @@ function hasActionable(key) {
   animation: spin .7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-.empty-icon  { font-size: 2.4rem; }
+.empty-icon  { font-size: 2rem; }
 .empty-title { font-size: 1rem; font-weight: 600; color: var(--indigo); margin: 0; }
 .empty-sub   { font-size: .84rem; margin: 0; max-width: 280px; }
 
 /* ── List ───────────────────────────────────────────────────────────────────── */
-.collab-list { display: flex; flex-direction: column; gap: 12px; }
+.collab-list { display: flex; flex-direction: column; gap: 14px; padding: 0 24px 24px; }
 
 /* TransitionGroup */
 .collab-item-enter-active, .collab-item-leave-active { transition: all .25s ease; }

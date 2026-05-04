@@ -94,7 +94,7 @@
             key="collaborations"
             :collaborations="collaborations"
             @open-form="collabFormOpen = true"
-            @accept="handleAcceptCollab"
+            @accept="onAcceptCollab"
             @decline="handleDeclineCollab"
             @counter="handleCounterCollab"
             @end="handleEndCollab"
@@ -136,13 +136,14 @@
   </div>
 </template>
 
+
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuth }          from '@/composables/useAuth'
 import { useOffers }        from '@/composables/useOffers'
 import { useNotifications } from '@/composables/useNotifications'
-import { useCollabActions } from '@/composables/useCollabActions'   // ← ADDED
+import { useCollabActions } from '@/composables/useCollabActions'
 
 import DashboardSidebar    from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardHeader     from '@/components/dashboard/DashboardHeader.vue'
@@ -162,9 +163,9 @@ import OfferDetailModal    from '@/components/home/OfferDetailModal.vue'
 const API = '/arrivo-website/backend/api/v1'
 
 const router = useRouter()
-const { user, logout } = useAuth()                                  // ← isAgency removed: agency dashboard is always agency
-const { saveOfferToDB, addOffer, deleteOffer, allOffers } = useOffers()
-const { push: pushNotification } = useNotifications()
+const { user, logout }                           = useAuth()
+const { saveOfferToDB, addOffer, deleteOffer }   = useOffers()
+const { push: pushNotification }                 = useNotifications()
 
 // ── Layout ────────────────────────────────────────────────────────────────
 const sidebarCollapsed  = ref(false)
@@ -173,13 +174,13 @@ const activeSection     = ref('overview')
 const loadError         = ref(null)
 
 const sectionMap = {
-  overview:       { title: 'Overview',        meta: 'Your agency dashboard at a glance'      },
-  bookings:       { title: 'Bookings',         meta: 'Manage and track all reservations'      },
-  packages:       { title: 'Travel Packages',  meta: 'Create and manage your packages'        },
-  messages:       { title: 'Messages',         meta: 'Communicate with your customers'        },
-  reviews:        { title: 'Reviews',          meta: 'See what customers are saying'          },
-  offers:         { title: 'Special Offers',   meta: 'Run promotions and discount campaigns'  },
-  collaborations: { title: 'Collaborations',   meta: 'Co-create joint offers with partners'   },
+  overview:       { title: 'Overview',        meta: 'Your agency dashboard at a glance'     },
+  bookings:       { title: 'Bookings',         meta: 'Manage and track all reservations'     },
+  packages:       { title: 'Travel Packages',  meta: 'Create and manage your packages'       },
+  messages:       { title: 'Messages',         meta: 'Communicate with your customers'       },
+  reviews:        { title: 'Reviews',          meta: 'See what customers are saying'         },
+  offers:         { title: 'Special Offers',   meta: 'Run promotions and discount campaigns' },
+  collaborations: { title: 'Collaborations',   meta: 'Co-create joint offers with partners'  },
 }
 const sectionTitle = computed(() => sectionMap[activeSection.value]?.title || '')
 const sectionMeta  = computed(() => sectionMap[activeSection.value]?.meta  || '')
@@ -241,6 +242,20 @@ async function fetchMessages() {
     if (!res.ok) throw new Error(data.error || 'Failed to load messages')
     messages.value = (data.messages ?? []).map(normalizeMessage)
   } catch (e) { loadError.value = e.message }
+}
+
+// ── Collab actions (includes fetchCollaborations + all handlers) ───────────
+const {
+  fetchCollaborations,
+  handleAcceptCollab,
+  handleDeclineCollab,
+  handleCounterCollab,
+  handleEndCollab,
+} = useCollabActions({ collaborations, user, addOffer, deleteOffer, loadError })
+
+// ── Top-level accept handler — wired to @accept on CollaborationsPanel ────
+async function onAcceptCollab(collab) {
+  await handleAcceptCollab(collab)
 }
 
 onMounted(async () => {
@@ -405,17 +420,8 @@ async function handleSaveOffer(payload) {
   await saveOfferToDB({ ...payload, owner_id: user.value?.userID })
 }
 
-// ── Collab handlers ───────────────────────────────────────────────────────
+// ── Collab form ───────────────────────────────────────────────────────────
 const collabFormOpen = ref(false)
-
-const {
-  fetchCollaborations,
-  handleAcceptCollab,
-  handleDeclineCollab,
-  handleCounterCollab,
-  handleEndCollab,
-  handleWithdrawCollab,
-} = useCollabActions({ collaborations, user, addOffer, deleteOffer, loadError })
 
 async function handleSendCollab(payload) {
   try {

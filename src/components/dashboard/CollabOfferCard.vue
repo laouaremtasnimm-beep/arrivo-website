@@ -198,15 +198,16 @@ async function withdraw() {
 <style scoped>
 /* ── Card shell ─────────────────────────────────────────────────────────────── */
 .collab-card {
-  background: #fff; border-radius: 18px;
-  border: 1.5px solid var(--gray-200);
-  overflow: hidden; transition: box-shadow .2s ease;
+  background: var(--gray-50); border-radius: 14px;
+  border: 1.5px solid var(--gray-200); border-left: 4px solid var(--teal);
+  overflow: hidden; transition: transform var(--transition), box-shadow var(--transition);
 }
-.collab-card:hover { box-shadow: 0 6px 28px rgba(45,49,66,.1); }
+.collab-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
 
-.collab-card--accepted { border-color: #2EC4B6; }
+.collab-card--pending { border-left-color: var(--coral); background: rgba(255,90,95,.03); }
+.collab-card--accepted { border-left-color: var(--teal); background: rgba(46,196,182,.04); }
 .collab-card--declined { opacity: .65; }
-.collab-card--countered { border-color: #FFB347; }
+.collab-card--countered { border-left-color: var(--indigo); background: rgba(45,49,66,.03); }
 
 /* ── Status ribbon ──────────────────────────────────────────────────────────── */
 .status-ribbon {
@@ -219,9 +220,9 @@ async function withdraw() {
 .status-dot {
   width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
 }
-.dot--pending   { background: #FFB347; }
-.dot--countered { background: #6C63FF; }
-.dot--accepted  { background: #2EC4B6; }
+.dot--pending   { background: var(--coral); }
+.dot--countered { background: var(--indigo); }
+.dot--accepted  { background: var(--teal); }
 .dot--declined  { background: #ccc; }
 
 /* ── Body ───────────────────────────────────────────────────────────────────── */
@@ -293,10 +294,10 @@ async function withdraw() {
 /* ── Counter banner ─────────────────────────────────────────────────────────── */
 .counter-banner {
   padding: 12px 14px; border-radius: 10px;
-  background: #fffbf0; border: 1.5px solid #FFB347;
+  background: rgba(45,49,66,.04); border: 1.5px solid rgba(45,49,66,.12);
 }
 .counter-banner__label {
-  font-size: .76rem; font-weight: 800; color: #c47a00; margin-bottom: 7px;
+  font-size: .76rem; font-weight: 800; color: var(--indigo); margin-bottom: 7px;
   text-transform: uppercase; letter-spacing: .04em;
 }
 .counter-banner__items {
@@ -323,13 +324,13 @@ async function withdraw() {
   transition: all .18s ease;
 }
 .action-btn--accept   { background: var(--teal); color: #fff; }
-.action-btn--accept:hover   { background: #26b0a2; }
+.action-btn--accept:hover   { background: var(--teal-dk); }
 .action-btn--decline  { background: transparent; border: 1.5px solid var(--gray-200); color: var(--gray-600); }
-.action-btn--decline:hover  { border-color: #e63946; color: #e63946; }
-.action-btn--counter  { background: #fff8ee; border: 1.5px solid #FFB347; color: #c47a00; }
-.action-btn--counter:hover  { background: #fff0d0; }
+.action-btn--decline:hover  { border-color: var(--coral); color: var(--coral); }
+.action-btn--counter  { background: rgba(45,49,66,.06); border: 1.5px solid rgba(45,49,66,.12); color: var(--indigo); }
+.action-btn--counter:hover  { background: rgba(45,49,66,.1); }
 .action-btn--withdraw { background: transparent; border: 1.5px solid var(--gray-200); color: var(--gray-500); font-size: .78rem; }
-.action-btn--withdraw:hover { border-color: #e63946; color: #e63946; }
+.action-btn--withdraw:hover { border-color: var(--coral); color: var(--coral); }
 
 /* ── Accepted footer ────────────────────────────────────────────────────────── */
 .accepted-footer {
@@ -337,7 +338,7 @@ async function withdraw() {
   padding: 10px 16px; border-top: 1px solid rgba(46,196,182,.2);
   background: rgba(46,196,182,.06);
 }
-.accepted-label { font-size: .8rem; font-weight: 700; color: #2EC4B6; }
+.accepted-label { font-size: .8rem; font-weight: 700; color: var(--teal); }
 .offer-link {
   font-size: .8rem; font-weight: 700; color: var(--teal); text-decoration: none;
 }

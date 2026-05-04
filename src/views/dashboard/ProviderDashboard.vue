@@ -89,6 +89,9 @@
             @add="openOfferForm(null)"
             @edit="openOfferForm($event)"
           />
+          <CollaborationsPanel 
+  @accept="onAcceptCollab"
+/>
 
         </Transition>
       </div>
@@ -127,6 +130,7 @@ import { useRouter } from 'vue-router'
 import { useAuth }          from '@/composables/useAuth'
 import { useOffers }        from '@/composables/useOffers'
 import { useNotifications } from '@/composables/useNotifications'
+import { useCollabActions } from '@/composables/useCollabActions'
 
 import DashboardSidebar      from '@/components/dashboard/DashboardSidebar.vue'
 import DashboardHeader       from '@/components/dashboard/DashboardHeader.vue'
@@ -138,14 +142,15 @@ import DashboardReviews      from '@/components/dashboard/DashboardReviews.vue'
 import OffersPanel           from '@/components/dashboard/OffersPanel.vue'
 import ServiceOfferFormModal from '@/components/dashboard/ServiceOfferFormModal.vue'
 import ServiceFormModal      from '@/components/dashboard/Serviceformmodal.vue'
+import CollaborationsPanel   from '@/components/dashboard/CollaborationsPanel.vue'
 import BookingDetailModal    from '@/components/dashboard/BookingDetailModal.vue'
 import OfferDetailModal      from '@/components/home/OfferDetailModal.vue'
 
 const API = '/arrivo-website/backend/api/v1'
 
 const router = useRouter()
-const { user, logout }       = useAuth()
-const { saveOfferToDB }      = useOffers()
+const { user, logout }           = useAuth()
+const { saveOfferToDB, addOffer, deleteOffer } = useOffers()
 const { push: pushNotification } = useNotifications()
 
 // ── Layout ────────────────────────────────────────────────────────────────
@@ -155,12 +160,13 @@ const activeSection     = ref('overview')
 const loadError         = ref(null)
 
 const sectionMap = {
-  overview: { title: 'Overview',       meta: 'Your provider dashboard at a glance'     },
-  bookings: { title: 'Bookings',        meta: 'Manage and track all reservations'       },
-  services: { title: 'My Services',     meta: 'Create and manage your service listings' },
-  messages: { title: 'Messages',        meta: 'Communicate with your customers'         },
-  reviews:  { title: 'Reviews',         meta: 'See what customers are saying'           },
-  offers:   { title: 'Special Offers',  meta: 'Run promotions and discount campaigns'   },
+  overview:       { title: 'Overview',       meta: 'Your provider dashboard at a glance'     },
+  bookings:       { title: 'Bookings',        meta: 'Manage and track all reservations'       },
+  services:       { title: 'My Services',     meta: 'Create and manage your service listings' },
+  messages:       { title: 'Messages',        meta: 'Communicate with your customers'         },
+  reviews:        { title: 'Reviews',         meta: 'See what customers are saying'           },
+  offers:         { title: 'Special Offers',  meta: 'Run promotions and discount campaigns'   },
+  collaborations: { title: 'Collaborations',  meta: 'Co-create joint offers with partners'    },
 }
 const sectionTitle = computed(() => sectionMap[activeSection.value]?.title || '')
 const sectionMeta  = computed(() => sectionMap[activeSection.value]?.meta  || '')
@@ -174,9 +180,10 @@ const unreadMessages = computed(() => messages.value.filter(m => !m.is_read).len
 function handleLogout() { logout(); router.push('/') }
 
 // ── Data refs ─────────────────────────────────────────────────────────────
-const bookings = ref([])
-const services = ref([])
-const messages = ref([])
+const bookings       = ref([])
+const services       = ref([])
+const messages       = ref([])
+const collaborations = ref([])
 
 // ── Fetches ───────────────────────────────────────────────────────────────
 async function fetchBookings() {
@@ -223,10 +230,25 @@ async function fetchMessages() {
   } catch (e) { loadError.value = e.message }
 }
 
+// ── Collab actions ────────────────────────────────────────────────────────
+const {
+  fetchCollaborations,
+  handleAcceptCollab,
+  handleDeclineCollab,
+  handleCounterCollab,
+  handleEndCollab,
+} = useCollabActions({ collaborations, user, addOffer, deleteOffer, loadError })
+
+// ── Top-level accept handler — wired to @accept on CollaborationsPanel ────
+async function onAcceptCollab(collab) {
+  await handleAcceptCollab(collab)
+}
+
 onMounted(async () => {
   await fetchBookings()
   await fetchServices()
   await fetchMessages()
+  await fetchCollaborations()
 })
 
 // ── Booking handlers ──────────────────────────────────────────────────────
@@ -383,7 +405,7 @@ function handleCompose() { console.log('Compose — wire to a compose modal late
 const offerFormOpen = ref(false)
 const editingOffer  = ref(null)
 
-function openOfferForm(offer) {                    // ← was orphaned, now fixed
+function openOfferForm(offer) {
   editingOffer.value  = offer ?? null
   offerFormOpen.value = true
 }

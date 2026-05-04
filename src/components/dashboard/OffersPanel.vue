@@ -94,12 +94,19 @@ defineEmits(['add', 'edit'])
 
 const { allOffers, activeOffers: allActiveOffers, collabOffers: allCollabOffers, manualOffers: allManualOffers, deleteOfferFromDB } = useOffers()
 
+function belongsToCurrentUser(offer) {
+  if (!props.userId) return true
+  const id = Number(props.userId)
+  return [offer.owner_id, offer.agency_id, offer.provider_id]
+    .some(owner => owner != null && Number(owner) === id)
+}
+
 // Filter all categories by current owner/agency
 const userActiveOffers = computed(() =>
-  allActiveOffers.value.filter(o => !props.userId || o.owner_id === Number(props.userId))
+  allActiveOffers.value.filter(belongsToCurrentUser)
 )
 const collabOffers = computed(() =>
-  allCollabOffers.value.filter(o => !props.userId || o.owner_id === Number(props.userId))
+  allCollabOffers.value.filter(belongsToCurrentUser)
 )
 const manualOffers = computed(() =>
   allManualOffers.value.filter(o => !props.userId || o.owner_id === Number(props.userId))

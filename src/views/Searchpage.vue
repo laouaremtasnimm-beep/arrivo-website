@@ -520,7 +520,6 @@ async function runSearch() {
 
     // 4. Offers
     const offers = useOffers().activeOffers.value
-      .filter(o => o.source === 'collab') // ✅ ONLY KEEP COLLABORATIONS (Bargains/Bundles)
       .map(o => ({
         ...o,
         id: o.offerID,
@@ -534,7 +533,7 @@ async function runSearch() {
         price: o.price || 0,
         rating: 5.0,
         reviews: 0,
-        categoryLabel: 'Joint Offer',
+        categoryLabel: o.source === 'collab' ? 'Joint Offer' : 'Special Offer',
         ctaLabel: 'View Deal',
         priceLabel: 'Starting from'
       }))

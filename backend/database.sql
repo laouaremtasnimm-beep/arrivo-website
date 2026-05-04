@@ -166,6 +166,7 @@ CREATE TABLE collaborations (
     initiator_id INT NOT NULL,
     partner_id INT NOT NULL,
     service_id INT NOT NULL,
+    service_ids JSON NULL,
     package_id INT NOT NULL,
     title VARCHAR(255) NOT NULL,
     discount_pct TINYINT UNSIGNED NOT NULL,

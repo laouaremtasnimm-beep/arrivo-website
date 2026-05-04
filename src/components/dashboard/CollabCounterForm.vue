@@ -85,7 +85,7 @@
 
           <div class="modal__footer">
             <button type="button" class="btn btn-outline" @click="close">Cancel</button>
-            <button type="button" class="btn btn-amber" @click="submit" :disabled="submitting">
+            <button type="button" class="btn btn-coral" @click="submit" :disabled="submitting">
               <span v-if="submitting" class="btn-spinner"></span>
               Send Counter-Proposal
             </button>
@@ -210,7 +210,7 @@ function close() {
 }
 .step-badge {
   font-size: .7rem; font-weight: 700; letter-spacing: .07em;
-  color: #c47a00; text-transform: uppercase; margin-bottom: 3px;
+  color: var(--teal); text-transform: uppercase; margin-bottom: 3px;
 }
 .modal__title {
   font-family: 'Fraunces', serif; font-size: 1.1rem; font-weight: 700;
@@ -257,7 +257,7 @@ function close() {
   color: var(--indigo); outline: none; background: #fff;
   transition: border-color var(--transition);
 }
-.form-input:focus { border-color: #FFB347; }
+.form-input:focus { border-color: var(--coral); }
 .form-textarea { resize: vertical; min-height: 80px; }
 .field-error   { font-size: .78rem; color: var(--coral); margin: 0; }
 
@@ -284,8 +284,8 @@ function close() {
   display: flex; align-items: center; gap: 6px; transition: all var(--transition);
 }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
-.btn-amber { background: #FFB347; color: #fff; }
-.btn-amber:hover:not(:disabled) { background: #e09c2e; }
+.btn-coral { background: var(--coral); color: #fff; }
+.btn-coral:hover:not(:disabled) { background: var(--coral-dk); }
 .btn-outline { background: transparent; border: 1.5px solid var(--gray-200); color: var(--gray-600); }
 .btn-outline:hover { border-color: var(--gray-400); }
 .btn-spinner {
